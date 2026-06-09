@@ -5,7 +5,7 @@ import time
 # 1. Page Configuration
 st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_icon="🏭")
 
-# 2. Password Protection (Keeping your working auth logic)
+# 2. Password Protection (Authentication Logic)
 def check_password():
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
@@ -16,8 +16,8 @@ def check_password():
     st.title("🔒 Plant Intranet Inventory Access")
     user_password = st.text_input("Enter Password", type="password")
     if user_password:
-        # Define your CORRECT_PASSWORD somewhere or replace below
-        CORRECT_PASSWORD = "0203" 
+        # NOTE: Replace 'your_actual_password_here' with your dashboard password
+        CORRECT_PASSWORD = "your_actual_password_here" 
         if user_password == CORRECT_PASSWORD:
             st.session_state["password_correct"] = True
             st.sidebar.success("🔓 Access Granted")
@@ -33,23 +33,25 @@ if check_password():
     google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
 
     try:
-        # Cache-buster to get fresh live values on refresh
+        # Cache-buster to get fresh live values on page refresh
         live_url = f"{google_sheet_url}&t={int(time.time())}"
         df = pd.read_csv(live_url)
         
-        # Clean column names (removes accidental spaces)
+        # Clean column names (removes accidental whitespaces)
         df.columns = df.columns.str.strip()
         
         # Drop completely empty rows where Instrument Name is missing
         df = df.dropna(subset=["Instrument Name"])
 
-        # Updated Columns matching your new "item.jpg" excel layout
+        # Column Layout Mapping (Matching your updated Google Sheet)
         NAME_COL = "Instrument Name"
         SPECS_COL = "Specs"
         FIELD_COL = "Existing Instrument on Field"
         SPARES_M7_COL = "Remaining Spares in M7"
         SPARES_SHOP_COL = "Remaining Spares in Shop-Floor"
         TOTAL_SPARES_COL = "Total Spares"
+        HEALTHY_STOCK_COL = "Healthy Stock"
+        SHORTFALL_EXCESS_COL = "Shortfall / Excess"
         
         # --- SIDEBAR FILTER ---
         st.sidebar.header("🔍 Filter Options")
@@ -73,14 +75,15 @@ if check_password():
             spares_m7 = int(float(row[SPARES_M7_COL])) if pd.notna(row[SPARES_M7_COL]) else 0
             spares_shop = int(float(row[SPARES_SHOP_COL])) if pd.notna(row[SPARES_SHOP_COL]) else 0
             total_spares = int(float(row[TOTAL_SPARES_COL])) if pd.notna(row[TOTAL_SPARES_COL]) else 0
+            healthy_stock = int(float(row[HEALTHY_STOCK_COL])) if pd.notna(row[HEALTHY_STOCK_COL]) else 0
+            shortfall_excess = int(float(row[SHORTFALL_EXCESS_COL])) if pd.notna(row[SHORTFALL_EXCESS_COL]) else 0
             
             # Clean technical specs string formatting markers
             cleaned_spec = full_spec.replace('•', '').strip()
 
-            # Responsive Layout Container
+            # Responsive Layout Container (8 Columns accommodated smoothly across screen grid)
             with st.container():
-                # Adjusted column ratios to beautifully accommodate 3 distinct spare tracking metrics
-                col_name, col_specs, col_field, col_m7, col_shop, col_total = st.columns([2, 3, 1.5, 1.5, 1.5, 1.5])
+                col_name, col_specs, col_field, col_m7, col_shop, col_total, col_healthy, col_status = st.columns([2, 2.5, 1.2, 1.2, 1.2, 1.2, 1.2, 1.5])
                 
                 with col_name:
                     st.subheader(inst_name)
@@ -90,31 +93,12 @@ if check_password():
                     st.info(cleaned_spec)
                 
                 with col_field:
-                    st.metric(label="On Field  installed", value=f"{field_count} Nos")
+                    st.metric(label="On Field", value=f"{field_count} Nos")
                 
                 with col_m7:
                     st.metric(label="📦 M7 Spares", value=f"{spares_m7} Nos")
                 
                 with col_shop:
-                    st.metric(label="⚙️ Shop-floor Spares", value=f"{spares_shop} Nos")
+                    st.metric(label="⚙️ Shop Spares", value=f"{spares_shop} Nos")
                 
                 with col_total:
-                    # Low stock warning based on total combined stock
-                    if total_spares <= 1:
-                        st.metric(label="⚠️ Total Spares", value=f"{total_spares} Left", delta="Low Stock!", delta_color="inverse")
-                    else:
-                        st.metric(label="📊 Total Spares", value=f"{total_spares} Avail")
-            
-            st.markdown("---")
-
-    except Exception as e:
-        st.error(f"Error reading live Google Sheet: {e}")
-
-    # Sidebar Navigation/Utility Buttons
-    if st.sidebar.button("🔒 Log Out"):
-        st.session_state["password_correct"] = False
-        st.rerun()
-
-    if st.sidebar.button("🔄 Refresh Inventory Data"):
-        st.cache_data.clear()
-        st.rerun()
