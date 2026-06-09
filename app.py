@@ -5,73 +5,30 @@ import time
 # 1. Page Configuration
 st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_icon="🏭")
 
-# 2. Simple Password Protection Function
+# 2. Password Protection (Keeping your working auth logic)
 def check_password():
-    """Returns True if the user had the correct password."""
-    CORRECT_PASSWORD = "0203"  # Jo password tumne choose kiya
-
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
 
     if st.session_state["password_correct"]:
         return True
 
-    st.title("🏭 Plant Intranet - Instrumentation Inventory Tracker")
-    st.subheader("🔒 Authorization Required")
-    
-    user_password = st.text_input("Enter Password to access the 02/03 Area Dashboard:", type="password")
-    
+    st.title("🔒 Plant Intranet Inventory Access")
+    user_password = st.text_input("Enter Password", type="password")
     if user_password:
+        # Define your CORRECT_PASSWORD somewhere or replace below
+        CORRECT_PASSWORD = "your_actual_password_here" 
         if user_password == CORRECT_PASSWORD:
             st.session_state["password_correct"] = True
             st.sidebar.success("🔓 Access Granted")
             st.rerun()
         else:
             st.error("❌ Incorrect password. Please try again.")
-            return False
     return False
 
-# 3. Main App Execution
 if check_password():
-    st.title("🏭 Plant Intranet - Instrumentation Inventory Tracker (02/03 Area)")
-    
-    # --- RED BLINKING DOT CSS EFFECT ---
-    st.markdown("""
-        <style>
-        .live-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .blink-dot {
-            width: 12px;
-            height: 12px;
-            background-color: #FF4B4B;
-            border-radius: 50%;
-            display: inline-block;
-            animation: blinking 1.5s infinite ease-in-out;
-        }
-        .live-text {
-            font-weight: bold;
-            color: #FF4B4B;
-            letter-spacing: 1px;
-            font-size: 14px;
-        }
-        @keyframes blinking {
-            0% { opacity: 0.2; box-shadow: 0 0 0 0 rgba(255, 75, 75, 0.4); }
-            50% { opacity: 1; box-shadow: 0 0 10px 4px rgba(255, 75, 75, 0.7); }
-            100% { opacity: 0.2; box-shadow: 0 0 0 0 rgba(255, 75, 75, 0.4); }
-        }
-        </style>
-        
-        <div class="live-container">
-            <span class="blink-dot"></span>
-            <span class="live-text">LIVE STREAMING</span>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("---")
+    st.header("📋 Live Instrumentation Spares & Field Status")
+    st.write("Fetching live data directly from Google Forms Response Sheet Maintained by A. Jangra.")
 
     google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
 
@@ -80,72 +37,84 @@ if check_password():
         live_url = f"{google_sheet_url}&t={int(time.time())}"
         df = pd.read_csv(live_url)
         
-        # Clean columns and drop completely empty rows
+        # Clean column names (removes accidental spaces)
         df.columns = df.columns.str.strip()
+        
+        # Drop completely empty rows where Instrument Name is missing
         df = df.dropna(subset=["Instrument Name"])
 
+        # Updated Columns matching your new "item.jpg" excel layout
         NAME_COL = "Instrument Name"
         SPECS_COL = "Specs"
         FIELD_COL = "Existing Instrument on Field"
-        SPARES_COL = "Remaining Spares"
-
-        st.header("📋 Live Instrumentation Spares & Field Status")
-        st.write("Fetching live data directly from Google Forms Response Sheet Maintained by A. Jangra.")
+        SPARES_M7_COL = "Remaining Spares in M7"
+        SPARES_SHOP_COL = "Remaining Spares in Shop-Floor"
+        TOTAL_SPARES_COL = "Total Spares"
         
-        # --- NEW SIDEBAR FILTER BASED ON INTRANET.PNG ---
+        # --- SIDEBAR FILTER ---
         st.sidebar.header("🔍 Filter Options")
         all_instruments = ["All"] + list(df[NAME_COL].dropna().unique())
         selected_instrument = st.sidebar.selectbox("Filter by Instrument Type:", all_instruments)
+        st.markdown("---")
 
-        st.markdown(" ")
-
-        # Loop dynamically through the dataframe rows based on the image entries
+        # --- DYNAMIC DATA LOOPING ---
         for index, row in df.iterrows():
             inst_name = str(row[NAME_COL]).strip()
-            
+
             # Sidebar Filter Logic
             if selected_instrument != "All" and inst_name != selected_instrument:
                 continue
                 
+            # Safely extract values from row
             full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
-            field_count = row[FIELD_COL]
-            spares_count = row[SPARES_COL]
             
-            # Safely handle numbers and float conversions from Excel
-            field_count = int(float(field_count)) if pd.notna(field_count) else 0
-            spares_count = int(float(spares_count)) if pd.notna(spares_count) else 0
+            # Convert numeric values safely to integers
+            field_count = int(float(row[FIELD_COL])) if pd.notna(row[FIELD_COL]) else 0
+            spares_m7 = int(float(row[SPARES_M7_COL])) if pd.notna(row[SPARES_M7_COL]) else 0
+            spares_shop = int(float(row[SPARES_SHOP_COL])) if pd.notna(row[SPARES_SHOP_COL]) else 0
+            total_spares = int(float(row[TOTAL_SPARES_COL])) if pd.notna(row[TOTAL_SPARES_COL]) else 0
+            
+            # Clean technical specs string formatting markers
+            cleaned_spec = full_spec.replace('•', '').strip()
 
+            # Responsive Layout Container
             with st.container():
-                col_name, col_specs, col_field, col_spares = st.columns([2.5, 3.5, 2, 2])
+                # Adjusted column ratios to beautifully accommodate 3 distinct spare tracking metrics
+                col_name, col_specs, col_field, col_m7, col_shop, col_total = st.columns([2, 3, 1.5, 1.5, 1.5, 1.5])
                 
                 with col_name:
                     st.subheader(inst_name)
                 
                 with col_specs:
                     st.markdown("**Technical Specs:**")
-                    # Display specs cleanly even if they have formatting markers
-                    st.info(f"{full_spec.replace('•', '').strip()}")
+                    st.info(cleaned_spec)
                 
                 with col_field:
-                    st.metric(label="Deployed on Field", value=f"{field_count} Nos")
+                    st.metric(label="On Field", value=f"{field_count} Nos")
                 
-                with col_spares:
-                    # Logic matching your low stock threshold
-                    if spares_count <= 1:
-                        st.metric(label="⚠️ Workshop Spares", value=f"{spares_count} Left", delta="Low Stock!", delta_color="inverse")
+                with col_m7:
+                    st.metric(label="📦 M7 Spares", value=f"{spares_m7} Nos")
+                
+                with col_shop:
+                    st.metric(label="⚙️ Shop Spares", value=f"{spares_shop} Nos")
+                
+                with col_total:
+                    # Low stock warning based on total combined stock
+                    if total_spares <= 1:
+                        st.metric(label="⚠️ Total Spares", value=f"{total_spares} Left", delta="Low Stock!", delta_color="inverse")
                     else:
-                        st.metric(label="✅ Workshop Spares", value=f"{spares_count} Available")
+                        st.metric(label="📊 Total Spares", value=f"{total_spares} Avail")
             
             st.markdown("---")
 
     except Exception as e:
         st.error(f"Error reading live Google Sheet: {e}")
 
-    # Sidebar Logout Button
+    # Sidebar Navigation/Utility Buttons
     if st.sidebar.button("🔒 Log Out"):
         st.session_state["password_correct"] = False
         st.rerun()
 
-    # Manual Data Force Refresh Button
-    if st.button("🔄 Refresh Inventory Data"):
+    if st.sidebar.button("🔄 Refresh Inventory Data"):
+        st.cache_data.clear()
         st.rerun()
