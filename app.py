@@ -16,7 +16,7 @@ def check_password():
     st.title("🔒 Plant Intranet Inventory Access")
     user_password = st.text_input("Enter Password", type="password")
     if user_password:
-        CORRECT_PASSWORD = "your_actual_password_here" 
+        CORRECT_PASSWORD = "0203" 
         if user_password == CORRECT_PASSWORD:
             st.session_state["password_correct"] = True
             st.sidebar.success("🔓 Access Granted")
