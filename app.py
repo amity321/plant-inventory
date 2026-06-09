@@ -65,7 +65,7 @@ if check_password():
         
         <div class="live-container">
             <span class="blink-dot"></span>
-            <span class="live-text">ALWAYS LIVE STREAMING</span>
+            <span class="live-text">LIVE STREAMING</span>
         </div>
     """, unsafe_allow_html=True)
     
