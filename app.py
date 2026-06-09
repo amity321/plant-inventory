@@ -7,17 +7,14 @@ st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_ic
 # 2. Simple Password Protection Function
 def check_password():
     """Returns True if the user had the correct password."""
-    # Define your password here
-    CORRECT_PASSWORD = "0203" 
+    CORRECT_PASSWORD = "0203"  # Jo password tumne choose kiya
 
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
 
-    # If already logged in, skip the login screen
     if st.session_state["password_correct"]:
         return True
 
-    # Show login prompt
     st.title("🏭 Plant Intranet - Instrumentation Inventory Tracker")
     st.subheader("🔒 Authorization Required")
     
@@ -26,7 +23,7 @@ def check_password():
     if user_password:
         if user_password == CORRECT_PASSWORD:
             st.session_state["password_correct"] = True
-            st.rerun()  # Rerun the app to completely clear the login screen
+            st.rerun()
         else:
             st.error("❌ Incorrect password. Please try again.")
             return False
@@ -34,11 +31,47 @@ def check_password():
 
 # 3. Main App Execution
 if check_password():
-    # Everything inside this block runs ONLY if password is correct
     st.title("🏭 Plant Intranet - Instrumentation Inventory Tracker (02/03 Area)")
+    
+    # --- RED BLINKING DOT CSS EFFECT ---
+    st.markdown("""
+        <style>
+        .live-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .blink-dot {
+            width: 12px;
+            height: 12px;
+            background-color: #FF4B4B;
+            border-radius: 50%;
+            display: inline-block;
+            animation: blinking 1.5s infinite ease-in-out;
+        }
+        .live-text {
+            font-weight: bold;
+            color: #FF4B4B;
+            letter-spacing: 1px;
+            font-size: 14px;
+        }
+        @keyframes blinking {
+            0% { opacity: 0.2; box-shadow: 0 0 0 0 rgba(255, 75, 75, 0.4); }
+            50% { opacity: 1; box-shadow: 0 0 10px 4px rgba(255, 75, 75, 0.7); }
+            100% { opacity: 0.2; box-shadow: 0 0 0 0 rgba(255, 75, 75, 0.4); }
+        }
+        </style>
+        
+        <div class="live-container">
+            <span class="blink-dot"></span>
+            <span class="live-text">ALWAYS LIVE STREAMING</span>
+        </div>
+    """, unsafe_allow_html=True)
+    
     st.markdown("---")
 
-    # Your public link
+    # Baki ka saara code tumhara same rahega
     google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
 
     try:
@@ -96,7 +129,6 @@ if check_password():
     except Exception as e:
         st.error(f"Error reading live Google Sheet: {e}")
 
-    # Added functionality for your refresh button
     if st.button("🔄 Refresh Inventory Data"):
-        st.cache_data.clear()  # Clears pandas read_csv cache if any was present
+        st.cache_data.clear()
         st.rerun()
