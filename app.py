@@ -35,7 +35,7 @@ def safe_int(val):
         return 0
 
 if check_password():
-    st.header("📋 Live Instrumentation Spares & Field Status (AI Rule Engine v1.0)")
+    st.header("📋 Live Instrumentation Spares & Field Status")
     st.write("Fetching live data directly from Google Forms Response Sheet Maintained by A. Jangra.")
 
     google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
