@@ -16,7 +16,7 @@ def check_password():
     st.title("🔒 Plant Intranet Inventory Access")
     user_password = st.text_input("Enter Password", type="password")
     if user_password:
-        CORRECT_PASSWORD = "0203" 
+        CORRECT_PASSWORD = "your_actual_password_here" 
         if user_password == CORRECT_PASSWORD:
             st.session_state["password_correct"] = True
             st.sidebar.success("🔓 Access Granted")
@@ -24,6 +24,17 @@ def check_password():
         else:
             st.error("❌ Incorrect password. Please try again.")
     return False
+
+# CRITICAL FIX: Safe conversion function to handle "Loading...", Text, or Empty cells
+def safe_int(val):
+    if pd.isna(val):
+        return 0
+    try:
+        # Agar number hai toh convert ho jayega
+        return int(float(str(val).strip()))
+    except ValueError:
+        # Agar "Loading..." ya koi aur text hai, toh crash hone ke bajaye 0 return karega
+        return 0
 
 if check_password():
     st.header("📋 Live Instrumentation Spares & Field Status")
@@ -36,13 +47,13 @@ if check_password():
         live_url = f"{google_sheet_url}&t={int(time.time())}"
         df = pd.read_csv(live_url)
         
-        # Clean column names (removes accidental whitespaces)
+        # Clean column names
         df.columns = df.columns.str.strip()
         
         # Drop completely empty rows where Instrument Name is missing
         df = df.dropna(subset=["Instrument Name"])
 
-        # Column Layout Mapping (Matching your updated Google Sheet)
+        # Column Layout Mapping
         NAME_COL = "Instrument Name"
         SPECS_COL = "Specs"
         FIELD_COL = "Existing Instrument on Field"
@@ -50,7 +61,6 @@ if check_password():
         SPARES_SHOP_COL = "Remaining Spares in Shop-Floor"
         TOTAL_SPARES_COL = "Total Spares"
         HEALTHY_STOCK_COL = "Healthy Stock"
-        SHORTFALL_EXCESS_COL = "Shortfall / Excess"
         
         # --- SIDEBAR FILTER ---
         st.sidebar.header("🔍 Filter Options")
@@ -66,16 +76,18 @@ if check_password():
             if selected_instrument != "All" and inst_name != selected_instrument:
                 continue
                 
-            # Safely extract values from row
+            # Safely extract specs string
             full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
             
-            # Convert numeric values safely to integers
-            field_count = int(float(row[FIELD_COL])) if pd.notna(row[FIELD_COL]) else 0
-            spares_m7 = int(float(row[SPARES_M7_COL])) if pd.notna(row[SPARES_M7_COL]) else 0
-            spares_shop = int(float(row[SPARES_SHOP_COL])) if pd.notna(row[SPARES_SHOP_COL]) else 0
-            total_spares = int(float(row[TOTAL_SPARES_COL])) if pd.notna(row[TOTAL_SPARES_COL]) else 0
-            healthy_stock = int(float(row[HEALTHY_STOCK_COL])) if pd.notna(row[HEALTHY_STOCK_COL]) else 0
-            shortfall_excess = int(float(row[SHORTFALL_EXCESS_COL])) if pd.notna(row[SHORTFALL_EXCESS_COL]) else 0
+            # SAFE CONVERSION: "Loading..." aane par bhi app crash nahi hoga
+            field_count = safe_int(row[FIELD_COL])
+            spares_m7 = safe_int(row[SPARES_M7_COL])
+            spares_shop = safe_int(row[SPARES_SHOP_COL])
+            total_spares = safe_int(row[TOTAL_SPARES_COL])
+            healthy_stock = safe_int(row[HEALTHY_STOCK_COL])
+            
+            # AUTO-MATHS: Logic calculated inside Python safely
+            shortfall_excess = total_spares - healthy_stock
             
             # Clean technical specs string formatting markers
             cleaned_spec = full_spec.replace('•', '').strip()
@@ -107,7 +119,7 @@ if check_password():
                     st.metric(label="🎯 Healthy Stock", value=f"{healthy_stock} Nos")
                 
                 with col_status:
-                    # SMART COLOR LOGIC: Negative turns RED (Inverse), Positive turns GREEN (Normal)
+                    # SMART COLOR LOGIC: Negative turns RED, Positive turns GREEN
                     if shortfall_excess < 0:
                         st.metric(
                             label="🚨 Stock Status", 
