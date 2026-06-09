@@ -16,7 +16,6 @@ def check_password():
     st.title("🔒 Plant Intranet Inventory Access")
     user_password = st.text_input("Enter Password", type="password")
     if user_password:
-        # NOTE: Replace 'your_actual_password_here' with your dashboard password
         CORRECT_PASSWORD = "your_actual_password_here" 
         if user_password == CORRECT_PASSWORD:
             st.session_state["password_correct"] = True
@@ -81,7 +80,7 @@ if check_password():
             # Clean technical specs string formatting markers
             cleaned_spec = full_spec.replace('•', '').strip()
 
-            # Responsive Layout Container (8 Columns accommodated smoothly across screen grid)
+            # Responsive Layout Container
             with st.container():
                 col_name, col_specs, col_field, col_m7, col_shop, col_total, col_healthy, col_status = st.columns([2, 2.5, 1.2, 1.2, 1.2, 1.2, 1.2, 1.5])
                 
@@ -102,3 +101,45 @@ if check_password():
                     st.metric(label="⚙️ Shop Spares", value=f"{spares_shop} Nos")
                 
                 with col_total:
+                    st.metric(label="📊 Total Spares", value=f"{total_spares} Nos")
+
+                with col_healthy:
+                    st.metric(label="🎯 Healthy Stock", value=f"{healthy_stock} Nos")
+                
+                with col_status:
+                    # SMART COLOR LOGIC: Negative turns RED (Inverse), Positive turns GREEN (Normal)
+                    if shortfall_excess < 0:
+                        st.metric(
+                            label="🚨 Stock Status", 
+                            value=f"{shortfall_excess} Nos", 
+                            delta="Shortfall!", 
+                            delta_color="inverse"
+                        )
+                    elif shortfall_excess > 0:
+                        st.metric(
+                            label="✅ Stock Status", 
+                            value=f"+{shortfall_excess} Nos", 
+                            delta="Excess (Surplus)", 
+                            delta_color="normal"
+                        )
+                    else:
+                        st.metric(
+                            label="👌 Stock Status", 
+                            value="Balanced", 
+                            delta="Target Met", 
+                            delta_color="normal"
+                        )
+            
+            st.markdown("---")
+
+    except Exception as e:
+        st.error(f"Error reading live Google Sheet: {e}")
+
+    # Sidebar Navigation/Utility Buttons
+    if st.sidebar.button("🔒 Log Out"):
+        st.session_state["password_correct"] = False
+        st.rerun()
+
+    if st.sidebar.button("🔄 Refresh Inventory Data"):
+        st.cache_data.clear()
+        st.rerun()
