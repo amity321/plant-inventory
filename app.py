@@ -8,7 +8,7 @@ st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_ic
 def check_password():
     """Returns True if the user had the correct password."""
     # Define your password here
-    CORRECT_PASSWORD = "your_secure_password_here" 
+    CORRECT_PASSWORD = "0203" 
 
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
