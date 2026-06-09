@@ -16,7 +16,7 @@ def check_password():
     st.title("🔒 Plant Intranet Inventory Access")
     user_password = st.text_input("Enter Password", type="password")
     if user_password:
-        CORRECT_PASSWORD = "0203" 
+        CORRECT_PASSWORD = "your_actual_password_here" 
         if user_password == CORRECT_PASSWORD:
             st.session_state["password_correct"] = True
             st.sidebar.success("🔓 Access Granted")
@@ -25,19 +25,17 @@ def check_password():
             st.error("❌ Incorrect password. Please try again.")
     return False
 
-# CRITICAL FIX: Safe conversion function to handle "Loading...", Text, or Empty cells
+# Safe conversion function to handle text or empty cells gracefully
 def safe_int(val):
     if pd.isna(val):
         return 0
     try:
-        # Agar number hai toh convert ho jayega
         return int(float(str(val).strip()))
     except ValueError:
-        # Agar "Loading..." ya koi aur text hai, toh crash hone ke bajaye 0 return karega
         return 0
 
 if check_password():
-    st.header("📋 Live Instrumentation Spares & Field Status")
+    st.header("📋 Live Instrumentation Spares & Field Status (AI Rule Engine v1.0)")
     st.write("Fetching live data directly from Google Forms Response Sheet Maintained by A. Jangra.")
 
     google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
@@ -60,7 +58,6 @@ if check_password():
         SPARES_M7_COL = "Remaining Spares in M7"
         SPARES_SHOP_COL = "Remaining Spares in Shop-Floor"
         TOTAL_SPARES_COL = "Total Spares"
-        HEALTHY_STOCK_COL = "Healthy Stock"
         
         # --- SIDEBAR FILTER ---
         st.sidebar.header("🔍 Filter Options")
@@ -79,14 +76,25 @@ if check_password():
             # Safely extract specs string
             full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
             
-            # SAFE CONVERSION: "Loading..." aane par bhi app crash nahi hoga
+            # Safe numeric conversion
             field_count = safe_int(row[FIELD_COL])
             spares_m7 = safe_int(row[SPARES_M7_COL])
             spares_shop = safe_int(row[SPARES_SHOP_COL])
             total_spares = safe_int(row[TOTAL_SPARES_COL])
-            healthy_stock = safe_int(row[HEALTHY_STOCK_COL])
             
-            # AUTO-MATHS: Logic calculated inside Python safely
+            # --- METHOD 1: SMART AI INVENTORY RULE ENGINE ---
+            name_lower = inst_name.lower()
+            if "transmitter" in name_lower or "converter" in name_lower:
+                # Critical Instruments: 20% of field count, minimum 2 spares
+                healthy_stock = max(2, int(field_count * 0.20))
+            elif "element" in name_lower or "switch" in name_lower or "probe" in name_lower:
+                # Bulk/Consumable Instruments: 30% of field count, minimum 3 spares
+                healthy_stock = max(3, int(field_count * 0.30))
+            else:
+                # Default safety buffer for any other categories
+                healthy_stock = max(2, int(field_count * 0.15))
+            
+            # Dynamic calculation of status
             shortfall_excess = total_spares - healthy_stock
             
             # Clean technical specs string formatting markers
@@ -116,10 +124,10 @@ if check_password():
                     st.metric(label="📊 Total Spares", value=f"{total_spares} Nos")
 
                 with col_healthy:
-                    st.metric(label="🎯 Healthy Stock", value=f"{healthy_stock} Nos")
+                    st.metric(label="🤖 AI Target Stock", value=f"{healthy_stock} Nos")
                 
                 with col_status:
-                    # SMART COLOR LOGIC: Negative turns RED, Positive turns GREEN
+                    # Dynamic color-coding alert logic
                     if shortfall_excess < 0:
                         st.metric(
                             label="🚨 Stock Status", 
