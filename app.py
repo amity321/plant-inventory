@@ -1,5 +1,5 @@
 # 1. Write the Streamlit app code into a file inside Colab
-%%writefile app.py
+
 import streamlit as st
 import pandas as pd
 
