@@ -112,33 +112,33 @@ if check_password():
                     st.info(cleaned_spec)
                 
                 with col_field:
-                    st.metric(label="On Field", value=f"{field_count} Nos")
+                    st.metric(label="On Field", value=f"{field_count}")
                 
                 with col_m7:
-                    st.metric(label="📦 M7 Spares", value=f"{spares_m7} Nos")
+                    st.metric(label="📦 M7 Spares", value=f"{spares_m7}")
                 
                 with col_shop:
-                    st.metric(label="⚙️ Shop Spares", value=f"{spares_shop} Nos")
+                    st.metric(label="⚙️ Shop Spares", value=f"{spares_shop}")
                 
                 with col_total:
-                    st.metric(label="📊 Total Spares", value=f"{total_spares} Nos")
+                    st.metric(label="📊 Total Spares", value=f"{total_spares}")
 
                 with col_healthy:
-                    st.metric(label="🤖 AI Target Stock", value=f"{healthy_stock} Nos")
+                    st.metric(label="🤖 AI Target Stock", value=f"{healthy_stock}")
                 
                 with col_status:
                     # Dynamic color-coding alert logic
                     if shortfall_excess < 0:
                         st.metric(
                             label="🚨 Stock Status", 
-                            value=f"{shortfall_excess} Nos", 
+                            value=f"{shortfall_excess}", 
                             delta="Shortfall!", 
                             delta_color="inverse"
                         )
                     elif shortfall_excess > 0:
                         st.metric(
                             label="✅ Stock Status", 
-                            value=f"+{shortfall_excess} Nos", 
+                            value=f"+{shortfall_excess}", 
                             delta="Excess (Surplus)", 
                             delta_color="normal"
                         )
