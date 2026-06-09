@@ -90,13 +90,13 @@ if check_password():
                     st.info(cleaned_spec)
                 
                 with col_field:
-                    st.metric(label="On Field", value=f"{field_count} Nos")
+                    st.metric(label="On Field  installed", value=f"{field_count} Nos")
                 
                 with col_m7:
                     st.metric(label="📦 M7 Spares", value=f"{spares_m7} Nos")
                 
                 with col_shop:
-                    st.metric(label="⚙️ Shop Spares", value=f"{spares_shop} Nos")
+                    st.metric(label="⚙️ Shop-floor Spares", value=f"{spares_shop} Nos")
                 
                 with col_total:
                     # Low stock warning based on total combined stock
