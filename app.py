@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import time
 
 # 1. Page Configuration
 st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_icon="🏭")
@@ -23,6 +24,7 @@ def check_password():
     if user_password:
         if user_password == CORRECT_PASSWORD:
             st.session_state["password_correct"] = True
+            st.sidebar.success("🔓 Access Granted")
             st.rerun()
         else:
             st.error("❌ Incorrect password. Please try again.")
@@ -71,64 +73,79 @@ if check_password():
     
     st.markdown("---")
 
-    # Baki ka saara code tumhara same rahega
     google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
 
     try:
-        df = pd.read_csv(google_sheet_url)
+        # Cache-buster to get fresh live values on refresh
+        live_url = f"{google_sheet_url}&t={int(time.time())}"
+        df = pd.read_csv(live_url)
+        
+        # Clean columns and drop completely empty rows
         df.columns = df.columns.str.strip()
+        df = df.dropna(subset=["Instrument Name"])
 
         NAME_COL = "Instrument Name"
         SPECS_COL = "Specs"
         FIELD_COL = "Existing Instrument on Field"
         SPARES_COL = "Remaining Spares"
 
-        target_instruments = [
-            {"name": "Belt Weigher Transmitter", "spec_keywords": "Siemens"},
-            {"name": "Conductivity Transmitter", "spec_keywords": "Power Supply"},
-            {"name": "Flow Transmitter", "spec_keywords": "YOKOGAWA"},
-            {"name": "Flow Transmitter", "spec_keywords": "KROHNE"},
-            {"name": "Level Transmitter", "spec_keywords": "Ultrasonic"},
-            {"name": "Level Transmitter", "spec_keywords": "Radar"}
-        ]
-
         st.header("📋 Live Instrumentation Spares & Field Status")
         st.write("Fetching live data directly from Google Forms Response Sheet Maintained by A. Jangra.")
+        
+        # --- NEW SIDEBAR FILTER BASED ON INTRANET.PNG ---
+        st.sidebar.header("🔍 Filter Options")
+        all_instruments = ["All"] + list(df[NAME_COL].dropna().unique())
+        selected_instrument = st.sidebar.selectbox("Filter by Instrument Type:", all_instruments)
+
         st.markdown(" ")
 
-        for inst in target_instruments:
-            matched_row = df[
-                (df[NAME_COL].str.strip() == inst["name"]) & 
-                (df[SPECS_COL].str.contains(inst["spec_keywords"], case=False, na=False))
-            ]
+        # Loop dynamically through the dataframe rows based on the image entries
+        for index, row in df.iterrows():
+            inst_name = str(row[NAME_COL]).strip()
             
-            if not matched_row.empty:
-                full_spec = matched_row[SPECS_COL].values[0]
-                field_count = matched_row[FIELD_COL].values[0]
-                spares_count = matched_row[SPARES_COL].values[0]
+            # Sidebar Filter Logic
+            if selected_instrument != "All" and inst_name != selected_instrument:
+                continue
                 
-                field_count = int(float(field_count)) if pd.notna(field_count) else 0
-                spares_count = int(float(spares_count)) if pd.notna(spares_count) else 0
+            full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
+            field_count = row[FIELD_COL]
+            spares_count = row[SPARES_COL]
+            
+            # Safely handle numbers and float conversions from Excel
+            field_count = int(float(field_count)) if pd.notna(field_count) else 0
+            spares_count = int(float(spares_count)) if pd.notna(spares_count) else 0
 
-                with st.container():
-                    col_name, col_specs, col_field, col_spares = st.columns([2.5, 3.5, 2, 2])
-                    with col_name:
-                        st.subheader(inst["name"])
-                    with col_specs:
-                        st.markdown("**Technical Specs:**")
-                        st.info(f"{full_spec}")
-                    with col_field:
-                        st.metric(label="Deployed on Field", value=f"{field_count} Nos")
-                    with col_spares:
-                        if spares_count <= 1:
-                            st.metric(label="⚠️ Workshop Spares", value=f"{spares_count} Left", delta="Low Stock!", delta_color="inverse")
-                        else:
-                            st.metric(label="✅ Workshop Spares", value=f"{spares_count} Available")
-                st.markdown("---")
+            with st.container():
+                col_name, col_specs, col_field, col_spares = st.columns([2.5, 3.5, 2, 2])
+                
+                with col_name:
+                    st.subheader(inst_name)
+                
+                with col_specs:
+                    st.markdown("**Technical Specs:**")
+                    # Display specs cleanly even if they have formatting markers
+                    st.info(f"{full_spec.replace('•', '').strip()}")
+                
+                with col_field:
+                    st.metric(label="Deployed on Field", value=f"{field_count} Nos")
+                
+                with col_spares:
+                    # Logic matching your low stock threshold
+                    if spares_count <= 1:
+                        st.metric(label="⚠️ Workshop Spares", value=f"{spares_count} Left", delta="Low Stock!", delta_color="inverse")
+                    else:
+                        st.metric(label="✅ Workshop Spares", value=f"{spares_count} Available")
+            
+            st.markdown("---")
 
     except Exception as e:
         st.error(f"Error reading live Google Sheet: {e}")
 
+    # Sidebar Logout Button
+    if st.sidebar.button("🔒 Log Out"):
+        st.session_state["password_correct"] = False
+        st.rerun()
+
+    # Manual Data Force Refresh Button
     if st.button("🔄 Refresh Inventory Data"):
-        st.cache_data.clear()
         st.rerun()
