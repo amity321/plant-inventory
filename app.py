@@ -118,7 +118,7 @@ if check_password():
                     st.metric(label="📦 M7 Spares", value=f"{spares_m7}")
                 
                 with col_shop:
-                    st.metric(label="⚙️ Shop Spares", value=f"{spares_shop}")
+                    st.metric(label="⚙️ Shop-Floor Spares", value=f"{spares_shop}")
                 
                 with col_total:
                     st.metric(label="📊 Total Spares", value=f"{total_spares}")
