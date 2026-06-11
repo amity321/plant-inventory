@@ -128,73 +128,66 @@ def fetch_data(url, timestamp):
 def get_today_shifts(timestamp):
     shift_csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=564394831&single=true&output=csv"
     try:
-        # Fetch fresh data from sheet
+        # Load raw sheet without assuming headers
         shift_df = pd.read_csv(f"{shift_csv_url}&t={timestamp}", header=None)
         
         if shift_df.empty:
-            return None, "Sheet is empty"
+            return None, "Database is empty or link returned no data."
             
-        # Clean string spaces everywhere in the dataframe
-        shift_df = shift_df.applymap(lambda s: str(s).strip() if pd.notna(s) else "")
+        # Clean all cells from white spaces and convert NaN to empty strings safely
+        shift_df = shift_df.fillna("").astype(str).applymap(lambda x: x.strip())
         
-        # Find the row that contains the employee names column (header row)
-        # Usually contains "Name" or names like PKS(SR), MCT etc.
+        # 1. Scan rows to find where the Employee 'Name' column is located
         name_col_idx = None
         header_row_idx = None
         
-        for r_idx in range(min(5, len(shift_df))):
+        for r_idx in range(min(6, len(shift_df))):
             row_vals = list(shift_df.iloc[r_idx])
             if "Name" in row_vals:
                 name_col_idx = row_vals.index("Name")
                 header_row_idx = r_idx
                 break
-        
-        # Fallback if "Name" literal text isn't found
+                
+        # Fallback if literal text "Name" is missing, use first column/row
         if name_col_idx is None:
             name_col_idx = 0
             header_row_idx = 0
             
-        # Extract headers and data rows smoothly
-        headers = list(shift_df.iloc[header_row_idx])
-        
-        # Today's target date day (e.g., '11')
+        # 2. Match Today's Date Day (e.g., '11')
         day_str = str(datetime.now().day)
-        
-        # Find the column index for today's date
         target_col_idx = None
-        for c_idx, h_val in enumerate(headers):
-            # Check if header is exactly the day, or if the row above/below it matches
-            if h_val == day_str:
-                target_col_idx = c_idx
+        
+        # Scan the row we found, or the top 3 rows for the date digit
+        for r_idx in range(min(3, len(shift_df))):
+            row_vals = list(shift_df.iloc[r_idx])
+            if day_str in row_vals:
+                target_col_idx = row_vals.index(day_str)
                 break
                 
-        # Deep secondary search if header row skipped the number
         if target_col_idx is None:
-            for r_idx in range(min(3, len(shift_df))):
-                row_vals = list(shift_df.iloc[r_idx])
-                if day_str in row_vals:
-                    target_col_idx = row_vals.index(day_str)
-                    break
-                    
-        if target_col_idx is None:
-            return None, f"Day {day_str} column not found in roster matrix."
+            # Show exact top header structure on error to diagnose formatting mismatch
+            sample_cols = list(shift_df.iloc[header_row_idx])[:8]
+            return None, f"Day '{day_str}' not found. Row {header_row_idx} sample: {sample_cols}"
             
         shifts = {"A": [], "B": [], "C": [], "O": []}
         
-        # Loop through employees and extract duties
+        # 3. Extract shift codes row by row
         start_row = header_row_idx + 1
         for i in range(start_row, len(shift_df)):
-            emp_name = str(shift_df.iloc[i, name_col_idx]).strip()
-            if not emp_name or emp_name.lower() in ["name", "", "nan"]:
+            emp_name = shift_df.iloc[i, name_col_idx]
+            
+            # Skip metadata/empty rows
+            if not emp_name or emp_name.lower() in ["name", "nan", ""]:
                 continue
                 
-            duty = str(shift_df.iloc[i, target_col_idx]).strip().upper()
-            if duty in shifts:
-                shifts[duty].append(emp_name)
+            duty_code = shift_df.iloc[i, target_col_idx].upper()
+            if duty_code in shifts:
+                shifts[duty_code].append(emp_name)
                 
         return shifts, None
     except Exception as e:
-        return None, f"System Error: {str(e)}"
+        # Returns the raw core python system breakdown text
+        return None, f"Python Core Exception: {str(e)}"
 
 # Helper function to render rows using fallback display wrapper
 def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
