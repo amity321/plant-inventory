@@ -220,17 +220,17 @@ if check_password():
             else:
                 total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows())
                 
-                # --- BULLETPROOF BYPASS FOR ST EXPANDER LABEL ---
-                # Hacking layout using high-contrast bold markdown blocks directly over expander container
+                # --- EMBEDDED CHEVRON ARROW IN MASK LAYER ---
+                # Added 'display: flex' and a subtle bold '▼' drop arrow on the right side
                 st.markdown(f"""
-                <div style="background-color: #e2e8f0; padding: 1px 12px; border-radius: 6px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none;">
+                <div style="background-color: #e2e8f0; padding: 10px 14px; border-radius: 6px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none; display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-size: 16px !important; font-weight: 800 !important; color: #0f172a !important; font-family: sans-serif;">
                         📂 {current_name} — ({entry_count} Variants Grouped) | Combined Stock: {total_current_spares}
                     </span>
+                    <span style="font-size: 12px; color: #475569; font-weight: bold; margin-right: 5px;">▼</span>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Native container holds the dropdown, but text is covered beautifully by our thick font block
                 with st.expander(" "):
                     for idx, row in sub_df.iterrows():
                         render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=False)
