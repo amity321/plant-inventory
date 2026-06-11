@@ -34,10 +34,9 @@ def safe_int(val):
     except ValueError:
         return 0
 
-# Cached data fetching to prevent hammering the network on every filter toggle
-@st.cache_data(ttl=60)  # TTL fallback of 1 minute, overridden manually by refresh button
+# Cached data fetching to prevent hammering the network
+@st.cache_data(ttl=60)
 def fetch_data(url, timestamp):
-    # Using the timestamp inside the function signature forces a re-fetch when it changes
     live_url = f"{url}&t={timestamp}"
     df = pd.read_csv(live_url)
     return df
@@ -48,18 +47,12 @@ if check_password():
 
     google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
 
-    # Manage cache busting via session state timestamp
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
 
     try:
-        # Fetching data using the optimized caching layer
         df = fetch_data(google_sheet_url, st.session_state["data_timestamp"])
-        
-        # Clean column names
         df.columns = df.columns.str.strip()
-        
-        # Drop completely empty rows where Instrument Name is missing
         df = df.dropna(subset=["Instrument Name"])
 
         # Column Layout Mapping
@@ -76,7 +69,7 @@ if check_password():
         selected_instrument = st.sidebar.selectbox("Filter by Instrument Type:", all_instruments)
         st.markdown("---")
 
-        # --- DYNAMIC DATA LOOPING ---
+        # --- DYNAMIC DATA LOOPING WITH EXPANDER ---
         for index, row in df.iterrows():
             inst_name = str(row[NAME_COL]).strip()
 
@@ -93,30 +86,31 @@ if check_password():
             spares_shop = safe_int(row[SPARES_SHOP_COL])
             total_spares = safe_int(row[TOTAL_SPARES_COL])
             
-            # --- METHOD 1: SMART AI INVENTORY RULE ENGINE ---
+            # --- SMART AI INVENTORY RULE ENGINE ---
             name_lower = inst_name.lower()
             if "transmitter" in name_lower or "converter" in name_lower:
-                # Critical Instruments: 20% of field count, minimum 2 spares
                 healthy_stock = max(2, int(field_count * 0.20))
             elif "element" in name_lower or "switch" in name_lower or "probe" in name_lower:
-                # Bulk/Consumable Instruments: 30% of field count, minimum 3 spares
                 healthy_stock = max(3, int(field_count * 0.30))
             else:
-                # Default safety buffer for any other categories
                 healthy_stock = max(2, int(field_count * 0.15))
             
-            # Dynamic calculation of status
             shortfall_excess = total_spares - healthy_stock
-            
-            # Clean technical specs string formatting markers
             cleaned_spec = full_spec.replace('•', '').strip()
 
-            # Responsive Layout Container
-            with st.container():
-                col_name, col_specs, col_field, col_m7, col_shop, col_total, col_healthy, col_status = st.columns([2, 2.5, 1.2, 1.2, 1.2, 1.2, 1.2, 1.5])
-                
-                with col_name:
-                    st.subheader(inst_name)
+            # --- BADGE GENERATION FOR EXPANDER HEADER ---
+            # Isse expander ke bahar hi status dikh jayega bina khole
+            if shortfall_excess < 0:
+                status_emoi = "🚨 Shortfall"
+            elif shortfall_excess > 0:
+                status_emoi = "✅ Surplus"
+            else:
+                status_emoi = "👌 Balanced"
+
+            # --- SCROLL DOWN / EXPANDER FEATURE ---
+            # Yahan humne har row ko ek expander me dal diya hai
+            with st.expander(f"⚙️ {inst_name} | Stock: {total_spares}/{healthy_stock} ({status_emoi})"):
+                col_specs, col_field, col_m7, col_shop, col_total, col_healthy, col_status = st.columns([2.5, 1.2, 1.2, 1.2, 1.2, 1.2, 1.5])
                 
                 with col_specs:
                     st.markdown("**Technical Specs:**")
@@ -138,30 +132,12 @@ if check_password():
                     st.metric(label="🤖 AI Target Stock", value=f"{healthy_stock}")
                 
                 with col_status:
-                    # Dynamic color-coding alert logic
                     if shortfall_excess < 0:
-                        st.metric(
-                            label="🚨 Stock Status", 
-                            value=f"{shortfall_excess}", 
-                            delta="Shortfall!", 
-                            delta_color="inverse"
-                        )
+                        st.metric(label="Stock Status", value=f"{shortfall_excess}", delta="Shortfall!", delta_color="inverse")
                     elif shortfall_excess > 0:
-                        st.metric(
-                            label="✅ Stock Status", 
-                            value=f"+{shortfall_excess}", 
-                            delta="Excess (Surplus)", 
-                            delta_color="normal"
-                        )
+                        st.metric(label="Stock Status", value=f"+{shortfall_excess}", delta="Excess (Surplus)", delta_color="normal")
                     else:
-                        st.metric(
-                            label="👌 Stock Status", 
-                            value="Balanced", 
-                            delta="Target Met", 
-                            delta_color="normal"
-                        )
-            
-            st.markdown("---")
+                        st.metric(label="Stock Status", value="Balanced", delta="Target Met", delta_color="normal")
 
     except Exception as e:
         st.error(f"Error reading live Google Sheet: {e}")
