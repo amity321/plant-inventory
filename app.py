@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import time
+from datetime import datetime
 
 # 1. Page Configuration
 st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_icon="🏭")
@@ -61,6 +62,28 @@ def inject_custom_css():
         font-size: 13px; 
         color: #334155; 
     }
+    /* Shift Roster Styling */
+    .shift-container {
+        background-color: #ffffff;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        margin-bottom: 20px;
+        font-family: sans-serif;
+    }
+    .shift-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 10px;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 4px;
+    }
+    .shift-row {
+        font-size: 13px;
+        margin-bottom: 6px;
+        color: #334155;
+    }
     </style>
     """
     st.components.v1.html(css, height=0, width=0)
@@ -100,6 +123,36 @@ def fetch_data(url, timestamp):
     live_url = f"{url}&t={timestamp}"
     df = pd.read_csv(live_url)
     return df
+
+# NEW: Parse roster directly using the verified direct CSV link
+def get_today_shifts(timestamp):
+    shift_csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=564394831&single=true&output=csv"
+    try:
+        # Avoid cache blockage by passing real-time epoch timestamp
+        shift_df = pd.read_csv(f"{shift_csv_url}&t={timestamp}")
+        
+        # Format columns and clean headers
+        shift_df.columns = shift_df.columns.str.strip()
+        shift_df = shift_df.dropna(subset=["Name"])
+        
+        # Dynamic numerical calendar matcher (e.g. "11")
+        day_num = str(datetime.now().day)
+        
+        if day_num not in shift_df.columns:
+            return None, f"Day column '{day_num}' missing"
+            
+        shifts = {"A": [], "B": [], "C": [], "O": []}
+        
+        # Iterating data mapping engine
+        for _, row in shift_df.iterrows():
+            emp_name = str(row["Name"]).strip()
+            duty = str(row[day_num]).strip().upper()
+            if duty in shifts:
+                shifts[duty].append(emp_name)
+                
+        return shifts, None
+    except Exception as e:
+        return None, str(e)
 
 # Helper function to render rows using fallback display wrapper
 def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
@@ -165,6 +218,28 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
 if check_password():
     inject_custom_css()  # Non-blocking injection triggered here safely
     
+    if "data_timestamp" not in st.session_state:
+        st.session_state["data_timestamp"] = int(time.time())
+
+    # --- SIDEBAR ROSTER ENGINE (AUTOMATIC CSV CHANNELS) ---
+    st.sidebar.markdown('<div class="shift-container">', unsafe_allow_html=True)
+    st.sidebar.markdown(f'<div class="shift-title">⏰ Today\'s Shift Roster ({datetime.now().strftime("%d-%b")})</div>', unsafe_allow_html=True)
+    
+    roster_data, err_msg = get_today_shifts(st.session_state["data_timestamp"])
+    if err_msg:
+        st.sidebar.error("Could not sync roster")
+    elif roster_data:
+        shift_a = ", ".join(roster_data["A"]) if roster_data["A"] else "None Assigned"
+        shift_b = ", ".join(roster_data["B"]) if roster_data["B"] else "None Assigned"
+        shift_c = ", ".join(roster_data["C"]) if roster_data["C"] else "None Assigned"
+        shift_o = ", ".join(roster_data["O"]) if roster_data["O"] else "None Assigned"
+        
+        st.sidebar.markdown(f'<div class="shift-row">🟢 <b>Shift A:</b> {shift_a}</div>', unsafe_allow_html=True)
+        st.sidebar.markdown(f'<div class="shift-row">🔵 <b>Shift B:</b> {shift_b}</div>', unsafe_allow_html=True)
+        st.sidebar.markdown(f'<div class="shift-row">🟡 <b>Shift C:</b> {shift_c}</div>', unsafe_allow_html=True)
+        st.sidebar.markdown(f'<div class="shift-row">🔴 <b>Off (O):</b> {shift_o}</div>', unsafe_allow_html=True)
+    st.sidebar.markdown('</div>', unsafe_allow_html=True)
+
     # Styled Dashboard Header Panel (Premium Gradient Block)
     st.components.v1.html("""
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); 
@@ -184,9 +259,6 @@ if check_password():
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
     google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
-
-    if "data_timestamp" not in st.session_state:
-        st.session_state["data_timestamp"] = int(time.time())
 
     try:
         df = fetch_data(google_sheet_url, st.session_state["data_timestamp"])
@@ -220,8 +292,6 @@ if check_password():
             else:
                 total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows())
                 
-                # --- EMBEDDED CHEVRON ARROW IN MASK LAYER ---
-                # Added 'display: flex' and a subtle bold '▼' drop arrow on the right side
                 st.markdown(f"""
                 <div style="background-color: #e2e8f0; padding: 10px 14px; border-radius: 6px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none; display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-size: 16px !important; font-weight: 800 !important; color: #0f172a !important; font-family: sans-serif;">
