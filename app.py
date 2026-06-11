@@ -176,7 +176,7 @@ if check_password():
                 🏭 Area-02/03 Inventory Dashboard
             </h1>
             <p style="color: #94a3b8 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 400; letter-spacing: 0.2px;">
-                Live Instrumentation Spares Tracking Sheet &bull; Managed by <span style="color: #38bdf8; font-weight: 600;">A. Jangra</span>
+                Live Instrumentation Spares Tracking Sheet &bull; Managed by <span style="color: #38bdf8; font-weight: 600;">Amit Jangra</span>
             </p>
         </div>
     """, height=105)
