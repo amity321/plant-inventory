@@ -5,9 +5,21 @@ import time
 # 1. Page Configuration
 st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_icon="🏭")
 
-# --- FIXED: Python 3.14 Compatible Styling via st.markdown ---
-st.markdown('<style>div[data-testid="stAppViewContainer"]{background-color: #f1f5f9 !important;}</style>', unsafe_allowed_html=True)
-st.markdown('<style>div[data-testid="stMetricContainer"]{background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 8px !important; padding: 12px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;}</style>', unsafe_allowed_html=True)
+# --- FIXED FOR PYTHON 3.14: Native Streamlit HTML injection without markdown wrappers ---
+st.html("""
+    <style>
+    div[data-testid="stAppViewContainer"] {
+        background-color: #f1f5f9 !important;
+    }
+    div[data-testid="stMetricContainer"] {
+        background-color: #ffffff !important; 
+        border: 1px solid #cbd5e1 !important; 
+        border-radius: 8px !important; 
+        padding: 12px !important; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
+    }
+    </style>
+""")
 
 # 2. Password Protection (Authentication Logic)
 def check_password():
@@ -115,13 +127,13 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
 
 # Main Application Entry
 if check_password():
-    # Styled Dashboard Header Panel (Industrial Theme Banner)
-    st.markdown("""
-        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+    # Styled Dashboard Header Panel (Industrial Theme Banner via Safe st.html alternative)
+    st.html("""
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); font-family: sans-serif;">
             <h1 style="color: #ffffff !important; margin: 0; font-size: 28px; letter-spacing: 0.5px;">🏭 Plant Instrumentation Live Inventory</h1>
             <p style="color: #94a3b8 !important; margin: 5px 0 0 0; font-size: 14px;">Real-time automated control loop buffer tracking matrix • Maintained by A. Jangra</p>
         </div>
-    """, unsafe_allowed_html=True)
+    """)
 
     google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
 
@@ -157,18 +169,18 @@ if check_password():
             if entry_count == 1:
                 row = sub_df.iloc[0]
                 render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True)
-                st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allowed_html=True)
+                st.html("<div style='margin: 15px 0;'></div>")
             else:
                 total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows())
                 
                 with st.expander(f"📂 {current_name} — ({entry_count} Variants Grouped) | Combined Stock: {total_current_spares}"):
-                    st.markdown("<div style='padding: 10px 0;'>", unsafe_allowed_html=True)
+                    st.html("<div style='padding: 10px 0;'>")
                     for idx, row in sub_df.iterrows():
                         render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=False)
                         if idx != sub_df.index[-1]:
-                            st.markdown("<hr style='border: 0; border-top: 1px dashed #cbd5e1; margin: 15px 0;'>", unsafe_allowed_html=True)
-                    st.markdown("</div>", unsafe_allowed_html=True)
-                st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allowed_html=True)
+                            st.html("<hr style='border: 0; border-top: 1px dashed #cbd5e1; margin: 15px 0;'>")
+                    st.html("</div>")
+                st.html("<div style='margin: 15px 0;'></div>")
 
     except Exception as e:
         st.error(f"Error accessing Google Sheets Database: {e}")
