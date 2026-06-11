@@ -8,7 +8,6 @@ st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_ic
 # --- CUSTOM PROFESSIONAL CSS INJECTION ---
 st.markdown("""
     <style>
-    /* Global Background and Typography */
     .stApp {
         background-color: #f8fafc;
     }
@@ -16,8 +15,6 @@ st.markdown("""
         color: #1e293b !important;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-    
-    /* Elegant Card Design */
     .inventory-card {
         background-color: #ffffff;
         border-radius: 10px;
@@ -26,8 +23,6 @@ st.markdown("""
         border: 1px solid #e2e8f0;
         margin-bottom: 15px;
     }
-    
-    /* Metrics Layout inside Cards */
     .metric-box {
         text-align: center;
         padding: 10px;
@@ -46,8 +41,6 @@ st.markdown("""
         color: #64748b;
         margin-bottom: 4px;
     }
-    
-    /* Status Badge Styling */
     .status-badge {
         display: inline-block;
         padding: 6px 12px;
@@ -60,8 +53,6 @@ st.markdown("""
     .status-shortfall { background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
     .status-surplus { background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; }
     .status-balanced { background-color: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
-    
-    /* Technical Specs Box Override */
     .specs-box {
         background-color: #f8fafc;
         border-left: 4px solid #475569;
@@ -72,7 +63,6 @@ st.markdown("""
     }
     </style>
 """, unsafe_allowed_html=True)
-
 
 # 2. Password Protection (Authentication Logic)
 def check_password():
@@ -94,8 +84,7 @@ def check_password():
             st.error("❌ Incorrect password. Please try again.")
     return False
 
-
-# Safe conversion function to handle text or empty cells gracefully
+# Safe conversion function
 def safe_int(val):
     if pd.isna(val):
         return 0
@@ -104,7 +93,6 @@ def safe_int(val):
     except ValueError:
         return 0
 
-
 # Cached data fetching
 @st.cache_data(ttl=60)
 def fetch_data(url, timestamp):
@@ -112,8 +100,7 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url)
     return df
 
-
-# Helper function to render rows beautifully inside custom UI wrappers
+# Helper function to render rows
 def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
     inst_name = str(row[NAME_COL]).strip()
     full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
@@ -123,7 +110,6 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
     spares_shop = safe_int(row[SPARES_SHOP_COL])
     total_spares = safe_int(row[TOTAL_SPARES_COL])
     
-    # AI Inventory Rule Engine
     name_lower = inst_name.lower()
     if "transmitter" in name_lower or "converter" in name_lower:
         healthy_stock = max(2, int(field_count * 0.20))
@@ -135,7 +121,6 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
     shortfall_excess = total_spares - healthy_stock
     cleaned_spec = full_spec.replace('•', '').strip()
 
-    # Determine status markup
     if shortfall_excess < 0:
         status_html = f'<div class="status-badge status-shortfall">🚨 Shortfall ({shortfall_excess})</div>'
     elif shortfall_excess > 0:
@@ -143,7 +128,6 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
     else:
         status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
 
-    # Render Card Row Layout
     st.markdown(f"""
     <div class="inventory-card">
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px;">
@@ -175,6 +159,61 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
     </div>
     """, unsafe_allowed_html=True)
 
-
+# Main Application Entry (Fix Applied Here)
 if check_password():
-    st.title("🏭
+    st.title("🏭 Plant Intranet Inventory Dashboard")
+    st.caption("Live Instrumentation Spares Tracking Sheet managed by A. Jangra.")
+    st.markdown("---")
+
+    google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
+
+    if "data_timestamp" not in st.session_state:
+        st.session_state["data_timestamp"] = int(time.time())
+
+    try:
+        df = fetch_data(google_sheet_url, st.session_state["data_timestamp"])
+        df.columns = df.columns.str.strip()
+        df = df.dropna(subset=["Instrument Name"])
+
+        NAME_COL = "Instrument Name"
+        SPECS_COL = "Specs"
+        FIELD_COL = "Existing Instrument on Field"
+        SPARES_M7_COL = "Remaining Spares in M7"
+        SPARES_SHOP_COL = "Remaining Spares in Shop-Floor"
+        TOTAL_SPARES_COL = "Total Spares"
+        
+        st.sidebar.header("🔍 Filter Controls")
+        all_instruments = ["All System Data"] + list(df[NAME_COL].dropna().unique())
+        selected_instrument = st.sidebar.selectbox("Select Instrument Category:", all_instruments)
+        st.sidebar.markdown("---")
+
+        if selected_instrument != "All System Data":
+            df = df[df[NAME_COL].str.strip() == selected_instrument]
+
+        unique_names_ordered = df[NAME_COL].unique()
+
+        for current_name in unique_names_ordered:
+            sub_df = df[df[NAME_COL] == current_name]
+            entry_count = len(sub_df)
+
+            if entry_count == 1:
+                row = sub_df.iloc[0]
+                render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True)
+            else:
+                total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows())
+                
+                with st.expander(f"📦 {current_name} — ({entry_count} Variants Grouped) | Combined Stock: {total_current_spares}"):
+                    for idx, row in sub_df.iterrows():
+                        render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=False)
+
+    except Exception as e:
+        st.error(f"Error accessing Google Sheets Database: {e}")
+
+    if st.sidebar.button("🔒 Secure Log Out"):
+        st.session_state["password_correct"] = False
+        st.rerun()
+
+    if st.sidebar.button("🔄 Sync Live Data Now"):
+        st.cache_data.clear()
+        st.session_state["data_timestamp"] = int(time.time())
+        st.rerun()
