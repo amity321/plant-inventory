@@ -5,31 +5,9 @@ import time
 # 1. Page Configuration
 st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_icon="🏭")
 
-# --- FIXED LOGIC: Injection directly through safe config placeholders ---
-def inject_custom_css():
-    css = """
-    <style>
-    .stApp { background-color: #f8fafc; }
-    h1, h2, h3 { color: #1e293b !important; font-family: sans-serif; }
-    .inventory-card {
-        background-color: #ffffff;
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-        border: 1px solid #e2e8f0;
-        margin-bottom: 15px;
-    }
-    .metric-box { text-align: center; padding: 10px; background-color: #f1f5f9; border-radius: 6px; }
-    .metric-val { font-size: 20px; font-weight: 700; color: #0f172a; }
-    .metric-lbl { font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 4px; }
-    .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; text-align: center; width: 100%; }
-    .status-shortfall { background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-    .status-surplus { background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; }
-    .status-balanced { background-color: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
-    .specs-box { background-color: #f8fafc; border-left: 4px solid #475569; padding: 10px; border-radius: 4px; font-size: 13px; color: #334155; }
-    </style>
-    """
-    st.components.v1.html(css, height=0, width=0)
+# --- HYPER-COOL COMPACT INJECTION (No Complex String Blocks to Prevent 3.14 Crash) ---
+st.write('<style>div[data-testid="stAppViewContainer"]{background-color: #f1f5f9;}</style>', unsafe_allowed_html=True)
+st.write('<style>div[data-testid="stMetricContainer"]{background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.04);}</style>', unsafe_allowed_html=True)
 
 # 2. Password Protection (Authentication Logic)
 def check_password():
@@ -67,7 +45,7 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url)
     return df
 
-# Helper function to render rows using fallback display wrapper
+# Helper function to render rows using native components mapped to cool designs
 def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
     inst_name = str(row[NAME_COL]).strip()
     full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
@@ -88,51 +66,63 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
     shortfall_excess = total_spares - healthy_stock
     cleaned_spec = full_spec.replace('•', '').strip()
 
+    # Dynamic status indicators using metrics mapping
     if shortfall_excess < 0:
-        status_html = f'<div class="status-badge status-shortfall">🚨 Shortfall ({shortfall_excess})</div>'
+        status_lbl = "🚨 SHORTFALL"
+        status_val = f"{shortfall_excess} Spares"
+        delta_msg = "Action Needed!"
+        d_color = "inverse"
     elif shortfall_excess > 0:
-        status_html = f'<div class="status-badge status-surplus">✅ Surplus (+{shortfall_excess})</div>'
+        status_lbl = "✅ SURPLUS"
+        status_val = f"+{shortfall_excess} Stock"
+        delta_msg = "Safe Level"
+        d_color = "normal"
     else:
-        status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
+        status_lbl = "👌 BALANCED"
+        status_val = "Perfect"
+        delta_msg = "Target Met"
+        d_color = "normal"
 
-    card_html = f"""
-    <div class="inventory-card">
-        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: sans-serif;">
-            <div style="flex: 2; min-width: 180px;">
-                <h4 style="margin:0; color:#0f172a; font-size:18px;">{inst_name if show_name else ""}</h4>
-            </div>
-            <div style="flex: 2.5; min-width: 220px;">
-                <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
-            </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
-                <div class="metric-lbl">On Field</div><div class="metric-val">{field_count}</div>
-            </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
-                <div class="metric-lbl">📦 M7</div><div class="metric-val">{spares_m7}</div>
-            </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
-                <div class="metric-lbl">⚙️ Shop</div><div class="metric-val">{spares_shop}</div>
-            </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
-                <div class="metric-lbl">📊 Total</div><div class="metric-val">{total_spares}</div>
-            </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
-                <div class="metric-lbl">🤖 Target</div><div class="metric-val">{healthy_stock}</div>
-            </div>
-            <div style="flex: 1.5; min-width: 130px; text-align: center;">
-                {status_html}
-            </div>
-        </div>
-    </div>
-    """
-    st.components.v1.html(card_html, height=110, scrolling=False)
+    # Native grid framework with zero custom script block errors
+    with st.container():
+        col_name, col_specs, col_field, col_m7, col_shop, col_total, col_healthy, col_status = st.columns([1.8, 2.2, 1.1, 1.1, 1.1, 1.1, 1.1, 1.4])
+        
+        with col_name:
+            if show_name:
+                st.markdown(f"<div style='padding-top:15px;'><h3 style='color:#0f172a; margin:0;'>{inst_name}</h3></div>", unsafe_allowed_html=True)
+            else:
+                st.write("")
+        
+        with col_specs:
+            st.markdown(f"<div style='background-color:#f8fafc; padding:10px; border-radius:6px; border-left:4px solid #64748b; font-size:13px; margin-top:8px;'><b>Specs:</b><br>{cleaned_spec}</div>", unsafe_allowed_html=True)
+        
+        with col_field:
+            st.metric(label="On Field", value=str(field_count))
+        
+        with col_m7:
+            st.metric(label="📦 M7 Store", value=str(spares_m7))
+        
+        with col_shop:
+            st.metric(label="⚙️ Floor", value=str(spares_shop))
+        
+        with col_total:
+            st.metric(label="📊 Total", value=str(total_spares))
+
+        with col_healthy:
+            st.metric(label="🤖 Target", value=str(healthy_stock))
+        
+        with col_status:
+            st.metric(label=status_lbl, value=status_val, delta=delta_msg, delta_color=d_color)
 
 # Main Application Entry
 if check_password():
-    inject_custom_css()  # Non-blocking injection triggered here safely
-    st.title("🏭 Plant Intranet Inventory Dashboard")
-    st.caption("Live Instrumentation Spares Tracking Sheet managed by A. Jangra.")
-    st.markdown("---")
+    # Styled Dashboard Header Panel (Industrial Theme Banner)
+    st.markdown("""
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <h1 style="color: #ffffff !important; margin: 0; font-size: 28px; letter-spacing: 0.5px;">🏭 Plant Instrumentation Live Inventory</h1>
+            <p style="color: #94a3b8 !important; margin: 5px 0 0 0; font-size: 14px;">Real-time automated control loop buffer tracking matrix • Maintained by A. Jangra</p>
+        </div>
+    """, unsafe_allowed_html=True)
 
     google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
 
@@ -151,7 +141,7 @@ if check_password():
         SPARES_SHOP_COL = "Remaining Spares in Shop-Floor"
         TOTAL_SPARES_COL = "Total Spares"
         
-        st.sidebar.header("🔍 Filter Controls")
+        st.sidebar.header("🔍 Control Filters")
         all_instruments = ["All System Data"] + list(df[NAME_COL].dropna().unique())
         selected_instrument = st.sidebar.selectbox("Select Instrument Category:", all_instruments)
         st.sidebar.markdown("---")
@@ -168,16 +158,24 @@ if check_password():
             if entry_count == 1:
                 row = sub_df.iloc[0]
                 render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True)
+                st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allowed_html=True)
             else:
                 total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows())
                 
+                # Expanders formatted into sleek dropdown panels
                 with st.expander(f"📂 {current_name} — ({entry_count} Variants Grouped) | Combined Stock: {total_current_spares}"):
+                    st.markdown("<div style='padding: 10px 0;'>", unsafe_allowed_html=True)
                     for idx, row in sub_df.iterrows():
                         render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=False)
+                        if idx != sub_df.index[-1]:
+                            st.markdown("<hr style='border: 0; border-top: 1px dashed #cbd5e1; margin: 15px 0;'>", unsafe_allowed_html=True)
+                    st.markdown("</div>", unsafe_allowed_html=True)
+                st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allowed_html=True)
 
     except Exception as e:
         st.error(f"Error accessing Google Sheets Database: {e}")
 
+    # Sidebar Options
     if st.sidebar.button("🔒 Secure Log Out"):
         st.session_state["password_correct"] = False
         st.rerun()
