@@ -34,16 +34,27 @@ def safe_int(val):
     except ValueError:
         return 0
 
+# Cached data fetching to prevent hammering the network on every filter toggle
+@st.cache_data(ttl=60)  # TTL fallback of 1 minute, overridden manually by refresh button
+def fetch_data(url, timestamp):
+    # Using the timestamp inside the function signature forces a re-fetch when it changes
+    live_url = f"{url}&t={timestamp}"
+    df = pd.read_csv(live_url)
+    return df
+
 if check_password():
     st.header("📋 Live Instrumentation Spares")
     st.write("Fetching live data directly from Google Forms Response Sheet Maintained by A. Jangra.")
 
     google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
 
+    # Manage cache busting via session state timestamp
+    if "data_timestamp" not in st.session_state:
+        st.session_state["data_timestamp"] = int(time.time())
+
     try:
-        # Cache-buster to get fresh live values on page refresh
-        live_url = f"{google_sheet_url}&t={int(time.time())}"
-        df = pd.read_csv(live_url)
+        # Fetching data using the optimized caching layer
+        df = fetch_data(google_sheet_url, st.session_state["data_timestamp"])
         
         # Clean column names
         df.columns = df.columns.str.strip()
@@ -162,4 +173,5 @@ if check_password():
 
     if st.sidebar.button("🔄 Refresh Inventory Data"):
         st.cache_data.clear()
+        st.session_state["data_timestamp"] = int(time.time())
         st.rerun()
