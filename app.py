@@ -9,8 +9,13 @@ st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_ic
 def inject_custom_css():
     css = """
     <style>
-    .stApp { background-color: #f8fafc; }
-    h1, h2, h3 { color: #1e293b !important; font-family: sans-serif; }
+    .stApp {
+        background-color: #f8fafc; 
+    }
+    h1, h2, h3 {
+        color: #1e293b !important; 
+        font-family: sans-serif; 
+    }
     .inventory-card {
         background-color: #ffffff;
         border-radius: 10px;
@@ -19,14 +24,43 @@ def inject_custom_css():
         border: 1px solid #e2e8f0;
         margin-bottom: 15px;
     }
-    .metric-box { text-align: center; padding: 10px; background-color: #f1f5f9; border-radius: 6px; }
-    .metric-val { font-size: 20px; font-weight: 700; color: #0f172a; }
-    .metric-lbl { font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 4px; }
-    .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; text-align: center; width: 100%; }
+    .metric-box {
+        text-align: center; 
+        padding: 10px; 
+        background-color: #f1f5f9; 
+        border-radius: 6px; 
+    }
+    .metric-val {
+        font-size: 20px; 
+        font-weight: 700; 
+        color: #0f172a; 
+    }
+    .metric-lbl {
+        font-size: 11px; 
+        text-transform: uppercase; 
+        color: #64748b; 
+        margin-bottom: 4px;
+    }
+    .status-badge {
+        display: inline-block; 
+        padding: 6px 12px; 
+        border-radius: 20px; 
+        font-size: 13px;
+        font-weight: 600; 
+        text-align: center; 
+        width: 100%; 
+    }
     .status-shortfall { background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
     .status-surplus { background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; }
     .status-balanced { background-color: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
-    .specs-box { background-color: #f8fafc; border-left: 4px solid #475569; padding: 10px; border-radius: 4px; font-size: 13px; color: #334155; }
+    .specs-box {
+        background-color: #f8fafc; 
+        border-left: 4px solid #475569; 
+        padding: 10px;
+        border-radius: 4px; 
+        font-size: 13px; 
+        color: #334155; 
+    }
     </style>
     """
     st.components.v1.html(css, height=0, width=0)
@@ -74,7 +108,7 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
     
     field_count = safe_int(row[FIELD_COL])
     spares_m7 = safe_int(row[SPARES_M7_COL])
-    spares_shop = safe_int(row[SPARES_SHOP_COL])
+    spares_shop = safe_int(row[SPARES_SHOP_FLOOR_COL if 'SPARES_SHOP_FLOOR_COL' in globals() else SPARES_SHOP_COL])
     total_spares = safe_int(row[TOTAL_SPARES_COL])
     
     name_lower = inst_name.lower()
