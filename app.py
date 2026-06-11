@@ -124,20 +124,17 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url)
     return df
 
-# NEW: Parse roster directly using the verified direct CSV link
+# Debug-enabled Roster Fetching Engine
 def get_today_shifts(timestamp):
     shift_csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=564394831&single=true&output=csv"
     try:
-        # Load raw sheet without assuming headers
         shift_df = pd.read_csv(f"{shift_csv_url}&t={timestamp}", header=None)
         
         if shift_df.empty:
-            return None, "Database is empty or link returned no data."
+            return None, "Database Link returned empty data."
             
-        # Clean all cells from white spaces and convert NaN to empty strings safely
         shift_df = shift_df.fillna("").astype(str).applymap(lambda x: x.strip())
         
-        # 1. Scan rows to find where the Employee 'Name' column is located
         name_col_idx = None
         header_row_idx = None
         
@@ -148,35 +145,28 @@ def get_today_shifts(timestamp):
                 header_row_idx = r_idx
                 break
                 
-        # Fallback if literal text "Name" is missing, use first column/row
         if name_col_idx is None:
             name_col_idx = 0
             header_row_idx = 0
             
-        # 2. Match Today's Date Day (e.g., '11')
         day_str = str(datetime.now().day)
         target_col_idx = None
         
-        # Scan the row we found, or the top 3 rows for the date digit
-        for r_idx in range(min(3, len(shift_df))):
+        for r_idx in range(min(4, len(shift_df))):
             row_vals = list(shift_df.iloc[r_idx])
             if day_str in row_vals:
                 target_col_idx = row_vals.index(day_str)
                 break
                 
         if target_col_idx is None:
-            # Show exact top header structure on error to diagnose formatting mismatch
-            sample_cols = list(shift_df.iloc[header_row_idx])[:8]
-            return None, f"Day '{day_str}' not found. Row {header_row_idx} sample: {sample_cols}"
+            sample_cols = list(shift_df.iloc[header_row_idx])[:6]
+            return None, f"Day '{day_str}' not found. Sample Header: {sample_cols}"
             
         shifts = {"A": [], "B": [], "C": [], "O": []}
         
-        # 3. Extract shift codes row by row
         start_row = header_row_idx + 1
         for i in range(start_row, len(shift_df)):
             emp_name = shift_df.iloc[i, name_col_idx]
-            
-            # Skip metadata/empty rows
             if not emp_name or emp_name.lower() in ["name", "nan", ""]:
                 continue
                 
@@ -186,68 +176,7 @@ def get_today_shifts(timestamp):
                 
         return shifts, None
     except Exception as e:
-        # Returns the raw core python system breakdown text
-        return None, f"Python Core Exception: {str(e)}"
-
-# Helper function to render rows using fallback display wrapper
-def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
-    inst_name = str(row[NAME_COL]).strip()
-    full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
-    
-    field_count = safe_int(row[FIELD_COL])
-    spares_m7 = safe_int(row[SPARES_M7_COL])
-    spares_shop = safe_int(row[SPARES_SHOP_FLOOR_COL if 'SPARES_SHOP_FLOOR_COL' in globals() else SPARES_SHOP_COL])
-    total_spares = safe_int(row[TOTAL_SPARES_COL])
-    
-    name_lower = inst_name.lower()
-    if "transmitter" in name_lower or "converter" in name_lower:
-        healthy_stock = max(2, int(field_count * 0.20))
-    elif "element" in name_lower or "switch" in name_lower or "probe" in name_lower:
-        healthy_stock = max(3, int(field_count * 0.30))
-    else:
-        healthy_stock = max(2, int(field_count * 0.15))
-    
-    shortfall_excess = total_spares - healthy_stock
-    cleaned_spec = full_spec.replace('•', '').strip()
-
-    if shortfall_excess < 0:
-        status_html = f'<div class="status-badge status-shortfall">🚨 Shortfall ({shortfall_excess})</div>'
-    elif shortfall_excess > 0:
-        status_html = f'<div class="status-badge status-surplus">✅ Surplus (+{shortfall_excess})</div>'
-    else:
-        status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
-
-    card_html = f"""
-    <div class="inventory-card">
-        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: sans-serif;">
-            <div style="flex: 2; min-width: 180px;">
-                <h4 style="margin:0; color:#0f172a; font-size:18px;">{inst_name if show_name else ""}</h4>
-            </div>
-            <div style="flex: 2.5; min-width: 220px;">
-                <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
-            </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
-                <div class="metric-lbl">On Field</div><div class="metric-val">{field_count}</div>
-            </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
-                <div class="metric-lbl">📦 M7</div><div class="metric-val">{spares_m7}</div>
-            </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
-                <div class="metric-lbl">⚙️ Shop</div><div class="metric-val">{spares_shop}</div>
-            </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
-                <div class="metric-lbl">📊 Total</div><div class="metric-val">{total_spares}</div>
-            </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
-                <div class="metric-lbl">🤖 Target</div><div class="metric-val">{healthy_stock}</div>
-            </div>
-            <div style="flex: 1.5; min-width: 130px; text-align: center;">
-                {status_html}
-            </div>
-        </div>
-    </div>
-    """
-    st.components.v1.html(card_html, height=110, scrolling=False)
+        return None, f"System Error: {str(e)}"
 
 # Main Application Entry
 if check_password():
@@ -256,13 +185,15 @@ if check_password():
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
 
-    # --- SIDEBAR ROSTER ENGINE (AUTOMATIC CSV CHANNELS) ---
+    # --- SIDEBAR ROSTER ENGINE (FIXED TO SHOW REAL ERRORS) ---
     st.sidebar.markdown('<div class="shift-container">', unsafe_allow_html=True)
     st.sidebar.markdown(f'<div class="shift-title">⏰ Today\'s Shift Roster ({datetime.now().strftime("%d-%b")})</div>', unsafe_allow_html=True)
     
     roster_data, err_msg = get_today_shifts(st.session_state["data_timestamp"])
+    
     if err_msg:
-        st.sidebar.error("Could not sync roster")
+        # AB FIXED TEXT KI JAGAH ASLI ERROR DIKHEGA SCREEN PAR!
+        st.sidebar.error(err_msg)
     elif roster_data:
         shift_a = ", ".join(roster_data["A"]) if roster_data["A"] else "None Assigned"
         shift_b = ", ".join(roster_data["B"]) if roster_data["B"] else "None Assigned"
@@ -275,7 +206,7 @@ if check_password():
         st.sidebar.markdown(f'<div class="shift-row">🔴 <b>Off (O):</b> {shift_o}</div>', unsafe_allow_html=True)
     st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
-    # Styled Dashboard Header Panel (Premium Gradient Block)
+    # Styled Dashboard Header Panel
     st.components.v1.html("""
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); 
                     padding: 22px 25px; 
