@@ -5,64 +5,31 @@ import time
 # 1. Page Configuration
 st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_icon="🏭")
 
-# --- CUSTOM PROFESSIONAL CSS INJECTION ---
-st.markdown("""
+# --- FIXED LOGIC: Injection directly through safe config placeholders ---
+def inject_custom_css():
+    css = """
     <style>
-    .stApp {
-        background-color: #f8fafc;
-    }
-    h1, h2, h3 {
-        color: #1e293b !important;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    .stApp { background-color: #f8fafc; }
+    h1, h2, h3 { color: #1e293b !important; font-family: sans-serif; }
     .inventory-card {
         background-color: #ffffff;
         border-radius: 10px;
         padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
         border: 1px solid #e2e8f0;
         margin-bottom: 15px;
     }
-    .metric-box {
-        text-align: center;
-        padding: 10px;
-        background-color: #f1f5f9;
-        border-radius: 6px;
-    }
-    .metric-val {
-        font-size: 20px;
-        font-weight: 700;
-        color: #0f172a;
-    }
-    .metric-lbl {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: #64748b;
-        margin-bottom: 4px;
-    }
-    .status-badge {
-        display: inline-block;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 13px;
-        font-weight: 600;
-        text-align: center;
-        width: 100%;
-    }
+    .metric-box { text-align: center; padding: 10px; background-color: #f1f5f9; border-radius: 6px; }
+    .metric-val { font-size: 20px; font-weight: 700; color: #0f172a; }
+    .metric-lbl { font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 4px; }
+    .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; text-align: center; width: 100%; }
     .status-shortfall { background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
     .status-surplus { background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; }
     .status-balanced { background-color: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
-    .specs-box {
-        background-color: #f8fafc;
-        border-left: 4px solid #475569;
-        padding: 10px;
-        border-radius: 4px;
-        font-size: 13px;
-        color: #334155;
-    }
+    .specs-box { background-color: #f8fafc; border-left: 4px solid #475569; padding: 10px; border-radius: 4px; font-size: 13px; color: #334155; }
     </style>
-""", unsafe_allowed_html=True)
+    """
+    st.components.v1.html(css, height=0, width=0)
 
 # 2. Password Protection (Authentication Logic)
 def check_password():
@@ -100,7 +67,7 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url)
     return df
 
-# Helper function to render rows
+# Helper function to render rows using fallback display wrapper
 def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
     inst_name = str(row[NAME_COL]).strip()
     full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
@@ -128,9 +95,9 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
     else:
         status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
 
-    st.markdown(f"""
+    card_html = f"""
     <div class="inventory-card">
-        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px;">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: sans-serif;">
             <div style="flex: 2; min-width: 180px;">
                 <h4 style="margin:0; color:#0f172a; font-size:18px;">{inst_name if show_name else ""}</h4>
             </div>
@@ -157,10 +124,12 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
             </div>
         </div>
     </div>
-    """, unsafe_allowed_html=True)
+    """
+    st.components.v1.html(card_html, height=110, scrolling=False)
 
-# Main Application Entry (Fix Applied Here)
+# Main Application Entry
 if check_password():
+    inject_custom_css()  # Non-blocking injection triggered here safely
     st.title("🏭 Plant Intranet Inventory Dashboard")
     st.caption("Live Instrumentation Spares Tracking Sheet managed by A. Jangra.")
     st.markdown("---")
@@ -202,7 +171,7 @@ if check_password():
             else:
                 total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows())
                 
-                with st.expander(f"📦 {current_name} — ({entry_count} Variants Grouped) | Combined Stock: {total_current_spares}"):
+                with st.expander(f"📂 {current_name} — ({entry_count} Variants Grouped) | Combined Stock: {total_current_spares}"):
                     for idx, row in sub_df.iterrows():
                         render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=False)
 
