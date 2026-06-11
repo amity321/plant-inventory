@@ -5,6 +5,75 @@ import time
 # 1. Page Configuration
 st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_icon="🏭")
 
+# --- CUSTOM PROFESSIONAL CSS INJECTION ---
+st.markdown("""
+    <style>
+    /* Global Background and Typography */
+    .stApp {
+        background-color: #f8fafc;
+    }
+    h1, h2, h3 {
+        color: #1e293b !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    /* Elegant Card Design */
+    .inventory-card {
+        background-color: #ffffff;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 15px;
+    }
+    
+    /* Metrics Layout inside Cards */
+    .metric-box {
+        text-align: center;
+        padding: 10px;
+        background-color: #f1f5f9;
+        border-radius: 6px;
+    }
+    .metric-val {
+        font-size: 20px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .metric-lbl {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+    
+    /* Status Badge Styling */
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        text-align: center;
+        width: 100%;
+    }
+    .status-shortfall { background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+    .status-surplus { background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; }
+    .status-balanced { background-color: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
+    
+    /* Technical Specs Box Override */
+    .specs-box {
+        background-color: #f8fafc;
+        border-left: 4px solid #475569;
+        padding: 10px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #334155;
+    }
+    </style>
+""", unsafe_allowed_html=True)
+
+
 # 2. Password Protection (Authentication Logic)
 def check_password():
     if "password_correct" not in st.session_state:
@@ -25,6 +94,7 @@ def check_password():
             st.error("❌ Incorrect password. Please try again.")
     return False
 
+
 # Safe conversion function to handle text or empty cells gracefully
 def safe_int(val):
     if pd.isna(val):
@@ -34,144 +104,77 @@ def safe_int(val):
     except ValueError:
         return 0
 
-# Cached data fetching to prevent hammering the network on every filter toggle
-@st.cache_data(ttl=60)  # TTL fallback of 1 minute, overridden manually by refresh button
+
+# Cached data fetching
+@st.cache_data(ttl=60)
 def fetch_data(url, timestamp):
-    # Using the timestamp inside the function signature forces a re-fetch when it changes
     live_url = f"{url}&t={timestamp}"
     df = pd.read_csv(live_url)
     return df
 
+
+# Helper function to render rows beautifully inside custom UI wrappers
+def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
+    inst_name = str(row[NAME_COL]).strip()
+    full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
+    
+    field_count = safe_int(row[FIELD_COL])
+    spares_m7 = safe_int(row[SPARES_M7_COL])
+    spares_shop = safe_int(row[SPARES_SHOP_COL])
+    total_spares = safe_int(row[TOTAL_SPARES_COL])
+    
+    # AI Inventory Rule Engine
+    name_lower = inst_name.lower()
+    if "transmitter" in name_lower or "converter" in name_lower:
+        healthy_stock = max(2, int(field_count * 0.20))
+    elif "element" in name_lower or "switch" in name_lower or "probe" in name_lower:
+        healthy_stock = max(3, int(field_count * 0.30))
+    else:
+        healthy_stock = max(2, int(field_count * 0.15))
+    
+    shortfall_excess = total_spares - healthy_stock
+    cleaned_spec = full_spec.replace('•', '').strip()
+
+    # Determine status markup
+    if shortfall_excess < 0:
+        status_html = f'<div class="status-badge status-shortfall">🚨 Shortfall ({shortfall_excess})</div>'
+    elif shortfall_excess > 0:
+        status_html = f'<div class="status-badge status-surplus">✅ Surplus (+{shortfall_excess})</div>'
+    else:
+        status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
+
+    # Render Card Row Layout
+    st.markdown(f"""
+    <div class="inventory-card">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px;">
+            <div style="flex: 2; min-width: 180px;">
+                <h4 style="margin:0; color:#0f172a; font-size:18px;">{inst_name if show_name else ""}</h4>
+            </div>
+            <div style="flex: 2.5; min-width: 220px;">
+                <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
+            </div>
+            <div style="flex: 1; min-width: 90px;" class="metric-box">
+                <div class="metric-lbl">On Field</div><div class="metric-val">{field_count}</div>
+            </div>
+            <div style="flex: 1; min-width: 90px;" class="metric-box">
+                <div class="metric-lbl">📦 M7</div><div class="metric-val">{spares_m7}</div>
+            </div>
+            <div style="flex: 1; min-width: 90px;" class="metric-box">
+                <div class="metric-lbl">⚙️ Shop</div><div class="metric-val">{spares_shop}</div>
+            </div>
+            <div style="flex: 1; min-width: 90px;" class="metric-box">
+                <div class="metric-lbl">📊 Total</div><div class="metric-val">{total_spares}</div>
+            </div>
+            <div style="flex: 1; min-width: 90px;" class="metric-box">
+                <div class="metric-lbl">🤖 Target</div><div class="metric-val">{healthy_stock}</div>
+            </div>
+            <div style="flex: 1.5; min-width: 130px; text-align: center;">
+                {status_html}
+            </div>
+        </div>
+    </div>
+    """, unsafe_allowed_html=True)
+
+
 if check_password():
-    st.header("📋 Live Instrumentation Spares")
-    st.write("Fetching live data directly from Google Forms Response Sheet Maintained by A. Jangra.")
-
-    google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
-
-    # Manage cache busting via session state timestamp
-    if "data_timestamp" not in st.session_state:
-        st.session_state["data_timestamp"] = int(time.time())
-
-    try:
-        # Fetching data using the optimized caching layer
-        df = fetch_data(google_sheet_url, st.session_state["data_timestamp"])
-        
-        # Clean column names
-        df.columns = df.columns.str.strip()
-        
-        # Drop completely empty rows where Instrument Name is missing
-        df = df.dropna(subset=["Instrument Name"])
-
-        # Column Layout Mapping
-        NAME_COL = "Instrument Name"
-        SPECS_COL = "Specs"
-        FIELD_COL = "Existing Instrument on Field"
-        SPARES_M7_COL = "Remaining Spares in M7"
-        SPARES_SHOP_COL = "Remaining Spares in Shop-Floor"
-        TOTAL_SPARES_COL = "Total Spares"
-        
-        # --- SIDEBAR FILTER ---
-        st.sidebar.header("🔍 Filter Options")
-        all_instruments = ["All"] + list(df[NAME_COL].dropna().unique())
-        selected_instrument = st.sidebar.selectbox("Filter by Instrument Type:", all_instruments)
-        st.markdown("---")
-
-        # --- DYNAMIC DATA LOOPING ---
-        for index, row in df.iterrows():
-            inst_name = str(row[NAME_COL]).strip()
-
-            # Sidebar Filter Logic
-            if selected_instrument != "All" and inst_name != selected_instrument:
-                continue
-                
-            # Safely extract specs string
-            full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
-            
-            # Safe numeric conversion
-            field_count = safe_int(row[FIELD_COL])
-            spares_m7 = safe_int(row[SPARES_M7_COL])
-            spares_shop = safe_int(row[SPARES_SHOP_COL])
-            total_spares = safe_int(row[TOTAL_SPARES_COL])
-            
-            # --- METHOD 1: SMART AI INVENTORY RULE ENGINE ---
-            name_lower = inst_name.lower()
-            if "transmitter" in name_lower or "converter" in name_lower:
-                # Critical Instruments: 20% of field count, minimum 2 spares
-                healthy_stock = max(2, int(field_count * 0.20))
-            elif "element" in name_lower or "switch" in name_lower or "probe" in name_lower:
-                # Bulk/Consumable Instruments: 30% of field count, minimum 3 spares
-                healthy_stock = max(3, int(field_count * 0.30))
-            else:
-                # Default safety buffer for any other categories
-                healthy_stock = max(2, int(field_count * 0.15))
-            
-            # Dynamic calculation of status
-            shortfall_excess = total_spares - healthy_stock
-            
-            # Clean technical specs string formatting markers
-            cleaned_spec = full_spec.replace('•', '').strip()
-
-            # Responsive Layout Container
-            with st.container():
-                col_name, col_specs, col_field, col_m7, col_shop, col_total, col_healthy, col_status = st.columns([2, 2.5, 1.2, 1.2, 1.2, 1.2, 1.2, 1.5])
-                
-                with col_name:
-                    st.subheader(inst_name)
-                
-                with col_specs:
-                    st.markdown("**Technical Specs:**")
-                    st.info(cleaned_spec)
-                
-                with col_field:
-                    st.metric(label="On Field", value=f"{field_count}")
-                
-                with col_m7:
-                    st.metric(label="📦 M7 Spares", value=f"{spares_m7}")
-                
-                with col_shop:
-                    st.metric(label="⚙️ Shop-Floor Spares", value=f"{spares_shop}")
-                
-                with col_total:
-                    st.metric(label="📊 Total Spares", value=f"{total_spares}")
-
-                with col_healthy:
-                    st.metric(label="🤖 AI Target Stock", value=f"{healthy_stock}")
-                
-                with col_status:
-                    # Dynamic color-coding alert logic
-                    if shortfall_excess < 0:
-                        st.metric(
-                            label="🚨 Stock Status", 
-                            value=f"{shortfall_excess}", 
-                            delta="Shortfall!", 
-                            delta_color="inverse"
-                        )
-                    elif shortfall_excess > 0:
-                        st.metric(
-                            label="✅ Stock Status", 
-                            value=f"+{shortfall_excess}", 
-                            delta="Excess (Surplus)", 
-                            delta_color="normal"
-                        )
-                    else:
-                        st.metric(
-                            label="👌 Stock Status", 
-                            value="Balanced", 
-                            delta="Target Met", 
-                            delta_color="normal"
-                        )
-            
-            st.markdown("---")
-
-    except Exception as e:
-        st.error(f"Error reading live Google Sheet: {e}")
-
-    # Sidebar Navigation/Utility Buttons
-    if st.sidebar.button("🔒 Log Out"):
-        st.session_state["password_correct"] = False
-        st.rerun()
-
-    if st.sidebar.button("🔄 Refresh Inventory Data"):
-        st.cache_data.clear()
-        st.session_state["data_timestamp"] = int(time.time())
-        st.rerun()
+    st.title("🏭
