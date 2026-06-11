@@ -3,7 +3,7 @@ import pandas as pd
 import time
 
 # 1. Page Configuration
-st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_icon="🏭")
+st.set_page_config(page_title="02/03 Area Inventory Dashboard", layout="wide", page_icon="🏭")
 
 # --- FIXED LOGIC: Injection directly through safe config placeholders ---
 def inject_custom_css():
