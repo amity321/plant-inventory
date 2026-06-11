@@ -73,7 +73,7 @@ def check_password():
     if st.session_state["password_correct"]:
         return True
 
-    st.title("🔒 Plant Intranet Inventory Access")
+    st.title("🔒 Area-02/03 Instrument Inventory Access")
     user_password = st.text_input("Enter Password", type="password")
     if user_password:
         CORRECT_PASSWORD = "0203" 
@@ -173,7 +173,7 @@ if check_password():
                     box-shadow: 0 4px 15px rgba(0,0,0,0.06); 
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
             <h1 style="color: #ffffff !important; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">
-                🏭 Plant Intranet Inventory Dashboard
+                🏭 Area-02/03 Inventory Dashboard
             </h1>
             <p style="color: #94a3b8 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 400; letter-spacing: 0.2px;">
                 Live Instrumentation Spares Tracking Sheet &bull; Managed by <span style="color: #38bdf8; font-weight: 600;">A. Jangra</span>
