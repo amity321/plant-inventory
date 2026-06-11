@@ -16,15 +16,6 @@ def inject_custom_css():
         color: #1e293b !important; 
         font-family: sans-serif; 
     }
-    
-    /* --- UPGRADED EXPANDER LABEL STYLING --- */
-    button[data-testid="stExpanderToggle"] p {
-        font-size: 17px !important;
-        font-weight: 700 !important;
-        color: #1e293b !important;
-        font-family: sans-serif !important;
-    }
-    
     .inventory-card {
         background-color: #ffffff;
         border-radius: 10px;
@@ -229,8 +220,18 @@ if check_password():
             else:
                 total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows())
                 
-                # The labels inside this expander are now automatically scaled up & bolded!
-                with st.expander(f"📂 {current_name} — ({entry_count} Variants Grouped) | Combined Stock: {total_current_spares}"):
+                # --- BULLETPROOF BYPASS FOR ST EXPANDER LABEL ---
+                # Hacking layout using high-contrast bold markdown blocks directly over expander container
+                st.markdown(f"""
+                <div style="background-color: #e2e8f0; padding: 1px 12px; border-radius: 6px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none;">
+                    <span style="font-size: 16px !important; font-weight: 800 !important; color: #0f172a !important; font-family: sans-serif;">
+                        📂 {current_name} — ({entry_count} Variants Grouped) | Combined Stock: {total_current_spares}
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Native container holds the dropdown, but text is covered beautifully by our thick font block
+                with st.expander(" "):
                     for idx, row in sub_df.iterrows():
                         render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=False)
 
