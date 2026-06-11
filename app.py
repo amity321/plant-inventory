@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 
 # 1. Page Configuration
-st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_icon="🏭")
+st.set_page_config(page_title="Plant Instrumentation Inventory", layout="wide", page_icon="🏭")
 
 # Helper function to render rows using fallback display wrapper
 def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
@@ -252,7 +252,7 @@ if check_password():
 
     # --- SIDEBAR ROSTER ENGINE (WITH BOLD NAMES CSS) ---
     st.sidebar.markdown('<div class="shift-container">', unsafe_allow_html=True)
-    st.sidebar.markdown(f'<div class="shift-title">⏰ Today\'s Shift Roster ({datetime.now().strftime("%d-%b")})</div>', unsafe_allow_html=True)
+    st.sidebar.markdown(f'<div class="shift-title">⏰ Today\'s Shift Schedule ({datetime.now().strftime("%d-%b")})</div>', unsafe_allow_html=True)
     
     roster_data, err_msg = get_today_shifts(st.session_state["data_timestamp"])
     
@@ -265,10 +265,10 @@ if check_password():
         shift_o = ", ".join(roster_data["O"]) if roster_data["O"] else "None Assigned"
         
         # Wrapped employee variables inside 'emp-names' span for bold text styling
-        st.sidebar.markdown(f'<div class="shift-row">🟢 <b>Shift A:</b> <span class="emp-names">{shift_a}</span></div>', unsafe_allow_html=True)
-        st.sidebar.markdown(f'<div class="shift-row">🔵 <b>Shift B:</b> <span class="emp-names">{shift_b}</span></div>', unsafe_allow_html=True)
-        st.sidebar.markdown(f'<div class="shift-row">🟡 <b>Shift C:</b> <span class="emp-names">{shift_c}</span></div>', unsafe_allow_html=True)
-        st.sidebar.markdown(f'<div class="shift-row">🔴 <b>Off (O):</b> <span class="emp-names">{shift_o}</span></div>', unsafe_allow_html=True)
+        st.sidebar.markdown(f'<div class="shift-row">🟢 <b>A-Shift:</b> <span class="emp-names">{shift_a}</span></div>', unsafe_allow_html=True)
+        st.sidebar.markdown(f'<div class="shift-row">🔵 <b>B-Shift:</b> <span class="emp-names">{shift_b}</span></div>', unsafe_allow_html=True)
+        st.sidebar.markdown(f'<div class="shift-row">🟡 <b>C-Shift:</b> <span class="emp-names">{shift_c}</span></div>', unsafe_allow_html=True)
+        st.sidebar.markdown(f'<div class="shift-row">🔴 <b>Weekly Off:</b> <span class="emp-names">{shift_o}</span></div>', unsafe_allow_html=True)
     st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
     # Styled Dashboard Header Panel
@@ -279,10 +279,10 @@ if check_password():
                     box-shadow: 0 4px 15px rgba(0,0,0,0.06); 
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
             <h1 style="color: #ffffff !important; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">
-                🏭 Plant Intranet Inventory Dashboard
+                🏭 Area 02/03 Instrumentation Inventory Dashboard
             </h1>
             <p style="color: #94a3b8 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 400; letter-spacing: 0.2px;">
-                Live Instrumentation Spares Tracking Sheet &bull; Managed by <span style="color: #38bdf8; font-weight: 600;">A. Jangra</span>
+                Live Instrumentation Spares Tracking Sheet &bull; Managed by <span style="color: #38bdf8; font-weight: 600;">Amit Jangra</span>
             </p>
         </div>
     """, height=105)
