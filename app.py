@@ -5,9 +5,9 @@ import time
 # 1. Page Configuration
 st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_icon="🏭")
 
-# --- HYPER-COOL COMPACT INJECTION (No Complex String Blocks to Prevent 3.14 Crash) ---
-st.write('<style>div[data-testid="stAppViewContainer"]{background-color: #f1f5f9;}</style>', unsafe_allowed_html=True)
-st.write('<style>div[data-testid="stMetricContainer"]{background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.04);}</style>', unsafe_allowed_html=True)
+# --- FIXED: Python 3.14 Compatible Styling via st.markdown ---
+st.markdown('<style>div[data-testid="stAppViewContainer"]{background-color: #f1f5f9 !important;}</style>', unsafe_allowed_html=True)
+st.markdown('<style>div[data-testid="stMetricContainer"]{background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 8px !important; padding: 12px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;}</style>', unsafe_allowed_html=True)
 
 # 2. Password Protection (Authentication Logic)
 def check_password():
@@ -45,7 +45,7 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url)
     return df
 
-# Helper function to render rows using native components mapped to cool designs
+# Helper function to render rows
 def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
     inst_name = str(row[NAME_COL]).strip()
     full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
@@ -83,7 +83,6 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
         delta_msg = "Target Met"
         d_color = "normal"
 
-    # Native grid framework with zero custom script block errors
     with st.container():
         col_name, col_specs, col_field, col_m7, col_shop, col_total, col_healthy, col_status = st.columns([1.8, 2.2, 1.1, 1.1, 1.1, 1.1, 1.1, 1.4])
         
@@ -162,7 +161,6 @@ if check_password():
             else:
                 total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows())
                 
-                # Expanders formatted into sleek dropdown panels
                 with st.expander(f"📂 {current_name} — ({entry_count} Variants Grouped) | Combined Stock: {total_current_spares}"):
                     st.markdown("<div style='padding: 10px 0;'>", unsafe_allowed_html=True)
                     for idx, row in sub_df.iterrows():
