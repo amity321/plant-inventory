@@ -3,7 +3,7 @@ import pandas as pd
 import time
 
 # 1. Page Configuration
-st.set_page_config(page_title="02/03 Area Inventory Dashboard", layout="wide", page_icon="🏭")
+st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_icon="🏭")
 
 # --- FIXED LOGIC: Injection directly through safe config placeholders ---
 def inject_custom_css():
@@ -16,6 +16,15 @@ def inject_custom_css():
         color: #1e293b !important; 
         font-family: sans-serif; 
     }
+    
+    /* --- UPGRADED EXPANDER LABEL STYLING --- */
+    button[data-testid="stExpanderToggle"] p {
+        font-size: 17px !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
+        font-family: sans-serif !important;
+    }
+    
     .inventory-card {
         background-color: #ffffff;
         border-radius: 10px;
@@ -73,7 +82,7 @@ def check_password():
     if st.session_state["password_correct"]:
         return True
 
-    st.title("🔒 Area-02/03 Instrument Inventory Access")
+    st.title("🔒 Plant Intranet Inventory Access")
     user_password = st.text_input("Enter Password", type="password")
     if user_password:
         CORRECT_PASSWORD = "0203" 
@@ -165,7 +174,7 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
 if check_password():
     inject_custom_css()  # Non-blocking injection triggered here safely
     
-    # --- UPGRADED HIGH-END INDUSTRIAL BANNER HEADER ---
+    # Styled Dashboard Header Panel (Premium Gradient Block)
     st.components.v1.html("""
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); 
                     padding: 22px 25px; 
@@ -173,10 +182,10 @@ if check_password():
                     box-shadow: 0 4px 15px rgba(0,0,0,0.06); 
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
             <h1 style="color: #ffffff !important; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">
-                🏭 Area-02/03 Inventory Dashboard
+                🏭 Plant Intranet Inventory Dashboard
             </h1>
             <p style="color: #94a3b8 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 400; letter-spacing: 0.2px;">
-                Live Instrumentation Spares Tracking Sheet &bull; Managed by <span style="color: #38bdf8; font-weight: 600;">Amit Jangra</span>
+                Live Instrumentation Spares Tracking Sheet &bull; Managed by <span style="color: #38bdf8; font-weight: 600;">A. Jangra</span>
             </p>
         </div>
     """, height=105)
@@ -220,6 +229,7 @@ if check_password():
             else:
                 total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows())
                 
+                # The labels inside this expander are now automatically scaled up & bolded!
                 with st.expander(f"📂 {current_name} — ({entry_count} Variants Grouped) | Combined Stock: {total_current_spares}"):
                     for idx, row in sub_df.iterrows():
                         render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=False)
