@@ -164,9 +164,24 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
 # Main Application Entry
 if check_password():
     inject_custom_css()  # Non-blocking injection triggered here safely
-    st.title("🏭 Plant Intranet Inventory Dashboard")
-    st.caption("Live Instrumentation Spares Tracking Sheet managed by A. Jangra.")
-    st.markdown("---")
+    
+    # --- UPGRADED HIGH-END INDUSTRIAL BANNER HEADER ---
+    st.components.v1.html("""
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); 
+                    padding: 22px 25px; 
+                    border-radius: 12px; 
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.06); 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <h1 style="color: #ffffff !important; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">
+                🏭 Plant Intranet Inventory Dashboard
+            </h1>
+            <p style="color: #94a3b8 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 400; letter-spacing: 0.2px;">
+                Live Instrumentation Spares Tracking Sheet &bull; Managed by <span style="color: #38bdf8; font-weight: 600;">A. Jangra</span>
+            </p>
+        </div>
+    """, height=105)
+    
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
     google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
 
