@@ -128,25 +128,42 @@ def fetch_data(url, timestamp):
 def get_today_shifts(timestamp):
     shift_csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=564394831&single=true&output=csv"
     try:
-        # Avoid cache blockage by passing real-time epoch timestamp
+        # Cache bypass using dynamic timestamp
         shift_df = pd.read_csv(f"{shift_csv_url}&t={timestamp}")
         
-        # Format columns and clean headers
+        # Clean column names
         shift_df.columns = shift_df.columns.str.strip()
         shift_df = shift_df.dropna(subset=["Name"])
         
-        # Dynamic numerical calendar matcher (e.g. "11")
-        day_num = str(datetime.now().day)
+        # Get today's day number as integer and string both (for bulletproof matching)
+        day_int = datetime.now().day
+        day_str = str(day_int)
         
-        if day_num not in shift_df.columns:
-            return None, f"Day column '{day_num}' missing"
+        # Check which format pandas picked up for the column headers
+        target_col = None
+        if day_str in shift_df.columns:
+            target_col = day_str
+        elif day_int in shift_df.columns:
+            target_col = day_int
+        elif float(day_int) in shift_df.columns:
+            target_col = float(day_int)
+        else:
+            # Fallback: try to match if columns are named like "01", "02" etc.
+            day_lead_zero = f"{day_int:02d}"
+            if day_lead_zero in shift_df.columns:
+                target_col = day_lead_zero
+
+        if target_col is None:
+            return None, f"Date column for day {day_str} not found in sheet columns: {list(shift_df.columns)[:5]}..."
             
         shifts = {"A": [], "B": [], "C": [], "O": []}
         
-        # Iterating data mapping engine
+        # Parse the grid matrix
         for _, row in shift_df.iterrows():
             emp_name = str(row["Name"]).strip()
-            duty = str(row[day_num]).strip().upper()
+            if pd.isna(row[target_col]):
+                continue
+            duty = str(row[target_col]).strip().upper()
             if duty in shifts:
                 shifts[duty].append(emp_name)
                 
