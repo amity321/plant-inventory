@@ -6,7 +6,7 @@ from datetime import datetime
 # 1. Page Configuration
 st.set_page_config(page_title="Plant Intranet Inventory", layout="wide", page_icon="🏭")
 
-# Helper function to render rows using fallback display wrapper (Moved Up to Prevent Definition Errors)
+# Helper function to render rows using fallback display wrapper
 def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
     inst_name = str(row[NAME_COL]).strip()
     full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
@@ -135,20 +135,25 @@ def inject_custom_css():
         font-size: 14px;
         font-weight: 700;
         color: #1e293b;
-        margin-bottom: 10px;
+        margin-bottom: 12px;
         border-bottom: 2px solid #e2e8f0;
-        padding-bottom: 4px;
+        padding-bottom: 6px;
     }
     .shift-row {
-        font-size: 13px;
-        margin-bottom: 6px;
+        font-size: 13.5px;
+        margin-bottom: 8px;
         color: #334155;
+        line-height: 1.4;
+    }
+    .emp-names {
+        font-weight: 700 !important;
+        color: #0f172a !important;
     }
     </style>
     """
     st.components.v1.html(css, height=0, width=0)
 
-# 2. Password Protection (Authentication Logic)
+# Password Protection
 def check_password():
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
@@ -184,7 +189,7 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url)
     return df
 
-# Debug-enabled Roster Fetching Engine (.applymap replaced with modern .map)
+# Roster Parsing Engine
 def get_today_shifts(timestamp):
     shift_csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=564394831&single=true&output=csv"
     try:
@@ -193,7 +198,6 @@ def get_today_shifts(timestamp):
         if shift_df.empty:
             return None, "Database Link returned empty data."
             
-        # FIXED: Using .map() instead of .applymap() to support modern pandas
         shift_df = shift_df.fillna("").astype(str).map(lambda x: x.strip())
         
         name_col_idx = None
@@ -241,12 +245,12 @@ def get_today_shifts(timestamp):
 
 # Main Application Entry
 if check_password():
-    inject_custom_css()  # Non-blocking injection triggered here safely
+    inject_custom_css()
     
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
 
-    # --- SIDEBAR ROSTER ENGINE ---
+    # --- SIDEBAR ROSTER ENGINE (WITH BOLD NAMES CSS) ---
     st.sidebar.markdown('<div class="shift-container">', unsafe_allow_html=True)
     st.sidebar.markdown(f'<div class="shift-title">⏰ Today\'s Shift Roster ({datetime.now().strftime("%d-%b")})</div>', unsafe_allow_html=True)
     
@@ -260,10 +264,11 @@ if check_password():
         shift_c = ", ".join(roster_data["C"]) if roster_data["C"] else "None Assigned"
         shift_o = ", ".join(roster_data["O"]) if roster_data["O"] else "None Assigned"
         
-        st.sidebar.markdown(f'<div class="shift-row">🟢 <b>Shift A:</b> {shift_a}</div>', unsafe_allow_html=True)
-        st.sidebar.markdown(f'<div class="shift-row">🔵 <b>Shift B:</b> {shift_b}</div>', unsafe_allow_html=True)
-        st.sidebar.markdown(f'<div class="shift-row">🟡 <b>Shift C:</b> {shift_c}</div>', unsafe_allow_html=True)
-        st.sidebar.markdown(f'<div class="shift-row">🔴 <b>Off (O):</b> {shift_o}</div>', unsafe_allow_html=True)
+        # Wrapped employee variables inside 'emp-names' span for bold text styling
+        st.sidebar.markdown(f'<div class="shift-row">🟢 <b>Shift A:</b> <span class="emp-names">{shift_a}</span></div>', unsafe_allow_html=True)
+        st.sidebar.markdown(f'<div class="shift-row">🔵 <b>Shift B:</b> <span class="emp-names">{shift_b}</span></div>', unsafe_allow_html=True)
+        st.sidebar.markdown(f'<div class="shift-row">🟡 <b>Shift C:</b> <span class="emp-names">{shift_c}</span></div>', unsafe_allow_html=True)
+        st.sidebar.markdown(f'<div class="shift-row">🔴 <b>Off (O):</b> <span class="emp-names">{shift_o}</span></div>', unsafe_allow_html=True)
     st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
     # Styled Dashboard Header Panel
