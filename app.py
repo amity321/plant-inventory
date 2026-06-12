@@ -13,7 +13,7 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
     
     field_count = safe_int(row[FIELD_COL])
     spares_m7 = safe_int(row[SPARES_M7_COL])
-    spares_shop = safe_int(row[SPARES_SHOP_COL])
+    spares_shop = safe_int(row[SPARES_SHOP_FLOOR_COL if 'SPARES_SHOP_FLOOR_COL' in globals() else SPARES_SHOP_COL])
     total_spares = safe_int(row[TOTAL_SPARES_COL])
     
     name_lower = inst_name.lower()
@@ -149,51 +149,6 @@ def inject_custom_css():
         font-weight: 700 !important;
         color: #0f172a !important;
     }
-    
-    /* Live Blinking Dot Styling */
-    .live-indicator-container {
-        position: fixed;
-        top: 60px;
-        right: 40px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        z-index: 999999;
-        font-family: sans-serif;
-        background: rgba(255, 255, 255, 0.85);
-        padding: 4px 10px;
-        border-radius: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        border: 1px solid #e2e8f0;
-    }
-    .live-text {
-        font-size: 11px;
-        font-weight: 800;
-        color: #dc2626;
-        letter-spacing: 1px;
-    }
-    .blinking-dot {
-        width: 10px;
-        height: 10px;
-        background-color: #dc2626;
-        border-radius: 50%;
-        display: inline-block;
-        animation: pulse-dot 1.5s infinite ease-in-out;
-    }
-    @keyframes pulse-dot {
-        0% {
-            transform: scale(0.9);
-            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
-        }
-        70% {
-            transform: scale(1.1);
-            box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
-        }
-        100% {
-            transform: scale(0.9);
-            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
-        }
-    }
     </style>
     """
     st.components.v1.html(css, height=0, width=0)
@@ -243,8 +198,7 @@ def get_today_shifts(timestamp):
         if shift_df.empty:
             return None, "Database Link returned empty data."
             
-        shift_df = shift_df.fillna("").astype(str)
-        shift_df = shift_df.map(lambda x: x.strip()) if hasattr(shift_df, 'map') else shift_df.applymap(lambda x: x.strip())
+        shift_df = shift_df.fillna("").astype(str).map(lambda x: x.strip())
         
         name_col_idx = None
         header_row_idx = None
@@ -293,14 +247,6 @@ def get_today_shifts(timestamp):
 if check_password():
     inject_custom_css()
     
-    # Render the fixed top-right blinking live indicator
-    st.components.v1.html("""
-        <div class="live-indicator-container">
-            <span class="blinking-dot"></span>
-            <span class="live-text">LIVE</span>
-        </div>
-    """, height=40)
-    
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
 
@@ -318,6 +264,7 @@ if check_password():
         shift_c = ", ".join(roster_data["C"]) if roster_data["C"] else "None Assigned"
         shift_o = ", ".join(roster_data["O"]) if roster_data["O"] else "None Assigned"
         
+        # Wrapped employee variables inside 'emp-names' span for bold text styling
         st.sidebar.markdown(f'<div class="shift-row">🟢 <b>A-Shift:</b> <span class="emp-names">{shift_a}</span></div>', unsafe_allow_html=True)
         st.sidebar.markdown(f'<div class="shift-row">🔵 <b>B-Shift:</b> <span class="emp-names">{shift_b}</span></div>', unsafe_allow_html=True)
         st.sidebar.markdown(f'<div class="shift-row">🟡 <b>C-Shift:</b> <span class="emp-names">{shift_c}</span></div>', unsafe_allow_html=True)
