@@ -47,13 +47,13 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
                 <div class="metric-lbl">On Field</div><div class="metric-val">{field_count}</div>
             </div>
             <div style="flex: 1; min-width: 90px;" class="metric-box">
-                <div class="metric-lbl">M7</div><div class="metric-val">{spares_m7}</div>
+                <div class="metric-lbl">M7 store</div><div class="metric-val">{spares_m7}</div>
             </div>
             <div style="flex: 1; min-width: 90px;" class="metric-box">
-                <div class="metric-lbl">-Shopfloor</div><div class="metric-val">{spares_shop}</div>
+                <div class="metric-lbl">Shopfloor</div><div class="metric-val">{spares_shop}</div>
             </div>
             <div style="flex: 1; min-width: 90px;" class="metric-box">
-                <div class="metric-lbl">📊 Total</div><div class="metric-val">{total_spares}</div>
+                <div class="metric-lbl">Total</div><div class="metric-val">{total_spares}</div>
             </div>
             <div style="flex: 1; min-width: 90px;" class="metric-box">
                 <div class="metric-lbl">AI Target</div><div class="metric-val">{healthy_stock}</div>
