@@ -6,7 +6,7 @@ from datetime import datetime
 # 1. Page Configuration
 st.set_page_config(page_title="HOD Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
 
-# --- AREA CONFIGURATIONS (Update URLs for all 7 areas here) ---
+# --- AREA CONFIGURATIONS (Update URLs for all 8 areas here) ---
 AREA_CONFIGS = {
     "Area 02/03": {
         "title": "Area 02/03 Instrumentation Inventory",
@@ -35,6 +35,10 @@ AREA_CONFIGS = {
     "SPP Boiler": {
         "title": "SPP Boiler Instrumentation Inventory",
         "sheet_url": "YOUR_SPP_BOILER_CSV_URL_HERE",
+    },
+    "C&I Sub Store": {
+        "title": "C&I Sub Store Instrumentation Inventory",
+        "sheet_url": "YOUR_CNI_SUB_STORE_CSV_URL_HERE",
     }
 }
 
@@ -179,9 +183,8 @@ if "selected_area" not in st.session_state:
 
 inject_custom_css()
 
-# --- HOD LANDING PAGE (Dynamic 3-Column Block Grid for all 7 areas) ---
+# --- HOD LANDING PAGE (Dynamic 3-Column Block Grid for all 8 areas) ---
 if st.session_state["selected_area"] is None:
-    # Modern Executive Header Banner
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 35px;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">🏭 Master Instrumentation Portal</h1>
