@@ -107,11 +107,10 @@ def render_row(row, mapping, current_area_name):
     if total_key in row and pd.notna(row[total_key]):
         total_spares = safe_int(row[total_key])
     else:
-        # If no total column, sum available columns
         if current_area_name == "Area 02/03":
             total_spares = spares_store + spares_shop
         else:
-            total_spares = spares_store # Only main store for other areas
+            total_spares = spares_store
     
     name_lower = inst_name.lower()
     if "transmitter" in name_lower or "converter" in name_lower:
@@ -134,7 +133,6 @@ def render_row(row, mapping, current_area_name):
     show_name_flag = mapping.get("show_name", True)
     
     # Logic to hide Shopfloor column for areas other than 02/03
-    shop_header_html = '<div class="metric-lbl">Shopfloor</div>' if current_area_name == "Area 02/03" else ""
     shop_value_html = f'<div class="metric-box" style="flex: 1; min-width: 80px;"><div class="metric-lbl">Shopfloor</div><div class="metric-val">{spares_shop}</div></div>' if current_area_name == "Area 02/03" else ""
 
     card_html = f"""
@@ -271,4 +269,231 @@ if st.session_state["global_search_mode"]:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">🔢 Exact Material Code Locator</h1>
-            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Enter the exact material code number to precisely scan which area
+            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Enter the exact material code number to precisely scan which area holds it and check its live stock quantities.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    sample_code_hint = "e.g., 86501873151"
+    if "data_timestamp" not in st.session_state:
+        st.session_state["data_timestamp"] = int(time.time())
+
+    for area_key, area_cfg in AREA_CONFIGS.items():
+        if "YOUR_" in area_cfg["sheet_url"]:
+            continue
+        try:
+            df_sample = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
+            df_sample.columns = df_sample.columns.str.strip()
+            mapping = resolve_columns(df_sample)
+            valid_codes = df_sample[mapping["material"]].dropna().apply(clean_material_code)
+            valid_codes = valid_codes[valid_codes != "N/A"]
+            if not valid_codes.empty:
+                sample_code_hint = f"e.g., {valid_codes.iloc[0]}"
+                break
+        except Exception:
+            pass
+
+    search_code = st.text_input(f"Enter Exact Material Code ({sample_code_hint}):", "").strip()
+
+    if search_code:
+        all_results = []
+        
+        for area_key, area_cfg in AREA_CONFIGS.items():
+            if "YOUR_" in area_cfg["sheet_url"]:
+                continue
+            try:
+                df_area = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
+                df_area.columns = df_area.columns.str.strip()
+                mapping = resolve_columns(df_area)
+                mat_col = mapping["material"]
+                
+                if mat_col in df_area.columns:
+                    cleaned_codes = df_area[mat_col].apply(clean_material_code)
+                    mask = cleaned_codes == search_code
+                    matched_rows = df_area[mask]
+                    for _, r in matched_rows.iterrows():
+                        r_dict = r.to_dict()
+                        r_dict["Area_Name"] = area_key
+                        r_dict["Resolved_Mapping"] = mapping
+                        all_results.append(r_dict)
+            except Exception as e:
+                pass
+
+        if all_results:
+            res_df = pd.DataFrame(all_results)
+            st.success(f"Found match for material code **{search_code}** in {len(res_df)} location(s) across the plant!")
+            
+            for _, row in res_df.iterrows():
+                area_tag = row["Area_Name"]
+                mapping = row["Resolved_Mapping"]
+                mapping["show_name"] = True
+                
+                inst_name = str(row[mapping["name"]]).strip() if mapping["name"] in row and pd.notna(row[mapping["name"]]) else "No Name"
+                mat_code_val = clean_material_code(row[mapping["material"]])
+                full_spec = str(row[mapping["specs"]]).strip() if mapping["specs"] in row and pd.notna(row[mapping["specs"]]) else "No Specs Added"
+                
+                field_count = safe_int(row[mapping["field"]]) if mapping["field"] in row else 0
+                spares_store = safe_int(row[mapping["store"]]) if mapping["store"] in row else 0
+                spares_shop = safe_int(row[mapping["shop"]]) if mapping["shop"] in row else 0
+                
+                if mapping["total"] in row and pd.notna(row[mapping["total"]]):
+                    total_spares = safe_int(row[mapping["total"]])
+                else:
+                    total_spares = spares_store + spares_shop if area_tag == "Area 02/03" else spares_store
+                
+                name_lower = inst_name.lower()
+                if "transmitter" in name_lower or "converter" in name_lower:
+                    healthy_stock = max(2, int(field_count * 0.20))
+                elif "element" in name_lower or "switch" in name_lower or "probe" in name_lower:
+                    healthy_stock = max(3, int(field_count * 0.30))
+                else:
+                    healthy_stock = max(2, int(field_count * 0.15))
+                
+                shortfall_excess = total_spares - healthy_stock
+                cleaned_spec = full_spec.replace('•', '').strip()
+
+                if shortfall_excess < 0:
+                    status_html = f'<div class="status-badge status-shortfall">🚨 Shortfall ({shortfall_excess})</div>'
+                elif shortfall_excess > 0:
+                    status_html = f'<div class="status-badge status-surplus">✅ Surplus (+{shortfall_excess})</div>'
+                else:
+                    status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
+
+                shop_value_html = f'<div class="metric-box" style="flex: 1; min-width: 80px;"><div class="metric-lbl">Shop</div><div class="metric-val">{spares_shop}</div></div>' if area_tag == "Area 02/03" else ""
+
+                card_html = f"""
+                <div class="inventory-card">
+                    <div style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">📍 Plant Area: {area_tag}</div>
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        <div style="flex: 2; min-width: 180px;">
+                            <h4 style="margin:0; color:#0f172a; font-size:16px; font-weight:700;">{inst_name}</h4>
+                            <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code_val}</div>
+                        </div>
+                        <div style="flex: 2.5; min-width: 200px;">
+                            <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
+                        </div>
+                        <div style="flex: 1; min-width: 80px;" class="metric-box">
+                            <div class="metric-lbl">Field</div><div class="metric-val">{field_count}</div>
+                        </div>
+                        <div style="flex: 1; min-width: 80px;" class="metric-box">
+                            <div class="metric-lbl">Store-Room</div><div class="metric-val">{spares_store}</div>
+                        </div>
+                        {shop_value_html}
+                        <div style="flex: 1; min-width: 80px;" class="metric-box">
+                            <div class="metric-lbl">Total</div><div class="metric-val">{total_spares}</div>
+                        </div>
+                        <div style="flex: 1.5; min-width: 120px; text-align: center;">
+                            {status_html}
+                        </div>
+                    </div>
+                </div>
+                """
+                st.components.v1.html(card_html, height=135, scrolling=False)
+        else:
+            st.info(f"No item with exact material code '{search_code}' found across the connected areas.")
+    else:
+        st.info(f"💡 Type an exact material code above to instantly locate it across all plant areas ({sample_code_hint}).")
+
+# --- HOD LANDING PAGE (Dynamic 3-Column Block Grid for all 8 areas) ---
+elif st.session_state["selected_area"] is None:
+    st.markdown("""
+        <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 35px;">
+            <h1 style="color: #0f172a !important; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">🏭 Master Instrumentation Portal</h1>
+            <p style="color: #475569 !important; margin-top: 10px; font-size: 15px; font-weight: 500;">Select an operational area block below to access live inventory metrics</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    areas = list(AREA_CONFIGS.keys())
+    
+    for i in range(0, len(areas), 3):
+        cols = st.columns(3)
+        for j in range(3):
+            if i + j < len(areas):
+                area_name = areas[i + j]
+                with cols[j]:
+                    st.markdown(f"""
+                        <div style="background: #ffffff; padding: 22px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 15px; text-align: center;">
+                            <h3 style="margin-top: 0; margin-bottom: 8px; color: #0f172a; font-size: 18px; font-weight: 700;">🎛️ {area_name}</h3>
+                            <p style="color: #64748b; font-size: 13px; line-height: 1.4; margin: 0; min-height: 38px;">Live instrumentation spares and inventory status tracker.</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    if st.button(f"Open {area_name}", use_container_width=True, key=f"btn_{area_name}"):
+                        st.session_state["selected_area"] = area_name
+                        st.rerun()
+
+# --- ACTIVE AREA DASHBOARD VIEW ---
+else:
+    current_area = st.session_state["selected_area"]
+    config = AREA_CONFIGS[current_area]
+
+    if st.sidebar.button("⬅️ Back to Master Portal Grid"):
+        st.session_state["selected_area"] = None
+        st.rerun()
+
+    if "data_timestamp" not in st.session_state:
+        st.session_state["data_timestamp"] = int(time.time())
+
+    st.components.v1.html(f"""
+        <div style="background: #ffffff; padding: 22px 25px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <h1 style="color: #0f172a !important; margin: 0; font-size: 24px; font-weight: 700;">
+                🏭 {config['title']}
+            </h1>
+            <p style="color: #475569 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+                Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 600;">Amit Jangra</span>
+            </p>
+        </div>
+    """, height=100)
+    
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+
+    try:
+        df = fetch_data(config["sheet_url"], st.session_state["data_timestamp"])
+        df.columns = df.columns.str.strip()
+        
+        mapping = resolve_columns(df)
+        NAME_COL = mapping["name"]
+        TOTAL_SPARES_COL = mapping["total"]
+
+        df = df.dropna(subset=[NAME_COL])
+        
+        st.sidebar.header("🔍 Filter Controls")
+        all_instruments = ["All System Data"] + list(df[NAME_COL].dropna().unique())
+        selected_instrument = st.sidebar.selectbox("Select Instrument Category:", all_instruments)
+        st.sidebar.markdown("---")
+
+        if selected_instrument != "All System Data":
+            df = df[df[NAME_COL].str.strip() == selected_instrument]
+
+        unique_names_ordered = df[NAME_COL].unique()
+
+        for current_name in unique_names_ordered:
+            sub_df = df[df[NAME_COL] == current_name]
+            entry_count = len(sub_df)
+
+            if entry_count == 1:
+                row = sub_df.iloc[0]
+                mapping["show_name"] = True
+                render_row(row, mapping, current_area)
+            else:
+                total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows() if TOTAL_SPARES_COL in r)
+                
+                st.markdown(f"""
+                <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 8px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <span style="font-size: 15px !important; font-weight: 700 !important; color: #0f172a !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        📂 {current_name} — ({entry_count} Variants Grouped) | Combined Stock: {total_current_spares}
+                    </span>
+                    <span style="font-size: 12px; color: #475569; font-weight: bold; margin-right: 5px;">▼</span>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                with st.expander(" "):
+                    for idx, row in sub_df.iterrows():
+                        mapping["show_name"] = False
+                        render_row(row, mapping, current_area)
+
+    except Exception as e:
+        st.error(f"Error accessing Google Sheets Database for {current_area}: {e}")
+
+    if st.sidebar.button("🔄 Sync Live Data Now"):
+        st.cache_data.clear()
+        st.session_state["data_timestamp"] = int(time.time())
+        st.rerun()
