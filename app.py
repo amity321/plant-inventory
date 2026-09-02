@@ -177,14 +177,144 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url)
     return df
 
-# Initialize session state for area selection if not present
+# Initialize session state for navigation if not present
 if "selected_area" not in st.session_state:
     st.session_state["selected_area"] = None
 
+if "global_search_mode" not in st.session_state:
+    st.session_state["global_search_mode"] = False
+
 inject_custom_css()
 
+# --- SIDEBAR NAVIGATION CONTROLS ---
+st.sidebar.markdown("### 🧭 Navigation & Tools")
+if st.sidebar.button("🔍 Cross-Area Global Finder", use_container_width=True):
+    st.session_state["global_search_mode"] = True
+    st.session_state["selected_area"] = None
+    st.rerun()
+
+if st.sidebar.button("🏠 Home / Portal Grid", use_container_width=True):
+    st.session_state["global_search_mode"] = False
+    st.session_state["selected_area"] = None
+    st.rerun()
+
+st.sidebar.markdown("---")
+
+# --- GLOBAL COMPARISON / SEARCH MODE ---
+if st.session_state["global_search_mode"]:
+    st.markdown("""
+        <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
+            <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">🌐 Cross-Area Material & Instrument Finder</h1>
+            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Search any specific material name or code to compare stocks across all plant areas simultaneously.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    search_query = st.text_input("🔍 Type Instrument Name, Material Code or Keywords (e.g., Transmitter, Level, Valve):", "").strip().lower()
+
+    if "data_timestamp" not in st.session_state:
+        st.session_state["data_timestamp"] = int(time.time())
+
+    if search_query:
+        all_results = []
+        
+        # Scan through all areas
+        for area_key, area_cfg in AREA_CONFIGS.items():
+            # Skip unconfigured placeholders if any
+            if "YOUR_" in area_cfg["sheet_url"]:
+                continue
+            try:
+                df_area = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
+                df_area.columns = df_area.columns.str.strip()
+                df_area = df_area.dropna(subset=["Instrument Name"])
+                
+                # Filter rows matching query in Name or Specs
+                mask = df_area["Instrument Name"].astype(str).str.lower().str.contains(search_query) | \
+                       df_area["Specs"].astype(str).str.lower().str.contains(search_query)
+                
+                matched_rows = df_area[mask]
+                for _, r in matched_rows.iterrows():
+                    r_dict = r.to_dict()
+                    r_dict["Area_Name"] = area_key
+                    all_results.append(r_dict)
+            except Exception as e:
+                pass # Skip failed or unlinked sheets gracefully
+
+        if all_results:
+            res_df = pd.DataFrame(all_results)
+            st.success(f"Found {len(res_df)} matching records across the plant!")
+            
+            # Display comparison table / records
+            NAME_COL = "Instrument Name"
+            SPECS_COL = "Specs"
+            FIELD_COL = "Existing Instrument on Field"
+            SPARES_M7_COL = "Remaining Spares in M7"
+            SPARES_SHOP_COL = "Remaining Spares in Shop-Floor"
+            TOTAL_SPARES_COL = "Total Spares"
+
+            for _, row in res_df.iterrows():
+                area_tag = row["Area_Name"]
+                inst_name = str(row[NAME_COL]).strip()
+                full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
+                
+                field_count = safe_int(row[FIELD_COL])
+                spares_m7 = safe_int(row[SPARES_M7_COL])
+                spares_shop = safe_int(row[SPARES_SHOP_COL])
+                total_spares = safe_int(row[TOTAL_SPARES_COL])
+                
+                name_lower = inst_name.lower()
+                if "transmitter" in name_lower or "converter" in name_lower:
+                    healthy_stock = max(2, int(field_count * 0.20))
+                elif "element" in name_lower or "switch" in name_lower or "probe" in name_lower:
+                    healthy_stock = max(3, int(field_count * 0.30))
+                else:
+                    healthy_stock = max(2, int(field_count * 0.15))
+                
+                shortfall_excess = total_spares - healthy_stock
+                cleaned_spec = full_spec.replace('•', '').strip()
+
+                if shortfall_excess < 0:
+                    status_html = f'<div class="status-badge status-shortfall">🚨 Shortfall ({shortfall_excess})</div>'
+                elif shortfall_excess > 0:
+                    status_html = f'<div class="status-badge status-surplus">✅ Surplus (+{shortfall_excess})</div>'
+                else:
+                    status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
+
+                card_html = f"""
+                <div class="inventory-card">
+                    <div style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">📍 Area: {area_tag}</div>
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        <div style="flex: 2; min-width: 180px;">
+                            <h4 style="margin:0; color:#0f172a; font-size:16px; font-weight:700;">{inst_name}</h4>
+                        </div>
+                        <div style="flex: 2.5; min-width: 220px;">
+                            <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
+                        </div>
+                        <div style="flex: 1; min-width: 80px;" class="metric-box">
+                            <div class="metric-lbl">Field</div><div class="metric-val">{field_count}</div>
+                        </div>
+                        <div style="flex: 1; min-width: 80px;" class="metric-box">
+                            <div class="metric-lbl">M7 Store</div><div class="metric-val">{spares_m7}</div>
+                        </div>
+                        <div style="flex: 1; min-width: 80px;" class="metric-box">
+                            <div class="metric-lbl">Shop</div><div class="metric-val">{spares_shop}</div>
+                        </div>
+                        <div style="flex: 1; min-width: 80px;" class="metric-box">
+                            <div class="metric-lbl">Total</div><div class="metric-val">{total_spares}</div>
+                        </div>
+                        <div style="flex: 1.5; min-width: 120px; text-align: center;">
+                            {status_html}
+                        </div>
+                    </div>
+                </div>
+                """
+                st.components.v1.html(card_html, height=125, scrolling=False)
+        else:
+            st.info("No matching instrumentation items found across connected areas for this search query.")
+    else:
+        st.info("💡 Enter a keyword or material code above to scan and aggregate stock records across all operational sections.")
+
 # --- HOD LANDING PAGE (Dynamic 3-Column Block Grid for all 8 areas) ---
-if st.session_state["selected_area"] is None:
+elif st.session_state["selected_area"] is None:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 35px;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">🏭 Master Instrumentation Portal</h1>
@@ -216,7 +346,7 @@ else:
     current_area = st.session_state["selected_area"]
     config = AREA_CONFIGS[current_area]
 
-    if st.sidebar.button("⬅️ Back to HOD Master Portal"):
+    if st.sidebar.button("⬅️ Back to Master Portal Grid"):
         st.session_state["selected_area"] = None
         st.rerun()
 
