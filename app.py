@@ -48,7 +48,6 @@ def clean_material_code(val):
     s_val = str(val).strip()
     if s_val == "" or s_val.lower() == "nan":
         return "N/A"
-    # Remove decimal .0 if present from float conversion
     if s_val.endswith(".0"):
         s_val = s_val[:-2]
     return s_val
@@ -87,7 +86,7 @@ def render_row(row, NAME_COL, MATERIAL_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL,
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
             <div style="flex: 2; min-width: 180px;">
                 <h4 style="margin:0; color:#0f172a; font-size:16px; font-weight:700;">{inst_name if show_name else ""}</h4>
-                <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">Code: {mat_code}</div>
+                <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code}</div>
             </div>
             <div style="flex: 2.5; min-width: 200px;">
                 <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
@@ -187,7 +186,7 @@ def safe_int(val):
 @st.cache_data(ttl=60)
 def fetch_data(url, timestamp):
     live_url = f"{url}&t={timestamp}"
-    df = pd.read_csv(live_url, dtype=str) # Read all columns as string initially to protect material codes
+    df = pd.read_csv(live_url, dtype=str)
     return df
 
 # Initialize session state for navigation if not present
@@ -244,7 +243,6 @@ if st.session_state["global_search_mode"]:
                         break
                 
                 if mat_col:
-                    # Clean codes in dataframe for clean comparison
                     cleaned_codes = df_area[mat_col].apply(clean_material_code)
                     mask = cleaned_codes == search_code
                     matched_rows = df_area[mask]
@@ -303,7 +301,7 @@ if st.session_state["global_search_mode"]:
                     <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                         <div style="flex: 2; min-width: 180px;">
                             <h4 style="margin:0; color:#0f172a; font-size:16px; font-weight:700;">{inst_name}</h4>
-                            <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">Code: {mat_code_val}</div>
+                            <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code_val}</div>
                         </div>
                         <div style="flex: 2.5; min-width: 200px;">
                             <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
