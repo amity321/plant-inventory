@@ -221,7 +221,7 @@ if st.session_state["global_search_mode"]:
         </div>
     """, unsafe_allow_html=True)
 
-    search_code = st.text_input("Enter Exact Material Code (e.g., 83932628):", "").strip()
+    search_code = st.text_input("Enter Exact Material Code (e.g., 86501873151):", "").strip()
 
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
