@@ -52,16 +52,57 @@ def clean_material_code(val):
         s_val = s_val[:-2]
     return s_val
 
-# Helper function to render rows using fallback display wrapper
-def render_row(row, NAME_COL, MATERIAL_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
-    inst_name = str(row[NAME_COL]).strip() if pd.notna(row[NAME_COL]) else "No Name"
-    mat_code = clean_material_code(row[MATERIAL_COL]) if MATERIAL_COL in row else "N/A"
-    full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
+def resolve_columns(df):
+    """Dynamically resolve column names across different area sheets with flexible fallbacks."""
+    cols = df.columns
     
-    field_count = safe_int(row[FIELD_COL])
-    spares_m7 = safe_int(row[SPARES_M7_COL])
-    spares_shop = safe_int(row[SPARES_SHOP_COL])
-    total_spares = safe_int(row[TOTAL_SPARES_COL])
+    mat_col, field_col, store_col, shop_col, total_col, specs_col, name_col = None, None, None, None, None, None, None
+    
+    for col in cols:
+        c_low = col.lower()
+        if not mat_col and ("code" in c_low or "mat" in c_low):
+            mat_col = col
+        elif not field_col and ("field" in c_low or "existing" in c_low):
+            field_col = col
+        elif not store_col and ("store" in c_low or "m7" in c_low or "room" in c_low):
+            store_col = col
+        elif not shop_col and ("shop" in c_low or "floor" in c_low):
+            shop_col = col
+        elif not total_col and "total" in c_low:
+            total_col = col
+        elif not specs_col and "spec" in c_low:
+            specs_col = col
+        elif not name_col and ("instrument" in c_low or "name" in c_low):
+            name_col = col
+
+    return {
+        "name": name_col or "Instrument Name",
+        "material": mat_col or "Material Code",
+        "specs": specs_col or "Specs",
+        "field": field_col or "Existing Instrument on Field",
+        "store": store_col or "Remaining Spares in Store-Room",
+        "shop": shop_col or "Remaining Spares in Shop-Floor",
+        "total": total_col or "Total Spares"
+    }
+
+# Helper function to render rows using dynamic column mappings
+def render_row(row, mapping):
+    name_key = mapping["name"]
+    mat_key = mapping["material"]
+    specs_key = mapping["specs"]
+    field_key = mapping["field"]
+    store_key = mapping["store"]
+    shop_key = mapping["shop"]
+    total_key = mapping["total"]
+
+    inst_name = str(row[name_key]).strip() if name_key in row and pd.notna(row[name_key]) else "No Name"
+    mat_code = clean_material_code(row[mat_key]) if mat_key in row else "N/A"
+    full_spec = str(row[specs_key]).strip() if specs_key in row and pd.notna(row[specs_key]) else "No Specs Added"
+    
+    field_count = safe_int(row[field_key]) if field_key in row else 0
+    spares_store = safe_int(row[store_key]) if store_key in row else 0
+    spares_shop = safe_int(row[shop_key]) if shop_key in row else 0
+    total_spares = safe_int(row[total_key]) if total_key in row else (spares_store + spares_shop)
     
     name_lower = inst_name.lower()
     if "transmitter" in name_lower or "converter" in name_lower:
@@ -81,11 +122,12 @@ def render_row(row, NAME_COL, MATERIAL_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL,
     else:
         status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
 
+    show_name_flag = mapping.get("show_name", True)
     card_html = f"""
     <div class="inventory-card">
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
             <div style="flex: 2; min-width: 180px;">
-                <h4 style="margin:0; color:#0f172a; font-size:16px; font-weight:700;">{inst_name if show_name else ""}</h4>
+                <h4 style="margin:0; color:#0f172a; font-size:16px; font-weight:700;">{inst_name if show_name_flag else ""}</h4>
                 <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code}</div>
             </div>
             <div style="flex: 2.5; min-width: 200px;">
@@ -95,7 +137,7 @@ def render_row(row, NAME_COL, MATERIAL_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL,
                 <div class="metric-lbl">On Field</div><div class="metric-val">{field_count}</div>
             </div>
             <div style="flex: 1; min-width: 80px;" class="metric-box">
-                <div class="metric-lbl">M7 Store</div><div class="metric-val">{spares_m7}</div>
+                <div class="metric-lbl">Store-Room</div><div class="metric-val">{spares_store}</div>
             </div>
             <div style="flex: 1; min-width: 80px;" class="metric-box">
                 <div class="metric-lbl">Shopfloor</div><div class="metric-val">{spares_shop}</div>
@@ -221,7 +263,6 @@ if st.session_state["global_search_mode"]:
         </div>
     """, unsafe_allow_html=True)
 
-    # Automatically fetch sample codes from active sheets if available to make the placeholder dynamic/helpful
     sample_code_hint = "e.g., 86501873151"
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
@@ -232,14 +273,12 @@ if st.session_state["global_search_mode"]:
         try:
             df_sample = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
             df_sample.columns = df_sample.columns.str.strip()
-            for col in df_sample.columns:
-                if "code" in col.lower() or "mat" in col.lower():
-                    valid_codes = df_sample[col].dropna().apply(clean_material_code)
-                    valid_codes = valid_codes[valid_codes != "N/A"]
-                    if not valid_codes.empty:
-                        sample_code_hint = f"e.g., {valid_codes.iloc[0]}"
-                        break
-            break
+            mapping = resolve_columns(df_sample)
+            valid_codes = df_sample[mapping["material"]].dropna().apply(clean_material_code)
+            valid_codes = valid_codes[valid_codes != "N/A"]
+            if not valid_codes.empty:
+                sample_code_hint = f"e.g., {valid_codes.iloc[0]}"
+                break
         except Exception:
             pass
 
@@ -254,21 +293,17 @@ if st.session_state["global_search_mode"]:
             try:
                 df_area = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
                 df_area.columns = df_area.columns.str.strip()
+                mapping = resolve_columns(df_area)
+                mat_col = mapping["material"]
                 
-                mat_col = None
-                for col in df_area.columns:
-                    if "code" in col.lower() or "mat" in col.lower():
-                        mat_col = col
-                        break
-                
-                if mat_col:
+                if mat_col in df_area.columns:
                     cleaned_codes = df_area[mat_col].apply(clean_material_code)
                     mask = cleaned_codes == search_code
                     matched_rows = df_area[mask]
                     for _, r in matched_rows.iterrows():
                         r_dict = r.to_dict()
                         r_dict["Area_Name"] = area_key
-                        r_dict["Matched_Mat_Col"] = mat_col
+                        r_dict["Resolved_Mapping"] = mapping
                         all_results.append(r_dict)
             except Exception as e:
                 pass
@@ -277,24 +312,20 @@ if st.session_state["global_search_mode"]:
             res_df = pd.DataFrame(all_results)
             st.success(f"Found match for material code **{search_code}** in {len(res_df)} location(s) across the plant!")
             
-            NAME_COL = "Instrument Name"
-            SPECS_COL = "Specs"
-            FIELD_COL = "Existing Instrument on Field"
-            SPARES_M7_COL = "Remaining Spares in M7"
-            SPARES_SHOP_COL = "Remaining Spares in Shop-Floor"
-            TOTAL_SPARES_COL = "Total Spares"
-
             for _, row in res_df.iterrows():
                 area_tag = row["Area_Name"]
-                mat_col_used = row["Matched_Mat_Col"]
-                inst_name = str(row[NAME_COL]).strip() if pd.notna(row[NAME_COL]) else "No Name"
-                mat_code_val = clean_material_code(row[mat_col_used])
-                full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
+                mapping = row["Resolved_Mapping"]
+                mapping["show_name"] = True
                 
-                field_count = safe_int(row[FIELD_COL])
-                spares_m7 = safe_int(row[SPARES_M7_COL])
-                spares_shop = safe_int(row[SPARES_SHOP_COL])
-                total_spares = safe_int(row[TOTAL_SPARES_COL])
+                # Render card with area tag header
+                inst_name = str(row[mapping["name"]]).strip() if mapping["name"] in row and pd.notna(row[mapping["name"]]) else "No Name"
+                mat_code_val = clean_material_code(row[mapping["material"]])
+                full_spec = str(row[mapping["specs"]]).strip() if mapping["specs"] in row and pd.notna(row[mapping["specs"]]) else "No Specs Added"
+                
+                field_count = safe_int(row[mapping["field"]]) if mapping["field"] in row else 0
+                spares_store = safe_int(row[mapping["store"]]) if mapping["store"] in row else 0
+                spares_shop = safe_int(row[mapping["shop"]]) if mapping["shop"] in row else 0
+                total_spares = safe_int(row[mapping["total"]]) if mapping["total"] in row else (spares_store + spares_shop)
                 
                 name_lower = inst_name.lower()
                 if "transmitter" in name_lower or "converter" in name_lower:
@@ -329,7 +360,7 @@ if st.session_state["global_search_mode"]:
                             <div class="metric-lbl">Field</div><div class="metric-val">{field_count}</div>
                         </div>
                         <div style="flex: 1; min-width: 80px;" class="metric-box">
-                            <div class="metric-lbl">M7 Store</div><div class="metric-val">{spares_m7}</div>
+                            <div class="metric-lbl">Store-Room</div><div class="metric-val">{spares_store}</div>
                         </div>
                         <div style="flex: 1; min-width: 80px;" class="metric-box">
                             <div class="metric-lbl">Shop</div><div class="metric-val">{spares_shop}</div>
@@ -388,7 +419,7 @@ else:
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
 
-    # Styled Dashboard Header Panel (Reflecting Amit Jangra as manager)
+    # Styled Dashboard Header Panel
     st.components.v1.html(f"""
         <div style="background: #ffffff; padding: 22px 25px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 24px; font-weight: 700;">
@@ -405,23 +436,13 @@ else:
     try:
         df = fetch_data(config["sheet_url"], st.session_state["data_timestamp"])
         df.columns = df.columns.str.strip()
-        df = df.dropna(subset=["Instrument Name"])
-
-        NAME_COL = "Instrument Name"
         
-        MATERIAL_COL = None
-        for col in df.columns:
-            if "code" in col.lower() or "mat" in col.lower():
-                MATERIAL_COL = col
-                break
-        if not MATERIAL_COL:
-            MATERIAL_COL = "Material Code"
+        # Dynamically resolve columns for this specific area CSV
+        mapping = resolve_columns(df)
+        NAME_COL = mapping["name"]
+        TOTAL_SPARES_COL = mapping["total"]
 
-        SPECS_COL = "Specs"
-        FIELD_COL = "Existing Instrument on Field"
-        SPARES_M7_COL = "Remaining Spares in M7"
-        SPARES_SHOP_COL = "Remaining Spares in Shop-Floor"
-        TOTAL_SPARES_COL = "Total Spares"
+        df = df.dropna(subset=[NAME_COL])
         
         st.sidebar.header("🔍 Filter Controls")
         all_instruments = ["All System Data"] + list(df[NAME_COL].dropna().unique())
@@ -439,9 +460,10 @@ else:
 
             if entry_count == 1:
                 row = sub_df.iloc[0]
-                render_row(row, NAME_COL, MATERIAL_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True)
+                mapping["show_name"] = True
+                render_row(row, mapping)
             else:
-                total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows())
+                total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows() if TOTAL_SPARES_COL in r)
                 
                 st.markdown(f"""
                 <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 8px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
@@ -454,7 +476,8 @@ else:
                 
                 with st.expander(" "):
                     for idx, row in sub_df.iterrows():
-                        render_row(row, NAME_COL, MATERIAL_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=False)
+                        mapping["show_name"] = False
+                        render_row(row, mapping)
 
     except Exception as e:
         st.error(f"Error accessing Google Sheets Database for {current_area}: {e}")
@@ -463,4 +486,3 @@ else:
         st.cache_data.clear()
         st.session_state["data_timestamp"] = int(time.time())
         st.rerun()
-        
