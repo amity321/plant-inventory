@@ -42,10 +42,21 @@ AREA_CONFIGS = {
     }
 }
 
+def clean_material_code(val):
+    if pd.isna(val):
+        return "N/A"
+    s_val = str(val).strip()
+    if s_val == "" or s_val.lower() == "nan":
+        return "N/A"
+    # Remove decimal .0 if present from float conversion
+    if s_val.endswith(".0"):
+        s_val = s_val[:-2]
+    return s_val
+
 # Helper function to render rows using fallback display wrapper
 def render_row(row, NAME_COL, MATERIAL_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
     inst_name = str(row[NAME_COL]).strip() if pd.notna(row[NAME_COL]) else "No Name"
-    mat_code = str(row[MATERIAL_COL]).strip() if MATERIAL_COL in row and pd.notna(row[MATERIAL_COL]) else "N/A"
+    mat_code = clean_material_code(row[MATERIAL_COL]) if MATERIAL_COL in row else "N/A"
     full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
     
     field_count = safe_int(row[FIELD_COL])
@@ -176,7 +187,7 @@ def safe_int(val):
 @st.cache_data(ttl=60)
 def fetch_data(url, timestamp):
     live_url = f"{url}&t={timestamp}"
-    df = pd.read_csv(live_url)
+    df = pd.read_csv(live_url, dtype=str) # Read all columns as string initially to protect material codes
     return df
 
 # Initialize session state for navigation if not present
@@ -190,7 +201,7 @@ inject_custom_css()
 
 # --- SIDEBAR NAVIGATION CONTROLS ---
 st.sidebar.markdown("### 🧭 Navigation & Tools")
-if st.sidebar.button("🔍 Material Code Search", use_container_width=True):
+if st.sidebar.button("🔍 Exact Material Code Search", use_container_width=True):
     st.session_state["global_search_mode"] = True
     st.session_state["selected_area"] = None
     st.rerun()
@@ -211,7 +222,7 @@ if st.session_state["global_search_mode"]:
         </div>
     """, unsafe_allow_html=True)
 
-    search_code = st.text_input("Enter Material Code (e.g., 86501873151):", "").strip()
+    search_code = st.text_input("Enter Exact Material Code (e.g., 83932628):", "").strip()
 
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
@@ -219,7 +230,6 @@ if st.session_state["global_search_mode"]:
     if search_code:
         all_results = []
         
-        # Scan through all areas
         for area_key, area_cfg in AREA_CONFIGS.items():
             if "YOUR_" in area_cfg["sheet_url"]:
                 continue
@@ -227,7 +237,6 @@ if st.session_state["global_search_mode"]:
                 df_area = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
                 df_area.columns = df_area.columns.str.strip()
                 
-                # Identify Material Code column dynamically (e.g., 'Material Code', 'Code', 'Material')
                 mat_col = None
                 for col in df_area.columns:
                     if "code" in col.lower() or "mat" in col.lower():
@@ -235,8 +244,9 @@ if st.session_state["global_search_mode"]:
                         break
                 
                 if mat_col:
-                    # Exact string match search on code column
-                    mask = df_area[mat_col].astype(str).str.strip() == search_code
+                    # Clean codes in dataframe for clean comparison
+                    cleaned_codes = df_area[mat_col].apply(clean_material_code)
+                    mask = cleaned_codes == search_code
                     matched_rows = df_area[mask]
                     for _, r in matched_rows.iterrows():
                         r_dict = r.to_dict()
@@ -261,7 +271,7 @@ if st.session_state["global_search_mode"]:
                 area_tag = row["Area_Name"]
                 mat_col_used = row["Matched_Mat_Col"]
                 inst_name = str(row[NAME_COL]).strip() if pd.notna(row[NAME_COL]) else "No Name"
-                mat_code_val = str(row[mat_col_used]).strip()
+                mat_code_val = clean_material_code(row[mat_col_used])
                 full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
                 
                 field_count = safe_int(row[FIELD_COL])
@@ -382,14 +392,13 @@ else:
 
         NAME_COL = "Instrument Name"
         
-        # Dynamically find the material code column name
         MATERIAL_COL = None
         for col in df.columns:
             if "code" in col.lower() or "mat" in col.lower():
                 MATERIAL_COL = col
                 break
         if not MATERIAL_COL:
-            MATERIAL_COL = "Material Code"  # fallback default name
+            MATERIAL_COL = "Material Code"
 
         SPECS_COL = "Specs"
         FIELD_COL = "Existing Instrument on Field"
@@ -434,4 +443,6 @@ else:
         st.error(f"Error accessing Google Sheets Database for {current_area}: {e}")
 
     if st.sidebar.button("🔄 Sync Live Data Now"):
-        st
+        st.cache_data.clear()
+        st.session_state["data_timestamp"] = int(time.time())
+        st.rerun()
