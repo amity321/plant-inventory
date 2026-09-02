@@ -22,7 +22,7 @@ AREA_CONFIGS = {
     },
     "Area 08": {
         "title": "Area 08 Instrumentation Inventory",
-        "sheet_url": "YOUR_AREA_08_CSV_URL_HERE",
+        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSEnzn9n4L_uGO9VkLMe8_ylvyaZkskIZZEFJSTqXDQJJ1uEHevl9FfKWhnpcltGsDlhwsxnIEOflaK/pub?gid=1609301093&single=true&output=csv",
     },
     "Area 09/10": {
         "title": "Area 09/10 Instrumentation Inventory",
