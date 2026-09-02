@@ -142,10 +142,11 @@ inject_custom_css()
 
 # --- HOD LANDING PAGE (Dynamic 3-Column Block Grid for all 7 areas) ---
 if st.session_state["selected_area"] is None:
+    # High-contrast light background banner block
     st.markdown("""
-        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #ffffff !important; margin: 0; font-size: 30px;">🏭 Master Instrumentation Portal</h1>
-            <p style="color: #94a3b8 !important; margin-top: 10px; font-size: 15px;">Select an operational area block below to access live inventory metrics</p>
+        <div style="background: #ffffff; padding: 30px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 10px rgba(0,0,0,0.03); text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #0f172a !important; margin: 0; font-size: 30px;">🏭 Master Instrumentation Portal</h1>
+            <p style="color: #475569 !important; margin-top: 10px; font-size: 15px; font-weight: 500;">Select an operational area block below to access live inventory metrics</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -159,16 +160,16 @@ if st.session_state["selected_area"] is None:
                 area_name = areas[i + j]
                 with cols[j]:
                     st.markdown(f"""
-                        <div style="background: #ffffff; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 15px; text-align: center;">
-                            <h3 style="margin-top: 0; color: #1e293b;">🎛️ {area_name}</h3>
-                            <p style="color: #64748b; font-size: 13px; min-height: 38px;">Live instrumentation spares and inventory status tracker.</p>
+                        <div style="background: #ffffff; padding: 20px; border-radius: 10px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 15px; text-align: center;">
+                            <h3 style="margin-top: 0; color: #0f172a;">🎛️ {area_name}</h3>
+                            <p style="color: #475569; font-size: 13px; min-height: 38px;">Live instrumentation spares and inventory status tracker.</p>
                         </div>
                     """, unsafe_allow_html=True)
                     if st.button(f"Open {area_name}", use_container_width=True, key=f"btn_{area_name}"):
                         st.session_state["selected_area"] = area_name
                         st.rerun()
 
-# --- ACTIVE AREA DASHBOARD VIEW (No Password Needed) ---
+# --- ACTIVE AREA DASHBOARD VIEW ---
 else:
     current_area = st.session_state["selected_area"]
     config = AREA_CONFIGS[current_area]
@@ -182,12 +183,12 @@ else:
 
     # Styled Dashboard Header Panel
     st.components.v1.html(f"""
-        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 22px 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); font-family: sans-serif;">
-            <h1 style="color: #ffffff !important; margin: 0; font-size: 26px; font-weight: 700;">
+        <div style="background: #ffffff; padding: 22px 25px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: sans-serif;">
+            <h1 style="color: #0f172a !important; margin: 0; font-size: 26px; font-weight: 700;">
                 🏭 {config['title']}
             </h1>
-            <p style="color: #94a3b8 !important; margin: 6px 0 0 0; font-size: 13px;">
-                Live Spares Tracking Sheet &bull; Managed by <span style="color: #38bdf8; font-weight: 600;">Amit Jangra</span>
+            <p style="color: #475569 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+                Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 600;">Amit Jangra</span>
             </p>
         </div>
     """, height=105)
