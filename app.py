@@ -6,7 +6,7 @@ from datetime import datetime
 # 1. Page Configuration
 st.set_page_config(page_title="HOD Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
 
-# --- AREA CONFIGURATIONS (Update URLs for all 8 areas here) ---
+# --- AREA CONFIGURATIONS (Preserved URLs & Settings) ---
 AREA_CONFIGS = {
     "Area 02/03": {
         "title": "Area 02/03 Instrumentation Inventory",
@@ -221,10 +221,29 @@ if st.session_state["global_search_mode"]:
         </div>
     """, unsafe_allow_html=True)
 
-    search_code = st.text_input("Enter Exact Material Code (e.g., 86501873151):", "").strip()
-
+    # Automatically fetch sample codes from active sheets if available to make the placeholder dynamic/helpful
+    sample_code_hint = "e.g., 86501873151"
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
+
+    for area_key, area_cfg in AREA_CONFIGS.items():
+        if "YOUR_" in area_cfg["sheet_url"]:
+            continue
+        try:
+            df_sample = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
+            df_sample.columns = df_sample.columns.str.strip()
+            for col in df_sample.columns:
+                if "code" in col.lower() or "mat" in col.lower():
+                    valid_codes = df_sample[col].dropna().apply(clean_material_code)
+                    valid_codes = valid_codes[valid_codes != "N/A"]
+                    if not valid_codes.empty:
+                        sample_code_hint = f"e.g., {valid_codes.iloc[0]}"
+                        break
+            break
+        except Exception:
+            pass
+
+    search_code = st.text_input(f"Enter Exact Material Code ({sample_code_hint}):", "").strip()
 
     if search_code:
         all_results = []
@@ -328,7 +347,7 @@ if st.session_state["global_search_mode"]:
         else:
             st.info(f"No item with exact material code '{search_code}' found across the connected areas.")
     else:
-        st.info("💡 Type an exact material code above to instantly locate it across all plant areas.")
+        st.info(f"💡 Type an exact material code above to instantly locate it across all plant areas ({sample_code_hint}).")
 
 # --- HOD LANDING PAGE (Dynamic 3-Column Block Grid for all 8 areas) ---
 elif st.session_state["selected_area"] is None:
@@ -369,7 +388,7 @@ else:
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
 
-    # Styled Dashboard Header Panel
+    # Styled Dashboard Header Panel (Reflecting Amit Jangra as manager)
     st.components.v1.html(f"""
         <div style="background: #ffffff; padding: 22px 25px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 24px; font-weight: 700;">
@@ -444,3 +463,4 @@ else:
         st.cache_data.clear()
         st.session_state["data_timestamp"] = int(time.time())
         st.rerun()
+        
