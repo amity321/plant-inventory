@@ -43,8 +43,9 @@ AREA_CONFIGS = {
 }
 
 # Helper function to render rows using fallback display wrapper
-def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
-    inst_name = str(row[NAME_COL]).strip()
+def render_row(row, NAME_COL, MATERIAL_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True):
+    inst_name = str(row[NAME_COL]).strip() if pd.notna(row[NAME_COL]) else "No Name"
+    mat_code = str(row[MATERIAL_COL]).strip() if MATERIAL_COL in row and pd.notna(row[MATERIAL_COL]) else "N/A"
     full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
     
     field_count = safe_int(row[FIELD_COL])
@@ -74,33 +75,34 @@ def render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_C
     <div class="inventory-card">
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
             <div style="flex: 2; min-width: 180px;">
-                <h4 style="margin:0; color:#0f172a; font-size:17px; font-weight:700;">{inst_name if show_name else ""}</h4>
+                <h4 style="margin:0; color:#0f172a; font-size:16px; font-weight:700;">{inst_name if show_name else ""}</h4>
+                <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">Code: {mat_code}</div>
             </div>
-            <div style="flex: 2.5; min-width: 220px;">
+            <div style="flex: 2.5; min-width: 200px;">
                 <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
             </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
+            <div style="flex: 1; min-width: 80px;" class="metric-box">
                 <div class="metric-lbl">On Field</div><div class="metric-val">{field_count}</div>
             </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
+            <div style="flex: 1; min-width: 80px;" class="metric-box">
                 <div class="metric-lbl">M7 Store</div><div class="metric-val">{spares_m7}</div>
             </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
+            <div style="flex: 1; min-width: 80px;" class="metric-box">
                 <div class="metric-lbl">Shopfloor</div><div class="metric-val">{spares_shop}</div>
             </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
+            <div style="flex: 1; min-width: 80px;" class="metric-box">
                 <div class="metric-lbl">Total-Stock</div><div class="metric-val">{total_spares}</div>
             </div>
-            <div style="flex: 1; min-width: 90px;" class="metric-box">
+            <div style="flex: 1; min-width: 80px;" class="metric-box">
                 <div class="metric-lbl">AI Target</div><div class="metric-val">{healthy_stock}</div>
             </div>
-            <div style="flex: 1.5; min-width: 130px; text-align: center;">
+            <div style="flex: 1.5; min-width: 120px; text-align: center;">
                 {status_html}
             </div>
         </div>
     </div>
     """
-    st.components.v1.html(card_html, height=115, scrolling=False)
+    st.components.v1.html(card_html, height=125, scrolling=False)
 
 def inject_custom_css():
     css = """
@@ -110,7 +112,7 @@ def inject_custom_css():
     .inventory-card { 
         background-color: #ffffff; 
         border-radius: 12px; 
-        padding: 16px 20px; 
+        padding: 14px 18px; 
         box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
         border: 1px solid #e2e8f0; 
         margin-bottom: 15px; 
@@ -122,13 +124,13 @@ def inject_custom_css():
     }
     .metric-box { 
         text-align: center; 
-        padding: 8px; 
+        padding: 6px; 
         background-color: #f8fafc; 
         border-radius: 8px; 
         border: 1px solid #f1f5f9;
     }
     .metric-val { 
-        font-size: 18px; 
+        font-size: 17px; 
         font-weight: 700; 
         color: #0f172a; 
     }
@@ -137,7 +139,7 @@ def inject_custom_css():
         text-transform: uppercase; 
         color: #64748b; 
         font-weight: 600;
-        margin-bottom: 3px; 
+        margin-bottom: 2px; 
     }
     .status-badge { 
         display: inline-block; 
@@ -154,9 +156,9 @@ def inject_custom_css():
     .specs-box { 
         background-color: #f8fafc; 
         border-left: 3px solid #0284c7; 
-        padding: 8px 12px; 
+        padding: 6px 10px; 
         border-radius: 6px; 
-        font-size: 12px; 
+        font-size: 11.5px; 
         color: #334155; 
     }
     </style>
@@ -188,7 +190,7 @@ inject_custom_css()
 
 # --- SIDEBAR NAVIGATION CONTROLS ---
 st.sidebar.markdown("### 🧭 Navigation & Tools")
-if st.sidebar.button("🔍 Cross-Area Global Finder", use_container_width=True):
+if st.sidebar.button("🔍 Exact Material Code Search", use_container_width=True):
     st.session_state["global_search_mode"] = True
     st.session_state["selected_area"] = None
     st.rerun()
@@ -200,50 +202,54 @@ if st.sidebar.button("🏠 Home / Portal Grid", use_container_width=True):
 
 st.sidebar.markdown("---")
 
-# --- GLOBAL COMPARISON / SEARCH MODE ---
+# --- GLOBAL EXACT MATERIAL CODE SEARCH MODE ---
 if st.session_state["global_search_mode"]:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
-            <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">🌐 Cross-Area Material & Instrument Finder</h1>
-            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Search any specific material name or code to compare stocks across all plant areas simultaneously.</p>
+            <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">🔢 Exact Material Code Locator</h1>
+            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Enter the exact material code number to precisely scan which area holds it and check its live stock quantities.</p>
         </div>
     """, unsafe_allow_html=True)
 
-    search_query = st.text_input("🔍 Type Instrument Name, Material Code or Keywords (e.g., Transmitter, Level, Valve):", "").strip().lower()
+    search_code = st.text_input("Enter Exact Material Code (e.g., 83932628):", "").strip()
 
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
 
-    if search_query:
+    if search_code:
         all_results = []
         
         # Scan through all areas
         for area_key, area_cfg in AREA_CONFIGS.items():
-            # Skip unconfigured placeholders if any
             if "YOUR_" in area_cfg["sheet_url"]:
                 continue
             try:
                 df_area = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
                 df_area.columns = df_area.columns.str.strip()
-                df_area = df_area.dropna(subset=["Instrument Name"])
                 
-                # Filter rows matching query in Name or Specs
-                mask = df_area["Instrument Name"].astype(str).str.lower().str.contains(search_query) | \
-                       df_area["Specs"].astype(str).str.lower().str.contains(search_query)
+                # Identify Material Code column dynamically (e.g., 'Material Code', 'Code', 'Material')
+                mat_col = None
+                for col in df_area.columns:
+                    if "code" in col.lower() or "mat" in col.lower():
+                        mat_col = col
+                        break
                 
-                matched_rows = df_area[mask]
-                for _, r in matched_rows.iterrows():
-                    r_dict = r.to_dict()
-                    r_dict["Area_Name"] = area_key
-                    all_results.append(r_dict)
+                if mat_col:
+                    # Exact string match search on code column
+                    mask = df_area[mat_col].astype(str).str.strip() == search_code
+                    matched_rows = df_area[mask]
+                    for _, r in matched_rows.iterrows():
+                        r_dict = r.to_dict()
+                        r_dict["Area_Name"] = area_key
+                        r_dict["Matched_Mat_Col"] = mat_col
+                        all_results.append(r_dict)
             except Exception as e:
-                pass # Skip failed or unlinked sheets gracefully
+                pass
 
         if all_results:
             res_df = pd.DataFrame(all_results)
-            st.success(f"Found {len(res_df)} matching records across the plant!")
+            st.success(f"Found match for material code **{search_code}** in {len(res_df)} location(s) across the plant!")
             
-            # Display comparison table / records
             NAME_COL = "Instrument Name"
             SPECS_COL = "Specs"
             FIELD_COL = "Existing Instrument on Field"
@@ -253,7 +259,9 @@ if st.session_state["global_search_mode"]:
 
             for _, row in res_df.iterrows():
                 area_tag = row["Area_Name"]
-                inst_name = str(row[NAME_COL]).strip()
+                mat_col_used = row["Matched_Mat_Col"]
+                inst_name = str(row[NAME_COL]).strip() if pd.notna(row[NAME_COL]) else "No Name"
+                mat_code_val = str(row[mat_col_used]).strip()
                 full_spec = str(row[SPECS_COL]).strip() if pd.notna(row[SPECS_COL]) else "No Specs Added"
                 
                 field_count = safe_int(row[FIELD_COL])
@@ -281,12 +289,13 @@ if st.session_state["global_search_mode"]:
 
                 card_html = f"""
                 <div class="inventory-card">
-                    <div style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">📍 Area: {area_tag}</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">📍 Plant Area: {area_tag}</div>
                     <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                         <div style="flex: 2; min-width: 180px;">
                             <h4 style="margin:0; color:#0f172a; font-size:16px; font-weight:700;">{inst_name}</h4>
+                            <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">Code: {mat_code_val}</div>
                         </div>
-                        <div style="flex: 2.5; min-width: 220px;">
+                        <div style="flex: 2.5; min-width: 200px;">
                             <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
                         </div>
                         <div style="flex: 1; min-width: 80px;" class="metric-box">
@@ -307,11 +316,11 @@ if st.session_state["global_search_mode"]:
                     </div>
                 </div>
                 """
-                st.components.v1.html(card_html, height=125, scrolling=False)
+                st.components.v1.html(card_html, height=135, scrolling=False)
         else:
-            st.info("No matching instrumentation items found across connected areas for this search query.")
+            st.info(f"No item with exact material code '{search_code}' found across the connected areas.")
     else:
-        st.info("💡 Enter a keyword or material code above to scan and aggregate stock records across all operational sections.")
+        st.info("💡 Type an exact material code above to instantly locate it across all plant areas.")
 
 # --- HOD LANDING PAGE (Dynamic 3-Column Block Grid for all 8 areas) ---
 elif st.session_state["selected_area"] is None:
@@ -324,7 +333,6 @@ elif st.session_state["selected_area"] is None:
 
     areas = list(AREA_CONFIGS.keys())
     
-    # Loop through areas in rows of 3 columns
     for i in range(0, len(areas), 3):
         cols = st.columns(3)
         for j in range(3):
@@ -373,6 +381,16 @@ else:
         df = df.dropna(subset=["Instrument Name"])
 
         NAME_COL = "Instrument Name"
+        
+        # Dynamically find the material code column name
+        MATERIAL_COL = None
+        for col in df.columns:
+            if "code" in col.lower() or "mat" in col.lower():
+                MATERIAL_COL = col
+                break
+        if not MATERIAL_COL:
+            MATERIAL_COL = "Material Code"  # fallback default name
+
         SPECS_COL = "Specs"
         FIELD_COL = "Existing Instrument on Field"
         SPARES_M7_COL = "Remaining Spares in M7"
@@ -395,7 +413,7 @@ else:
 
             if entry_count == 1:
                 row = sub_df.iloc[0]
-                render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True)
+                render_row(row, NAME_COL, MATERIAL_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=True)
             else:
                 total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows())
                 
@@ -410,12 +428,10 @@ else:
                 
                 with st.expander(" "):
                     for idx, row in sub_df.iterrows():
-                        render_row(row, NAME_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=False)
+                        render_row(row, NAME_COL, MATERIAL_COL, SPECS_COL, FIELD_COL, SPARES_M7_COL, SPARES_SHOP_COL, TOTAL_SPARES_COL, show_name=False)
 
     except Exception as e:
         st.error(f"Error accessing Google Sheets Database for {current_area}: {e}")
 
     if st.sidebar.button("🔄 Sync Live Data Now"):
-        st.cache_data.clear()
-        st.session_state["data_timestamp"] = int(time.time())
-        st.rerun()
+        st
