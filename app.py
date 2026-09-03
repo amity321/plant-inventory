@@ -224,7 +224,7 @@ def inject_custom_css():
     }
     </style>
     """
-    st.components.v1.html(css, height=0, width=0)
+    st.markdown(css, unsafe_allow_html=True)
 
 def safe_int(val):
     if pd.isna(val):
@@ -422,7 +422,7 @@ else:
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
 
-    st.components.v1.html(f"""
+    st.markdown(f"""
         <div style="background: #1e293b; padding: 22px 25px; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
             <h1 style="color: #38bdf8 !important; margin: 0; font-size: 24px; font-weight: 700;">
                 🏭 {config['title']}
@@ -431,7 +431,7 @@ else:
                 Live Spares Tracking Sheet &bull; Managed by <span style="color: #38bdf8; font-weight: 600;">Amit Jangra</span>
             </p>
         </div>
-    """, height=100)
+    """, unsafe_allow_html=True)
     
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
