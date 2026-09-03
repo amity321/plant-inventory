@@ -119,14 +119,21 @@ def render_row(row, mapping, current_area_name):
         status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
 
     show_name_flag = mapping.get("show_name", True)
+    name_display_block = f"""
+        <div style="flex: 2; min-width: 180px;">
+            <h4 style="margin:0; color:#f8fafc !important; font-size:16px; font-weight:700;">{inst_name}</h4>
+            <div style="font-size: 11px; color: #38bdf8 !important; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code}</div>
+        </div>
+    """ if show_name_flag else f"""
+        <div style="flex: 2; min-width: 180px;">
+            <div style="font-size: 11px; color: #38bdf8 !important; font-weight: 600;">Mat. Code: {mat_code}</div>
+        </div>
+    """
 
     card_html = f"""
     <div class="inventory-card">
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-            <div style="flex: 2; min-width: 180px;">
-                <h4 style="margin:0; color:#f8fafc; font-size:16px; font-weight:700;">{inst_name if show_name_flag else ""}</h4>
-                <div style="font-size: 11px; color: #38bdf8; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code}</div>
-            </div>
+            {name_display_block}
             <div style="flex: 2.5; min-width: 200px;">
                 <div class="specs-box"><b style="color: #38bdf8;">Specs:</b> {cleaned_spec}</div>
             </div>
@@ -151,7 +158,7 @@ def inject_custom_css():
     css = """
     <style>
     .stApp { background-color: #0f172a; color: #f8fafc; }
-    h1, h2, h3 { color: #f8fafc !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    h1, h2, h3, h4, p, span { color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .inventory-card { 
         background-color: #1e293b; 
         border-radius: 12px; 
@@ -176,12 +183,12 @@ def inject_custom_css():
     .metric-val { 
         font-size: 17px; 
         font-weight: 700; 
-        color: #f8fafc; 
+        color: #f8fafc !important; 
     }
     .metric-lbl { 
         font-size: 10px; 
         text-transform: uppercase; 
-        color: #94a3b8; 
+        color: #94a3b8 !important; 
         font-weight: 600;
         margin-bottom: 2px; 
     }
@@ -194,16 +201,16 @@ def inject_custom_css():
         text-align: center; 
         width: 100%; 
     }
-    .status-shortfall { background-color: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-    .status-surplus { background-color: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
-    .status-balanced { background-color: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3); }
+    .status-shortfall { background-color: rgba(239, 68, 68, 0.15); color: #f87171 !important; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .status-surplus { background-color: rgba(34, 197, 94, 0.15); color: #4ade80 !important; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .status-balanced { background-color: rgba(14, 165, 233, 0.15); color: #38bdf8 !important; border: 1px solid rgba(14, 165, 233, 0.3); }
     .specs-box { 
         background-color: #0f172a; 
         border-left: 3px solid #38bdf8; 
         padding: 6px 10px; 
         border-radius: 6px; 
         font-size: 11.5px; 
-        color: #cbd5e1; 
+        color: #cbd5e1 !important; 
     }
     /* Customizing Streamlit Buttons */
     div.stButton > button {
@@ -295,7 +302,6 @@ if st.session_state["global_search_mode"]:
 
     if search_code:
         all_results = []
-        
         for area_key, area_cfg in AREA_CONFIGS.items():
             if "YOUR_" in area_cfg["sheet_url"]:
                 continue
@@ -314,7 +320,7 @@ if st.session_state["global_search_mode"]:
                         r_dict["Area_Name"] = area_key
                         r_dict["Resolved_Mapping"] = mapping
                         all_results.append(r_dict)
-            except Exception as e:
+            except Exception:
                 pass
 
         if all_results:
@@ -356,8 +362,8 @@ if st.session_state["global_search_mode"]:
                     <div style="font-size: 11px; font-weight: 700; color: #38bdf8; text-transform: uppercase; margin-bottom: 6px;">📍 Plant Area: {area_tag}</div>
                     <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                         <div style="flex: 2; min-width: 180px;">
-                            <h4 style="margin:0; color:#f8fafc; font-size:16px; font-weight:700;">{inst_name}</h4>
-                            <div style="font-size: 11px; color: #38bdf8; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code_val}</div>
+                            <h4 style="margin:0; color:#f8fafc !important; font-size:16px; font-weight:700;">{inst_name}</h4>
+                            <div style="font-size: 11px; color: #38bdf8 !important; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code_val}</div>
                         </div>
                         <div style="flex: 2.5; min-width: 200px;">
                             <div class="specs-box"><b style="color: #38bdf8;">Specs:</b> {cleaned_spec}</div>
@@ -393,7 +399,6 @@ elif st.session_state["selected_area"] is None:
     """, unsafe_allow_html=True)
 
     areas = list(AREA_CONFIGS.keys())
-    
     for i in range(0, len(areas), 3):
         cols = st.columns(3)
         for j in range(3):
@@ -466,16 +471,17 @@ else:
             else:
                 total_current_store = sum(safe_int(r[STORE_COL]) for _, r in sub_df.iterrows() if STORE_COL in r)
                 
+                # FIXED: Clean standalone group header box instead of broken overlapping expander header
                 st.markdown(f"""
-                <div style="background-color: #1e293b; border: 1px solid #334155; padding: 12px 16px; border-radius: 8px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                <div style="background-color: #1e293b; border: 1px solid #334155; padding: 12px 18px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
                     <span style="font-size: 15px !important; font-weight: 700 !important; color: #f8fafc !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                         📂 {current_name} — (<span style="color: #38bdf8;">{entry_count} Variants Grouped</span>) | Combined Store Stock: {total_current_store}
                     </span>
-                    <span style="font-size: 12px; color: #94a3b8; font-weight: bold; margin-right: 5px;">▼</span>
+                    <span style="font-size: 12px; color: #38bdf8; font-weight: 600;">▼ Expand Variants</span>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                with st.expander(" "):
+                with st.expander(f"View all {entry_count} variants for {current_name}"):
                     for idx, row in sub_df.iterrows():
                         mapping["show_name"] = False
                         render_row(row, mapping, current_area)
