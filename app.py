@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 
 # 1. Page Configuration
-st.set_page_config(page_title="HOD Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
+st.set_page_config(page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
 
 # --- AREA CONFIGURATIONS (Preserved URLs & Settings) ---
 AREA_CONFIGS = {
@@ -85,15 +85,13 @@ def resolve_columns(df):
         "total": total_col or "Total Spares"
     }
 
-# Helper function to render rows using dynamic column mappings
+# Helper function to render rows using simplified metric columns (On Field, Store-Room Stock, AI Target, Status)
 def render_row(row, mapping, current_area_name):
     name_key = mapping["name"]
     mat_key = mapping["material"]
     specs_key = mapping["specs"]
     field_key = mapping["field"]
     store_key = mapping["store"]
-    shop_key = mapping["shop"]
-    total_key = mapping["total"]
 
     inst_name = str(row[name_key]).strip() if name_key in row and pd.notna(row[name_key]) else "No Name"
     mat_code = clean_material_code(row[mat_key]) if mat_key in row else "N/A"
@@ -101,16 +99,6 @@ def render_row(row, mapping, current_area_name):
     
     field_count = safe_int(row[field_key]) if field_key in row else 0
     spares_store = safe_int(row[store_key]) if store_key in row else 0
-    spares_shop = safe_int(row[shop_key]) if shop_key in row else 0
-    
-    # Calculate total based on area logic
-    if total_key in row and pd.notna(row[total_key]):
-        total_spares = safe_int(row[total_key])
-    else:
-        if current_area_name == "Area 02/03":
-            total_spares = spares_store + spares_shop
-        else:
-            total_spares = spares_store
     
     name_lower = inst_name.lower()
     if "transmitter" in name_lower or "converter" in name_lower:
@@ -120,7 +108,7 @@ def render_row(row, mapping, current_area_name):
     else:
         healthy_stock = max(2, int(field_count * 0.15))
     
-    shortfall_excess = total_spares - healthy_stock
+    shortfall_excess = spares_store - healthy_stock
     cleaned_spec = full_spec.replace('•', '').strip()
 
     if shortfall_excess < 0:
@@ -131,9 +119,6 @@ def render_row(row, mapping, current_area_name):
         status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
 
     show_name_flag = mapping.get("show_name", True)
-    
-    # Logic to hide Shopfloor column for areas other than 02/03
-    shop_value_html = f'<div class="metric-box" style="flex: 1; min-width: 80px;"><div class="metric-lbl">Shopfloor</div><div class="metric-val">{spares_shop}</div></div>' if current_area_name == "Area 02/03" else ""
 
     card_html = f"""
     <div class="inventory-card">
@@ -145,26 +130,22 @@ def render_row(row, mapping, current_area_name):
             <div style="flex: 2.5; min-width: 200px;">
                 <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
             </div>
-            <div style="flex: 1; min-width: 80px;" class="metric-box">
+            <div style="flex: 1; min-width: 90px;" class="metric-box">
                 <div class="metric-lbl">On Field</div><div class="metric-val">{field_count}</div>
             </div>
-            <div style="flex: 1; min-width: 80px;" class="metric-box">
-                <div class="metric-lbl">Store-Room</div><div class="metric-val">{spares_store}</div>
+            <div style="flex: 1; min-width: 110px;" class="metric-box">
+                <div class="metric-lbl">Store-Room Stock</div><div class="metric-val">{spares_store}</div>
             </div>
-            {shop_value_html}
-            <div style="flex: 1; min-width: 80px;" class="metric-box">
-                <div class="metric-lbl">Total-Stock</div><div class="metric-val">{total_spares}</div>
-            </div>
-            <div style="flex: 1; min-width: 80px;" class="metric-box">
+            <div style="flex: 1; min-width: 90px;" class="metric-box">
                 <div class="metric-lbl">AI Target</div><div class="metric-val">{healthy_stock}</div>
             </div>
-            <div style="flex: 1.5; min-width: 120px; text-align: center;">
+            <div style="flex: 1.5; min-width: 130px; text-align: center;">
                 {status_html}
             </div>
         </div>
     </div>
     """
-    st.components.v1.html(card_html, height=125, scrolling=False)
+    st.components.v1.html(card_html, height=115, scrolling=False)
 
 def inject_custom_css():
     css = """
@@ -333,12 +314,6 @@ if st.session_state["global_search_mode"]:
                 
                 field_count = safe_int(row[mapping["field"]]) if mapping["field"] in row else 0
                 spares_store = safe_int(row[mapping["store"]]) if mapping["store"] in row else 0
-                spares_shop = safe_int(row[mapping["shop"]]) if mapping["shop"] in row else 0
-                
-                if mapping["total"] in row and pd.notna(row[mapping["total"]]):
-                    total_spares = safe_int(row[mapping["total"]])
-                else:
-                    total_spares = spares_store + spares_shop if area_tag == "Area 02/03" else spares_store
                 
                 name_lower = inst_name.lower()
                 if "transmitter" in name_lower or "converter" in name_lower:
@@ -348,7 +323,7 @@ if st.session_state["global_search_mode"]:
                 else:
                     healthy_stock = max(2, int(field_count * 0.15))
                 
-                shortfall_excess = total_spares - healthy_stock
+                shortfall_excess = spares_store - healthy_stock
                 cleaned_spec = full_spec.replace('•', '').strip()
 
                 if shortfall_excess < 0:
@@ -357,8 +332,6 @@ if st.session_state["global_search_mode"]:
                     status_html = f'<div class="status-badge status-surplus">✅ Surplus (+{shortfall_excess})</div>'
                 else:
                     status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
-
-                shop_value_html = f'<div class="metric-box" style="flex: 1; min-width: 80px;"><div class="metric-lbl">Shop</div><div class="metric-val">{spares_shop}</div></div>' if area_tag == "Area 02/03" else ""
 
                 card_html = f"""
                 <div class="inventory-card">
@@ -371,23 +344,22 @@ if st.session_state["global_search_mode"]:
                         <div style="flex: 2.5; min-width: 200px;">
                             <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
                         </div>
-                        <div style="flex: 1; min-width: 80px;" class="metric-box">
-                            <div class="metric-lbl">Field</div><div class="metric-val">{field_count}</div>
+                        <div style="flex: 1; min-width: 90px;" class="metric-box">
+                            <div class="metric-lbl">On Field</div><div class="metric-val">{field_count}</div>
                         </div>
-                        <div style="flex: 1; min-width: 80px;" class="metric-box">
-                            <div class="metric-lbl">Store-Room</div><div class="metric-val">{spares_store}</div>
+                        <div style="flex: 1; min-width: 110px;" class="metric-box">
+                            <div class="metric-lbl">Store-Room Stock</div><div class="metric-val">{spares_store}</div>
                         </div>
-                        {shop_value_html}
-                        <div style="flex: 1; min-width: 80px;" class="metric-box">
-                            <div class="metric-lbl">Total</div><div class="metric-val">{total_spares}</div>
+                        <div style="flex: 1; min-width: 90px;" class="metric-box">
+                            <div class="metric-lbl">AI Target</div><div class="metric-val">{healthy_stock}</div>
                         </div>
-                        <div style="flex: 1.5; min-width: 120px; text-align: center;">
+                        <div style="flex: 1.5; min-width: 130px; text-align: center;">
                             {status_html}
                         </div>
                     </div>
                 </div>
                 """
-                st.components.v1.html(card_html, height=135, scrolling=False)
+                st.components.v1.html(card_html, height=125, scrolling=False)
         else:
             st.info(f"No item with exact material code '{search_code}' found across the connected areas.")
     else:
@@ -451,7 +423,7 @@ else:
         
         mapping = resolve_columns(df)
         NAME_COL = mapping["name"]
-        TOTAL_SPARES_COL = mapping["total"]
+        STORE_COL = mapping["store"]
 
         df = df.dropna(subset=[NAME_COL])
         
@@ -474,12 +446,12 @@ else:
                 mapping["show_name"] = True
                 render_row(row, mapping, current_area)
             else:
-                total_current_spares = sum(safe_int(r[TOTAL_SPARES_COL]) for _, r in sub_df.iterrows() if TOTAL_SPARES_COL in r)
+                total_current_store = sum(safe_int(r[STORE_COL]) for _, r in sub_df.iterrows() if STORE_COL in r)
                 
                 st.markdown(f"""
                 <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 8px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
                     <span style="font-size: 15px !important; font-weight: 700 !important; color: #0f172a !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                        📂 {current_name} — ({entry_count} Variants Grouped) | Combined Stock: {total_current_spares}
+                        📂 {current_name} — ({entry_count} Variants Grouped) | Combined Store Stock: {total_current_store}
                     </span>
                     <span style="font-size: 12px; color: #475569; font-weight: bold; margin-right: 5px;">▼</span>
                 </div>
