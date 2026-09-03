@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 
 # 1. Page Configuration
-st.set_page_config(page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
+st.set_page_config(page_title="Master Instrumentation Portal", layout="wide", page_icon="🏭")
 
 # --- AREA CONFIGURATIONS (Preserved URLs & Settings) ---
 AREA_CONFIGS = {
@@ -124,11 +124,11 @@ def render_row(row, mapping, current_area_name):
     <div class="inventory-card">
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
             <div style="flex: 2; min-width: 180px;">
-                <h4 style="margin:0; color:#0f172a; font-size:16px; font-weight:700;">{inst_name if show_name_flag else ""}</h4>
-                <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code}</div>
+                <h4 style="margin:0; color:#f8fafc; font-size:16px; font-weight:700;">{inst_name if show_name_flag else ""}</h4>
+                <div style="font-size: 11px; color: #38bdf8; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code}</div>
             </div>
             <div style="flex: 2.5; min-width: 200px;">
-                <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
+                <div class="specs-box"><b style="color: #38bdf8;">Specs:</b> {cleaned_spec}</div>
             </div>
             <div style="flex: 1; min-width: 90px;" class="metric-box">
                 <div class="metric-lbl">On Field</div><div class="metric-val">{field_count}</div>
@@ -150,37 +150,38 @@ def render_row(row, mapping, current_area_name):
 def inject_custom_css():
     css = """
     <style>
-    .stApp { background-color: #f8fafc; }
-    h1, h2, h3 { color: #1e293b !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .stApp { background-color: #0f172a; color: #f8fafc; }
+    h1, h2, h3 { color: #f8fafc !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .inventory-card { 
-        background-color: #ffffff; 
+        background-color: #1e293b; 
         border-radius: 12px; 
         padding: 14px 18px; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
-        border: 1px solid #e2e8f0; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+        border: 1px solid #334155; 
         margin-bottom: 15px; 
-        transition: all 0.2s ease-in-out;
+        transition: all 0.3s ease-in-out;
     }
     .inventory-card:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+        border-color: #38bdf8;
+        box-shadow: 0 8px 20px rgba(56, 189, 248, 0.15);
+        transform: translateY(-2px);
     }
     .metric-box { 
         text-align: center; 
         padding: 6px; 
-        background-color: #f8fafc; 
+        background-color: #0f172a; 
         border-radius: 8px; 
-        border: 1px solid #f1f5f9;
+        border: 1px solid #334155;
     }
     .metric-val { 
         font-size: 17px; 
         font-weight: 700; 
-        color: #0f172a; 
+        color: #f8fafc; 
     }
     .metric-lbl { 
         font-size: 10px; 
         text-transform: uppercase; 
-        color: #64748b; 
+        color: #94a3b8; 
         font-weight: 600;
         margin-bottom: 2px; 
     }
@@ -193,16 +194,33 @@ def inject_custom_css():
         text-align: center; 
         width: 100%; 
     }
-    .status-shortfall { background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-    .status-surplus { background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; }
-    .status-balanced { background-color: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
+    .status-shortfall { background-color: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .status-surplus { background-color: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .status-balanced { background-color: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3); }
     .specs-box { 
-        background-color: #f8fafc; 
-        border-left: 3px solid #0284c7; 
+        background-color: #0f172a; 
+        border-left: 3px solid #38bdf8; 
         padding: 6px 10px; 
         border-radius: 6px; 
         font-size: 11.5px; 
-        color: #334155; 
+        color: #cbd5e1; 
+    }
+    /* Customizing Streamlit Buttons */
+    div.stButton > button {
+        background-color: #0284c7;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        font-weight: 600;
+        width: 100%;
+        transition: all 0.2s ease;
+    }
+    div.stButton > button:hover {
+        background-color: #0ea5e9;
+        color: white;
+        border: none;
+        box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
     }
     </style>
     """
@@ -248,9 +266,9 @@ st.sidebar.markdown("---")
 # --- GLOBAL EXACT MATERIAL CODE SEARCH MODE ---
 if st.session_state["global_search_mode"]:
     st.markdown("""
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
-            <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">🔢 Exact Material Code Locator</h1>
-            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Enter the exact material code number to precisely scan which area holds it and check its live stock quantities.</p>
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 30px; border-radius: 16px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; margin-bottom: 25px;">
+            <h1 style="color: #38bdf8 !important; margin: 0; font-size: 28px; font-weight: 800;">🔢 Exact Material Code Locator</h1>
+            <p style="color: #94a3b8 !important; margin-top: 8px; font-size: 14px;">Enter the exact material code number to precisely scan which area holds it and check its live stock quantities.</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -335,14 +353,14 @@ if st.session_state["global_search_mode"]:
 
                 card_html = f"""
                 <div class="inventory-card">
-                    <div style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">📍 Plant Area: {area_tag}</div>
+                    <div style="font-size: 11px; font-weight: 700; color: #38bdf8; text-transform: uppercase; margin-bottom: 6px;">📍 Plant Area: {area_tag}</div>
                     <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                         <div style="flex: 2; min-width: 180px;">
-                            <h4 style="margin:0; color:#0f172a; font-size:16px; font-weight:700;">{inst_name}</h4>
-                            <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code_val}</div>
+                            <h4 style="margin:0; color:#f8fafc; font-size:16px; font-weight:700;">{inst_name}</h4>
+                            <div style="font-size: 11px; color: #38bdf8; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code_val}</div>
                         </div>
                         <div style="flex: 2.5; min-width: 200px;">
-                            <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
+                            <div class="specs-box"><b style="color: #38bdf8;">Specs:</b> {cleaned_spec}</div>
                         </div>
                         <div style="flex: 1; min-width: 90px;" class="metric-box">
                             <div class="metric-lbl">On Field</div><div class="metric-val">{field_count}</div>
@@ -368,9 +386,9 @@ if st.session_state["global_search_mode"]:
 # --- HOD LANDING PAGE (Dynamic 3-Column Block Grid for all 8 areas) ---
 elif st.session_state["selected_area"] is None:
     st.markdown("""
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 35px;">
-            <h1 style="color: #0f172a !important; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">🏭 Master Instrumentation Portal</h1>
-            <p style="color: #475569 !important; margin-top: 10px; font-size: 15px; font-weight: 500;">Select an operational area block below to access live inventory metrics</p>
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 35px; border-radius: 16px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; margin-bottom: 35px;">
+            <h1 style="color: #38bdf8 !important; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">🏭 Master Instrumentation Portal</h1>
+            <p style="color: #94a3b8 !important; margin-top: 10px; font-size: 15px; font-weight: 500;">Select an operational area block below to access live inventory metrics</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -383,9 +401,9 @@ elif st.session_state["selected_area"] is None:
                 area_name = areas[i + j]
                 with cols[j]:
                     st.markdown(f"""
-                        <div style="background: #ffffff; padding: 22px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 15px; text-align: center;">
-                            <h3 style="margin-top: 0; margin-bottom: 8px; color: #0f172a; font-size: 18px; font-weight: 700;">🎛️ {area_name}</h3>
-                            <p style="color: #64748b; font-size: 13px; line-height: 1.4; margin: 0; min-height: 38px;">Live instrumentation spares and inventory status tracker.</p>
+                        <div style="background: #1e293b; padding: 22px; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 4px 6px rgba(0,0,0,0.2); margin-bottom: 15px; text-align: center;">
+                            <h3 style="margin-top: 0; margin-bottom: 8px; color: #f8fafc; font-size: 18px; font-weight: 700;">🎛️ {area_name}</h3>
+                            <p style="color: #94a3b8; font-size: 13px; line-height: 1.4; margin: 0; min-height: 38px;">Live instrumentation spares and inventory status tracker.</p>
                         </div>
                     """, unsafe_allow_html=True)
                     if st.button(f"Open {area_name}", use_container_width=True, key=f"btn_{area_name}"):
@@ -405,12 +423,12 @@ else:
         st.session_state["data_timestamp"] = int(time.time())
 
     st.components.v1.html(f"""
-        <div style="background: #ffffff; padding: 22px 25px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-            <h1 style="color: #0f172a !important; margin: 0; font-size: 24px; font-weight: 700;">
+        <div style="background: #1e293b; padding: 22px 25px; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <h1 style="color: #38bdf8 !important; margin: 0; font-size: 24px; font-weight: 700;">
                 🏭 {config['title']}
             </h1>
-            <p style="color: #475569 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
-                Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 600;">Amit Jangra</span>
+            <p style="color: #94a3b8 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+                Live Spares Tracking Sheet &bull; Managed by <span style="color: #38bdf8; font-weight: 600;">Amit Jangra</span>
             </p>
         </div>
     """, height=100)
@@ -449,11 +467,11 @@ else:
                 total_current_store = sum(safe_int(r[STORE_COL]) for _, r in sub_df.iterrows() if STORE_COL in r)
                 
                 st.markdown(f"""
-                <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 8px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                    <span style="font-size: 15px !important; font-weight: 700 !important; color: #0f172a !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                        📂 {current_name} — ({entry_count} Variants Grouped) | Combined Store Stock: {total_current_store}
+                <div style="background-color: #1e293b; border: 1px solid #334155; padding: 12px 16px; border-radius: 8px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                    <span style="font-size: 15px !important; font-weight: 700 !important; color: #f8fafc !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        📂 {current_name} — (<span style="color: #38bdf8;">{entry_count} Variants Grouped</span>) | Combined Store Stock: {total_current_store}
                     </span>
-                    <span style="font-size: 12px; color: #475569; font-weight: bold; margin-right: 5px;">▼</span>
+                    <span style="font-size: 12px; color: #94a3b8; font-weight: bold; margin-right: 5px;">▼</span>
                 </div>
                 """, unsafe_allow_html=True)
                 
