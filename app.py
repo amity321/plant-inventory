@@ -470,7 +470,7 @@ elif st.session_state["global_search_mode"]:
         except Exception:
             pass
 
-    search_code = st.text_input(f"Enter Exact Material Code ({sample_code_hint}):", "").strip()
+    search_code = st.text_input(f"Enter Material Code ({sample_code_hint}):", "").strip()
 
     if search_code:
         all_results = []
@@ -559,7 +559,7 @@ elif st.session_state["global_search_mode"]:
         else:
             st.info(f"No item with exact material code '{search_code}' found across the connected areas.")
     else:
-        st.info(f"💡 Type an exact material code above to instantly locate it across all plant areas ({sample_code_hint}).")
+        st.info(f"💡 Type material code above to instantly locate it across all plant areas ({sample_code_hint}).")
 
 # --- HOD LANDING PAGE ---
 elif st.session_state["selected_area"] is None:
@@ -631,8 +631,23 @@ else:
             df = df[df[NAME_COL].str.strip() == selected_instrument]
 
         unique_names_ordered = df[NAME_COL].unique()
+        total_items = len(unique_names_ordered)
 
-        for current_name in unique_names_ordered:
+        # --- PAGINATION LOGIC ADDED HERE ---
+        items_per_page = 10
+        total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
+
+        st.sidebar.header("📄 Page Navigation")
+        page_number = st.sidebar.number_input("Select Page Number:", min_value=1, max_value=total_pages, value=1, step=1)
+        st.sidebar.caption(f"Showing page {page_number} of {total_pages} (Total: {total_items} items)")
+        st.sidebar.markdown("---")
+
+        # Slice the unique names list for the current page
+        start_idx = (page_number - 1) * items_per_page
+        end_idx = start_idx + items_per_page
+        paginated_names = unique_names_ordered[start_idx:end_idx]
+
+        for current_name in paginated_names:
             sub_df = df[df[NAME_COL] == current_name]
             entry_count = len(sub_df)
 
