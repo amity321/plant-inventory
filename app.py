@@ -17,7 +17,7 @@ AREA_CONFIGS = {
     "Area 04/05": {
         "title": "Area 04/05 Instrumentation Inventory",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-YNMY8GAWDYkYoC2zW3riA8rnFhnP2hbFRisXYXlLb3Iv95jXyZEHjPUQsfFI4dFt_Z51N0932jPO/pub?gid=345050306&single=true&output=csv",
-        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-YNMY8GAWDYkYoC2zW3riA8rnFhnP2hbFRisXYXlLb3Iv95jXyZEHjPUQsfFI4dFt_Z51N0932jPO/pub?gid=593280436&single=true&output=csv"
+        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-YNMY8GAWDYkYoC2zW3riA8rnFhnP2hbFRisXYXlLb3Iv95jXyZEHjPUQsfFI4dFt_Z51N0932jPO/pub?gid=345050306&single=true&output=csv"
     },
     "Area 06/07": {
         "title": "Area 06/07 Instrumentation Inventory",
@@ -267,8 +267,8 @@ def calculate_real_consumption_from_log(target_material_code, removal_df, analys
         if total_removals == 0:
             return 0.0, 0.0, 0
             
-        monthly_consumption = round(total_removals / analysis_months, 2)
-        replacement_cycle = round(1 / monthly_consumption, 1) if monthly_consumption > 0 else 0.0
+        monthly_consumption = round(float(total_removals) / float(analysis_months), 2)
+        replacement_cycle = round(1.0 / monthly_consumption, 1) if monthly_consumption > 0 else 0.0
         
         return monthly_consumption, replacement_cycle, total_removals
     except Exception:
@@ -317,7 +317,6 @@ st.sidebar.markdown("---")
 # --- PREDICTIVE PR INTELLIGENCE & CONSUMPTION ANALYTICS MODE ---
 if st.session_state["smart_intelligence_mode"]:
     
-    # If no specific view inside Predictive PR is chosen yet, show selection blocks
     if st.session_state["pr_selected_view"] is None:
         st.markdown("""
             <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 30px;">
@@ -326,7 +325,6 @@ if st.session_state["smart_intelligence_mode"]:
             </div>
         """, unsafe_allow_html=True)
 
-        # Special Combined View Block
         st.markdown("""
             <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 20px; border-radius: 12px; border: 2px solid #3b82f6; margin-bottom: 25px; text-align: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);">
                 <h3 style="margin: 0 0 5px 0; color: #1e3a8a; font-size: 20px; font-weight: 800;">🌐 Combined Areas (Plant-wide / Planning Cell View)</h3>
@@ -357,8 +355,6 @@ if st.session_state["smart_intelligence_mode"]:
                         if st.button(f"Open {area_name}", use_container_width=True, key=f"pr_btn_{area_name}"):
                             st.session_state["pr_selected_view"] = area_name
                             st.rerun()
-    
-    # When a specific view (Combined or Area Name) is chosen
     else:
         current_view = st.session_state["pr_selected_view"]
         
@@ -383,7 +379,6 @@ if st.session_state["smart_intelligence_mode"]:
         analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
         pr_display_limit = st.sidebar.selectbox("Display Records Limit:", [25, 50, 100, 200, "All"], index=0)
 
-        # Determine which areas to fetch based on selection
         target_configs = AREA_CONFIGS if current_view == "Combined" else {current_view: AREA_CONFIGS[current_view]}
 
         master_records = []
@@ -436,18 +431,17 @@ if st.session_state["smart_intelligence_mode"]:
         if master_records:
             master_df = pd.DataFrame(master_records)
 
-            # If Combined view, group by Material Code across all areas
             if current_view == "Combined":
                 grouped_records = []
                 for mat_code, group in master_df.groupby("Material Code"):
                     combined_area_tag = ", ".join(group["Area"].unique())
                     combined_field = group["Field Count"].sum()
                     combined_store = group["Store Stock"].sum()
-                    combined_consumption = group["Monthly Consumption"].sum()
+                    combined_consumption = round(group["Monthly Consumption"].sum(), 2)
                     combined_removals = group["Total Removals"].sum()
                     combined_name = group["Instrument Name"].iloc[0]
                     combined_specs = group["Specs"].iloc[0]
-                    combined_cycle = round(1 / combined_consumption, 1) if combined_consumption > 0 else 0.0
+                    combined_cycle = round(1.0 / combined_consumption, 1) if combined_consumption > 0 else 0.0
 
                     grouped_records.append({
                         "Area": f"Plant-wide ({combined_area_tag})",
@@ -513,7 +507,7 @@ if st.session_state["smart_intelligence_mode"]:
                             </div>
                             <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
                                 <div style="font-size: 10px; color: #64748b; font-weight: bold;">AVG. CONSUMPTION RATE</div>
-                                <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Monthly Consumption']} / mo</div>
+                                <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Monthly Consumption']:.2f} / mo</div>
                             </div>
                             <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
                                 <div style="font-size: 10px; color: #64748b; font-weight: bold;">REPLACEMENT CYCLE</div>
