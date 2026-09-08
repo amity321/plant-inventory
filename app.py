@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+pd.set_option('display.max_rows', None)
 import time
 from datetime import datetime, timedelta
 
