@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import time
 from datetime import datetime
-import plotly.express as px
 
 # 1. Page Configuration
 st.set_page_config(page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
@@ -425,7 +424,6 @@ else:
         mapping = resolve_columns(df)
         NAME_COL = mapping["name"]
         STORE_COL = mapping["store"]
-        FIELD_COL = mapping["field"]
 
         df = df.dropna(subset=[NAME_COL])
         
@@ -433,73 +431,6 @@ else:
         all_instruments = ["All System Data"] + list(df[NAME_COL].dropna().unique())
         selected_instrument = st.sidebar.selectbox("Select Instrument Category:", all_instruments)
         st.sidebar.markdown("---")
-
-        # --- GRAPHICAL REPRESENTATION SECTION (Added Here) ---
-        st.markdown("### 📊 Area Inventory Analytics")
-        
-        # Prepare working copy for visualization
-        df_chart = df.copy()
-        df_chart['Clean_Name'] = df_chart[NAME_COL].astype(str).str.strip()
-        df_chart['Installed_Qty'] = df_chart[FIELD_COL].apply(safe_int)
-        df_chart['Spares_Available'] = df_chart[STORE_COL].apply(safe_int)
-
-        if selected_instrument != "All System Data":
-            df_chart = df_chart[df_chart['Clean_Name'] == selected_instrument.strip()]
-
-        if not df_chart.empty:
-            # 1. Selected View Bar Chart (Installed vs Spares for items/variants)
-            fig_item = px.bar(
-                df_chart, 
-                x='Clean_Name', 
-                y=['Installed_Qty', 'Spares_Available'],
-                barmode='group',
-                labels={'value': 'Quantity', 'variable': 'Metric', 'Clean_Name': 'Instrument Name'},
-                title=f"Installed Quantity vs. Spares Available ({current_area})"
-            )
-            fig_item.update_layout(xaxis_tickangle=-35, legend_title_text='Parameters')
-            st.plotly_chart(fig_item, use_container_width=True)
-
-        st.markdown("---")
-
-        # 2. Plant-Wide Combined Summary Graph Across All Connected Areas
-        st.markdown("### 📈 Plant-Wide Summary: Total Installed vs. Spares by Area")
-        plant_totals = []
-        for area_key, area_cfg in AREA_CONFIGS.items():
-            if "YOUR_" in area_cfg["sheet_url"]:
-                continue
-            try:
-                df_area_all = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
-                df_area_all.columns = df_area_all.columns.str.strip()
-                m_area = resolve_columns(df_area_all)
-                f_col = m_area["field"]
-                s_col = m_area["store"]
-                
-                tot_installed = sum(df_area_all[f_col].apply(safe_int)) if f_col in df_area_all.columns else 0
-                tot_spares = sum(df_area_all[s_col].apply(safe_int)) if s_col in df_area_all.columns else 0
-                
-                plant_totals.append({
-                    "Area": area_key,
-                    "Installed_Qty": tot_installed,
-                    "Spares_Available": tot_spares
-                })
-            except Exception:
-                pass
-
-        if plant_totals:
-            df_plant_agg = pd.DataFrame(plant_totals)
-            fig_combined = px.bar(
-                df_plant_agg,
-                x='Area',
-                y=['Installed_Qty', 'Spares_Available'],
-                barmode='group',
-                labels={'value': 'Total Quantity', 'variable': 'Category', 'Area': 'Plant Area'},
-                title="Overall Plant-Wide Comparison Across All Operational Areas"
-            )
-            fig_combined.update_layout(legend_title_text='Metrics')
-            st.plotly_chart(fig_combined, use_container_width=True)
-
-        st.markdown("---")
-        st.markdown("### 📋 Detailed Inventory Cards")
 
         if selected_instrument != "All System Data":
             df = df[df[NAME_COL].str.strip() == selected_instrument]
