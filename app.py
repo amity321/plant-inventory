@@ -323,6 +323,9 @@ if st.session_state["smart_intelligence_mode"]:
     st.sidebar.markdown("### ⚙️ Intelligence Parameters")
     lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6, help="Total procedural delay from PR generation to final delivery.")
     analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
+    
+    # Control how many records to display in PR Intelligence mode
+    pr_display_limit = st.sidebar.selectbox("Display Records Limit:", [25, 50, 100, 200, "All"], index=0)
 
     master_records = []
     for area_key, area_cfg in AREA_CONFIGS.items():
@@ -382,10 +385,13 @@ if st.session_state["smart_intelligence_mode"]:
                 master_df["Specs"].str.contains(search_query, case=False, na=False)
             ]
         else:
-            filtered_df = master_df.head(10)
+            if pr_display_limit != "All":
+                filtered_df = master_df.head(int(pr_display_limit))
+            else:
+                filtered_df = master_df
 
         if not filtered_df.empty:
-            st.markdown(f"### 🔎 Analytics Results ({len(filtered_df)} items found)")
+            st.markdown(f"### 🔎 Analytics Results ({len(filtered_df)} items displayed)")
             
             for _, item in filtered_df.iterrows():
                 monthly_consumption = item["Monthly Consumption"]
@@ -620,9 +626,12 @@ else:
 
         df = df.dropna(subset=[NAME_COL])
         
-        st.sidebar.header("🔍 Filter Controls")
+        st.sidebar.header("🔍 Filter & Pagination")
         all_instruments = ["All System Data"] + list(df[NAME_COL].dropna().unique())
         selected_instrument = st.sidebar.selectbox("Select Instrument Category:", all_instruments)
+        
+        # Adjustable items per page so you can easily view 40+ or more entries without being cut off
+        items_per_page = st.sidebar.selectbox("Items Per Page:", [10, 20, 30, 40, 50, 100], index=3) # Default 40 items per page!
         st.sidebar.markdown("---")
 
         if selected_instrument != "All System Data":
@@ -632,12 +641,11 @@ else:
         total_items = len(unique_names_ordered)
 
         # --- PAGINATION LOGIC ---
-        items_per_page = 10
         total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
 
         st.sidebar.header("📄 Page Navigation")
         page_number = st.sidebar.number_input("Select Page Number:", min_value=1, max_value=total_pages, value=1, step=1)
-        st.sidebar.caption(f"Showing page {page_number} of {total_pages} (Total: {total_items} items)")
+        st.sidebar.caption(f"Showing page {page_number} of {total_pages} (Total unique: {total_items} items)")
         st.sidebar.markdown("---")
 
         # Slice the unique names list for the current page
