@@ -11,34 +11,42 @@ AREA_CONFIGS = {
     "Area 02/03": {
         "title": "Area 02/03 Instrumentation Inventory",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv",
+        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=1345118798&single=true&output=csv"
     },
     "Area 04/05": {
         "title": "Area 04/05 Instrumentation Inventory",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-YNMY8GAWDYkYoC2zW3riA8rnFhnP2hbFRisXYXlLb3Iv95jXyZEHjPUQsfFI4dFt_Z51N0932jPO/pub?gid=345050306&single=true&output=csv",
+        "removal_url": None
     },
     "Area 06/07": {
         "title": "Area 06/07 Instrumentation Inventory",
         "sheet_url": "YOUR_AREA_06_07_CSV_URL_HERE",
+        "removal_url": None
     },
     "Area 08": {
         "title": "Area 08 Instrumentation Inventory",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSEnzn9n4L_uGO9VkLMe8_ylvyaZkskIZZEFJSTqXDQJJ1uEHevl9FfKWhnpcltGsDlhwsxnIEOflaK/pub?gid=1609301093&single=true&output=csv",
+        "removal_url": None
     },
     "Area 09/10": {
         "title": "Area 09/10 Instrumentation Inventory",
         "sheet_url": "YOUR_AREA_09_10_CSV_URL_HERE",
+        "removal_url": None
     },
     "SPP TG": {
         "title": "SPP TG Instrumentation Inventory",
         "sheet_url": "YOUR_SPP_TG_CSV_URL_HERE",
+        "removal_url": None
     },
     "SPP Boiler": {
         "title": "SPP Boiler Instrumentation Inventory",
         "sheet_url": "YOUR_SPP_BOILER_CSV_URL_HERE",
+        "removal_url": None
     },
     "C&I Sub Store": {
         "title": "C&I Sub Store Instrumentation Inventory",
         "sheet_url": "YOUR_CNI_SUB_STORE_CSV_URL_HERE",
+        "removal_url": None
     }
 }
 
@@ -53,9 +61,7 @@ def clean_material_code(val):
     return s_val
 
 def resolve_columns(df):
-    """Dynamically resolve column names across different area sheets with flexible fallbacks."""
     cols = df.columns
-    
     mat_col, field_col, store_col, shop_col, total_col, specs_col, name_col = None, None, None, None, None, None, None
     
     for col in cols:
@@ -85,7 +91,6 @@ def resolve_columns(df):
         "total": total_col or "Total Spares"
     }
 
-# Helper function to render rows using simplified metric columns (On Field, Store-Room Stock, AI Target, Status)
 def render_row(row, mapping, current_area_name):
     name_key = mapping["name"]
     mat_key = mapping["material"]
@@ -222,7 +227,55 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url, dtype=str)
     return df
 
-# Initialize session state for navigation if not present
+def calculate_real_consumption_from_log(target_material_code, removal_df, analysis_months=12):
+    """Calculates actual consumption rate and replacement cycle dynamically from historical removal logs."""
+    if removal_df is None or removal_df.empty:
+        return 0.0, 0.0, 0
+    
+    try:
+        df_log = removal_df.copy()
+        df_log.columns = df_log.columns.str.strip()
+        
+        mat_col = next((c for c in df_log.columns if "material" in c.lower() or "code" in c.lower()), None)
+        type_col = next((c for c in df_log.columns if "transaction" in c.lower() or "type" in c.lower()), None)
+        time_col = next((c for c in df_log.columns if "timestamp" in c.lower() or "date" in c.lower()), None)
+        
+        if not mat_col or not time_col:
+            return 0.0, 0.0, 0
+            
+        df_log["clean_mat"] = df_log[mat_col].apply(clean_material_code)
+        item_log = df_log[df_log["clean_mat"] == str(target_material_code)].copy()
+        
+        if type_col:
+            removal_keywords = ["remov", "issu", "withdraw", "consum"]
+            mask = item_log[type_col].astype(str).str.lower().apply(lambda x: any(k in x for k in removal_keywords))
+            if mask.any():
+                item_log = item_log[mask]
+                
+        if item_log.empty:
+            return 0.0, 0.0, 0
+            
+        item_log["Parsed_Date"] = pd.to_datetime(item_log[time_col], errors='coerce')
+        item_log = item_log.dropna(subset=["Parsed_Date"])
+        
+        if item_log.empty:
+            return 0.0, 0.0, 0
+            
+        cutoff_date = datetime.now() - timedelta(days=analysis_months * 30)
+        recent_log = item_log[item_log["Parsed_Date"] >= cutoff_date]
+        
+        total_removals = len(recent_log)
+        if total_removals == 0:
+            return 0.0, 0.0, 0
+            
+        monthly_consumption = round(total_removals / analysis_months, 2)
+        replacement_cycle = round(1 / monthly_consumption, 1) if monthly_consumption > 0 else 0.0
+        
+        return monthly_consumption, replacement_cycle, total_removals
+    except Exception:
+        return 0.0, 0.0, 0
+
+# Initialize session state for navigation
 if "selected_area" not in st.session_state:
     st.session_state["selected_area"] = None
 
@@ -260,15 +313,18 @@ st.sidebar.markdown("---")
 if st.session_state["smart_intelligence_mode"]:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
-            <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📈 Predictive PR Intelligence & Consumption Analytics</h1>
-            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Universal search across plant blocks with automated monthly consumption rates, lifespan analysis, and lead-time-adjusted Purchase Requisition (PR) dates.</p>
+            <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📈 Predictive PR Intelligence & Live Consumption</h1>
+            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Real-time consumption extracted from your store logs with lead-time-adjusted Purchase Requisition (PR) dates.</p>
         </div>
     """, unsafe_allow_html=True)
 
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
 
-    # Collect all master inventory items across available sheets
+    st.sidebar.markdown("### ⚙️ Intelligence Parameters")
+    lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6, help="Total procedural delay from PR generation to final delivery.")
+    analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
+
     master_records = []
     for area_key, area_cfg in AREA_CONFIGS.items():
         if "YOUR_" in area_cfg["sheet_url"]:
@@ -283,30 +339,41 @@ if st.session_state["smart_intelligence_mode"]:
             store_col = mapping["store"]
             specs_col = mapping["specs"]
 
+            removal_df = None
+            if area_cfg.get("removal_url"):
+                try:
+                    removal_df = fetch_data(area_cfg["removal_url"], st.session_state["data_timestamp"])
+                except Exception:
+                    pass
+
             for _, r in df_area.iterrows():
                 mat_code = clean_material_code(r.get(mat_col, "N/A"))
                 if mat_code == "N/A":
                     continue
+                
+                store_stock = safe_int(r.get(store_col, 0))
+                field_count = safe_int(r.get(field_col, 0))
+                
+                monthly_consumption, replacement_cycle, total_removals = calculate_real_consumption_from_log(
+                    mat_code, removal_df, analysis_months
+                )
+
                 master_records.append({
                     "Area": area_key,
                     "Material Code": mat_code,
                     "Instrument Name": str(r.get(name_col, "No Name")).strip(),
                     "Specs": str(r.get(specs_col, "N/A")).strip(),
-                    "Field Count": safe_int(r.get(field_col, 0)),
-                    "Store Stock": safe_int(r.get(store_col, 0))
+                    "Field Count": field_count,
+                    "Store Stock": store_stock,
+                    "Monthly Consumption": monthly_consumption,
+                    "Replacement Cycle": replacement_cycle,
+                    "Total Removals": total_removals
                 })
         except Exception:
             pass
 
     if master_records:
         master_df = pd.DataFrame(master_records)
-        unique_codes = sorted(master_df["Material Code"].unique().tolist())
-        
-        # Configuration Sidebar for Intelligence Parameters
-        st.sidebar.markdown("### ⚙️ Intelligence Parameters")
-        lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6, help="Total procedural delay from PR generation to final delivery.")
-        analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
-
         search_query = st.text_input("🔍 Universal Search (Enter Material Code or Instrument Description):", "").strip()
 
         if search_query:
@@ -316,28 +383,25 @@ if st.session_state["smart_intelligence_mode"]:
                 master_df["Specs"].str.contains(search_query, case=False, na=False)
             ]
         else:
-            filtered_df = master_df.head(10) # Show initial items if search is empty
+            filtered_df = master_df.head(10)
 
         if not filtered_df.empty:
             st.markdown(f"### 🔎 Analytics Results ({len(filtered_df)} items found)")
             
             for _, item in filtered_df.iterrows():
-                # Simulated historical consumption logic derived deterministically from material code hash / field count
-                # In production, this can hook directly into a removal log DataFrame
-                code_hash = abs(hash(item["Material Code"])) % 100
-                monthly_consumption = round(max(0.1, (item["Field Count"] * 0.02) + (code_hash % 5) * 0.05), 2)
-                
-                lifespan_months = round(1 / monthly_consumption, 1) if monthly_consumption > 0 else 0
+                monthly_consumption = item["Monthly Consumption"]
                 store_stock = item["Store Stock"]
                 
-                # Days of inventory remaining
-                days_remaining = int((store_stock / monthly_consumption) * 30) if monthly_consumption > 0 else 999
-                exhaustion_date = datetime.now() + timedelta(days=days_remaining)
-                
-                # Lead time adjusted PR date
-                lead_time_days = lead_time_months * 30
-                pr_trigger_date = exhaustion_date - timedelta(days=lead_time_days)
-                is_urgent = pr_trigger_date <= datetime.now()
+                if monthly_consumption > 0:
+                    days_remaining = int((store_stock / monthly_consumption) * 30)
+                    exhaustion_date = datetime.now() + timedelta(days=days_remaining)
+                    lead_time_days = lead_time_months * 30
+                    pr_trigger_date = exhaustion_date - timedelta(days=lead_time_days)
+                    is_urgent = pr_trigger_date <= datetime.now()
+                    pr_date_str = pr_trigger_date.strftime('%d %b %Y')
+                else:
+                    pr_date_str = "No History / Stable"
+                    is_urgent = False
 
                 urgency_badge = '<span style="background-color: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">🚨 URGENT PR REQUIRED</span>' if is_urgent else '<span style="background-color: #dcfce7; color: #16a34a; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">✅ Stock Healthy</span>'
 
@@ -357,16 +421,16 @@ if st.session_state["smart_intelligence_mode"]:
                             <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Field Count']} / {store_stock}</div>
                         </div>
                         <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
-                            <div style="font-size: 10px; color: #64748b; font-weight: bold;">AVG. CONSUMPTION</div>
-                            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{monthly_consumption} / mo</div>
+                            <div style="font-size: 10px; color: #64748b; font-weight: bold;">AVG. CONSUMPTION RATE</div>
+                            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Monthly Consumption']} / mo</div>
                         </div>
                         <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
-                            <div style="font-size: 10px; color: #64748b; font-weight: bold;">UNIT LIFESPAN</div>
-                            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{lifespan_months} mos</div>
+                            <div style="font-size: 10px; color: #64748b; font-weight: bold;">REPLACEMENT CYCLE</div>
+                            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Replacement Cycle']} mos</div>
                         </div>
                         <div style="flex: 1.2; background: #eff6ff; padding: 6px; border-radius: 6px; text-align: center; border: 1px solid #bfdbfe;">
                             <div style="font-size: 10px; color: #1e40af; font-weight: bold;">RECOMMENDED PR DATE</div>
-                            <div style="font-size: 14px; font-weight: 800; color: #1e3a8a;">{pr_trigger_date.strftime('%d %b %Y')}</div>
+                            <div style="font-size: 14px; font-weight: 800; color: #1e3a8a;">{pr_date_str}</div>
                         </div>
                     </div>
                 </div>
@@ -409,7 +473,6 @@ elif st.session_state["global_search_mode"]:
 
     if search_code:
         all_results = []
-        
         for area_key, area_cfg in AREA_CONFIGS.items():
             if "YOUR_" in area_cfg["sheet_url"]:
                 continue
@@ -428,7 +491,7 @@ elif st.session_state["global_search_mode"]:
                         r_dict["Area_Name"] = area_key
                         r_dict["Resolved_Mapping"] = mapping
                         all_results.append(r_dict)
-            except Exception as e:
+            except Exception:
                 pass
 
         if all_results:
@@ -497,7 +560,7 @@ elif st.session_state["global_search_mode"]:
     else:
         st.info(f"💡 Type an exact material code above to instantly locate it across all plant areas ({sample_code_hint}).")
 
-# --- HOD LANDING PAGE (Dynamic 3-Column Block Grid for all 8 areas) ---
+# --- HOD LANDING PAGE ---
 elif st.session_state["selected_area"] is None:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 35px;">
@@ -507,7 +570,6 @@ elif st.session_state["selected_area"] is None:
     """, unsafe_allow_html=True)
 
     areas = list(AREA_CONFIGS.keys())
-    
     for i in range(0, len(areas), 3):
         cols = st.columns(3)
         for j in range(3):
