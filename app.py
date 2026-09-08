@@ -17,7 +17,7 @@ AREA_CONFIGS = {
     "Area 04/05": {
         "title": "Area 04/05 Instrumentation Inventory",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-YNMY8GAWDYkYoC2zW3riA8rnFhnP2hbFRisXYXlLb3Iv95jXyZEHjPUQsfFI4dFt_Z51N0932jPO/pub?gid=345050306&single=true&output=csv",
-        "removal_url": None
+        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS-YNMY8GAWDYkYoC2zW3riA8rnFhnP2hbFRisXYXlLb3Iv95jXyZEHjPUQsfFI4dFt_Z51N0932jPO/pub?gid=345050306&single=true&output=csv"
     },
     "Area 06/07": {
         "title": "Area 06/07 Instrumentation Inventory",
