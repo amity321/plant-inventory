@@ -284,6 +284,9 @@ if "global_search_mode" not in st.session_state:
 if "smart_intelligence_mode" not in st.session_state:
     st.session_state["smart_intelligence_mode"] = False
 
+if "pr_selected_view" not in st.session_state:
+    st.session_state["pr_selected_view"] = None
+
 inject_custom_css()
 
 # --- SIDEBAR NAVIGATION CONTROLS ---
@@ -292,159 +295,242 @@ if st.sidebar.button("🔍 Exact Material Code Search", use_container_width=True
     st.session_state["global_search_mode"] = True
     st.session_state["smart_intelligence_mode"] = False
     st.session_state["selected_area"] = None
+    st.session_state["pr_selected_view"] = None
     st.rerun()
 
 if st.sidebar.button("📈 Predictive PR Intelligence", use_container_width=True):
     st.session_state["smart_intelligence_mode"] = True
     st.session_state["global_search_mode"] = False
     st.session_state["selected_area"] = None
+    st.session_state["pr_selected_view"] = None
     st.rerun()
 
 if st.sidebar.button("🏠 Home / Portal Grid", use_container_width=True):
     st.session_state["global_search_mode"] = False
     st.session_state["smart_intelligence_mode"] = False
     st.session_state["selected_area"] = None
+    st.session_state["pr_selected_view"] = None
     st.rerun()
 
 st.sidebar.markdown("---")
 
 # --- PREDICTIVE PR INTELLIGENCE & CONSUMPTION ANALYTICS MODE ---
 if st.session_state["smart_intelligence_mode"]:
-    st.markdown("""
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
-            <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📈 Predictive PR Intelligence & Live Consumption</h1>
-            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Real-time consumption extracted from your store logs with lead-time-adjusted Purchase Requisition (PR) dates.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    if "data_timestamp" not in st.session_state:
-        st.session_state["data_timestamp"] = int(time.time())
-
-    st.sidebar.markdown("### ⚙️ Intelligence Parameters")
-    lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6, help="Total procedural delay from PR generation to final delivery.")
-    analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
     
-    # Control how many records to display in PR Intelligence mode
-    pr_display_limit = st.sidebar.selectbox("Display Records Limit:", [25, 50, 100, 200, "All"], index=0)
+    # If no specific view inside Predictive PR is chosen yet, show selection blocks
+    if st.session_state["pr_selected_view"] is None:
+        st.markdown("""
+            <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📈 Predictive PR Intelligence & Consumption Portal</h1>
+                <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Select a specific plant area or choose **Combined Areas** for centralized planning cell PR analysis.</p>
+            </div>
+        """, unsafe_allow_html=True)
 
-    master_records = []
-    for area_key, area_cfg in AREA_CONFIGS.items():
-        if "YOUR_" in area_cfg["sheet_url"]:
-            continue
-        try:
-            df_area = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
-            df_area.columns = df_area.columns.str.strip()
-            mapping = resolve_columns(df_area)
-            mat_col = mapping["material"]
-            name_col = mapping["name"]
-            field_col = mapping["field"]
-            store_col = mapping["store"]
-            specs_col = mapping["specs"]
+        # Special Combined View Block
+        st.markdown("""
+            <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 20px; border-radius: 12px; border: 2px solid #3b82f6; margin-bottom: 25px; text-align: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);">
+                <h3 style="margin: 0 0 5px 0; color: #1e3a8a; font-size: 20px; font-weight: 800;">🌐 Combined Areas (Plant-wide / Planning Cell View)</h3>
+                <p style="margin: 0; color: #1e40af; font-size: 13px;">Merges identical material codes across all active areas for centralized bulk procurement and unified PR dates.</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🚀 Open Combined Plant-wide PR View", use_container_width=True):
+            st.session_state["pr_selected_view"] = "Combined"
+            st.rerun()
 
-            removal_df = None
-            if area_cfg.get("removal_url"):
-                try:
-                    removal_df = fetch_data(area_cfg["removal_url"], st.session_state["data_timestamp"])
-                except Exception:
-                    pass
+        st.markdown("<div style='margin: 20px 0; border-top: 1px solid #e2e8f0;'></div>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #0f172a; font-size: 18px; font-weight: 700; margin-bottom: 15px;'>🎛️ Or Select Individual Area Block:</h3>", unsafe_allow_html=True)
 
-            for _, r in df_area.iterrows():
-                mat_code = clean_material_code(r.get(mat_col, "N/A"))
-                if mat_code == "N/A":
-                    continue
-                
-                store_stock = safe_int(r.get(store_col, 0))
-                field_count = safe_int(r.get(field_col, 0))
-                
-                monthly_consumption, replacement_cycle, total_removals = calculate_real_consumption_from_log(
-                    mat_code, removal_df, analysis_months
-                )
-
-                master_records.append({
-                    "Area": area_key,
-                    "Material Code": mat_code,
-                    "Instrument Name": str(r.get(name_col, "No Name")).strip(),
-                    "Specs": str(r.get(specs_col, "N/A")).strip(),
-                    "Field Count": field_count,
-                    "Store Stock": store_stock,
-                    "Monthly Consumption": monthly_consumption,
-                    "Replacement Cycle": replacement_cycle,
-                    "Total Removals": total_removals
-                })
-        except Exception:
-            pass
-
-    if master_records:
-        master_df = pd.DataFrame(master_records)
-        search_query = st.text_input("🔍 Universal Search (Enter Material Code or Instrument Description):", "").strip()
-
-        if search_query:
-            filtered_df = master_df[
-                master_df["Material Code"].str.contains(search_query, case=False, na=False) |
-                master_df["Instrument Name"].str.contains(search_query, case=False, na=False) |
-                master_df["Specs"].str.contains(search_query, case=False, na=False)
-            ]
-        else:
-            if pr_display_limit != "All":
-                filtered_df = master_df.head(int(pr_display_limit))
-            else:
-                filtered_df = master_df
-
-        if not filtered_df.empty:
-            st.markdown(f"### 🔎 Analytics Results ({len(filtered_df)} items displayed)")
-            
-            for _, item in filtered_df.iterrows():
-                monthly_consumption = item["Monthly Consumption"]
-                store_stock = item["Store Stock"]
-                
-                if monthly_consumption > 0:
-                    days_remaining = int((store_stock / monthly_consumption) * 30)
-                    exhaustion_date = datetime.now() + timedelta(days=days_remaining)
-                    lead_time_days = lead_time_months * 30
-                    pr_trigger_date = exhaustion_date - timedelta(days=lead_time_days)
-                    is_urgent = pr_trigger_date <= datetime.now()
-                    pr_date_str = pr_trigger_date.strftime('%d %b %Y')
-                else:
-                    pr_date_str = "No History / Stable"
-                    is_urgent = False
-
-                urgency_badge = '<span style="background-color: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">🚨 URGENT PR REQUIRED</span>' if is_urgent else '<span style="background-color: #dcfce7; color: #16a34a; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">✅ Stock Healthy</span>'
-
-                card_html = f"""
-                <div class="inventory-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
-                        <div>
-                            <span style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase;">📍 Area: {item['Area']}</span>
-                            <h4 style="margin: 2px 0 0 0; color: #0f172a; font-size: 16px; font-weight: 700;">{item['Instrument Name']}</h4>
-                        </div>
-                        <div>{urgency_badge}</div>
-                    </div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                        <div style="flex: 2;"><b>Material Code:</b> <span style="color: #0284c7; font-weight: 600;">{item['Material Code']}</span><br><b>Specs:</b> {item['Specs']}</div>
-                        <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
-                            <div style="font-size: 10px; color: #64748b; font-weight: bold;">INSTALLED / STORE</div>
-                            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Field Count']} / {store_stock}</div>
-                        </div>
-                        <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
-                            <div style="font-size: 10px; color: #64748b; font-weight: bold;">AVG. CONSUMPTION RATE</div>
-                            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Monthly Consumption']} / mo</div>
-                        </div>
-                        <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
-                            <div style="font-size: 10px; color: #64748b; font-weight: bold;">REPLACEMENT CYCLE</div>
-                            <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Replacement Cycle']} mos</div>
-                        </div>
-                        <div style="flex: 1.2; background: #eff6ff; padding: 6px; border-radius: 6px; text-align: center; border: 1px solid #bfdbfe;">
-                            <div style="font-size: 10px; color: #1e40af; font-weight: bold;">RECOMMENDED PR DATE</div>
-                            <div style="font-size: 14px; font-weight: 800; color: #1e3a8a;">{pr_date_str}</div>
-                        </div>
-                    </div>
-                </div>
-                """
-                st.components.v1.html(card_html, height=140, scrolling=False)
-        else:
-            st.info("No matching material codes or instruments found.")
+        areas = list(AREA_CONFIGS.keys())
+        for i in range(0, len(areas), 3):
+            cols = st.columns(3)
+            for j in range(3):
+                if i + j < len(areas):
+                    area_name = areas[i + j]
+                    with cols[j]:
+                        st.markdown(f"""
+                            <div style="background: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 12px; text-align: center;">
+                                <h4 style="margin: 0 0 6px 0; color: #0f172a; font-size: 16px; font-weight: 700;">📍 {area_name}</h4>
+                                <p style="color: #64748b; font-size: 12px; margin: 0;">Area-specific stock & PR analyzer.</p>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        if st.button(f"Open {area_name}", use_container_width=True, key=f"pr_btn_{area_name}"):
+                            st.session_state["pr_selected_view"] = area_name
+                            st.rerun()
+    
+    # When a specific view (Combined or Area Name) is chosen
     else:
-        st.warning("No inventory records available across active sheets.")
+        current_view = st.session_state["pr_selected_view"]
+        
+        if st.sidebar.button("⬅️ Back to PR Area Selector"):
+            st.session_state["pr_selected_view"] = None
+            st.rerun()
+
+        header_title = "🌐 Combined Plant-wide PR Intelligence (Planning Cell)" if current_view == "Combined" else f"📍 Predictive PR Intelligence — {current_view}"
+        
+        st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 25px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); margin-bottom: 25px;">
+                <h1 style="color: #0f172a !important; margin: 0; font-size: 24px; font-weight: 800;">{header_title}</h1>
+                <p style="color: #475569 !important; margin-top: 6px; font-size: 13px;">Real-time consumption logs and lead-time-adjusted Purchase Requisition schedules.</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        if "data_timestamp" not in st.session_state:
+            st.session_state["data_timestamp"] = int(time.time())
+
+        st.sidebar.markdown("### ⚙️ Intelligence Parameters")
+        lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6, help="Total procedural delay from PR generation to final delivery.")
+        analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
+        pr_display_limit = st.sidebar.selectbox("Display Records Limit:", [25, 50, 100, 200, "All"], index=0)
+
+        # Determine which areas to fetch based on selection
+        target_configs = AREA_CONFIGS if current_view == "Combined" else {current_view: AREA_CONFIGS[current_view]}
+
+        master_records = []
+        for area_key, area_cfg in target_configs.items():
+            if "YOUR_" in area_cfg["sheet_url"]:
+                continue
+            try:
+                df_area = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
+                df_area.columns = df_area.columns.str.strip()
+                mapping = resolve_columns(df_area)
+                mat_col = mapping["material"]
+                name_col = mapping["name"]
+                field_col = mapping["field"]
+                store_col = mapping["store"]
+                specs_col = mapping["specs"]
+
+                removal_df = None
+                if area_cfg.get("removal_url"):
+                    try:
+                        removal_df = fetch_data(area_cfg["removal_url"], st.session_state["data_timestamp"])
+                    except Exception:
+                        pass
+
+                for _, r in df_area.iterrows():
+                    mat_code = clean_material_code(r.get(mat_col, "N/A"))
+                    if mat_code == "N/A":
+                        continue
+                    
+                    store_stock = safe_int(r.get(store_col, 0))
+                    field_count = safe_int(r.get(field_col, 0))
+                    
+                    monthly_consumption, replacement_cycle, total_removals = calculate_real_consumption_from_log(
+                        mat_code, removal_df, analysis_months
+                    )
+
+                    master_records.append({
+                        "Area": area_key,
+                        "Material Code": mat_code,
+                        "Instrument Name": str(r.get(name_col, "No Name")).strip(),
+                        "Specs": str(r.get(specs_col, "N/A")).strip(),
+                        "Field Count": field_count,
+                        "Store Stock": store_stock,
+                        "Monthly Consumption": monthly_consumption,
+                        "Replacement Cycle": replacement_cycle,
+                        "Total Removals": total_removals
+                    })
+            except Exception:
+                pass
+
+        if master_records:
+            master_df = pd.DataFrame(master_records)
+
+            # If Combined view, group by Material Code across all areas
+            if current_view == "Combined":
+                grouped_records = []
+                for mat_code, group in master_df.groupby("Material Code"):
+                    combined_area_tag = ", ".join(group["Area"].unique())
+                    combined_field = group["Field Count"].sum()
+                    combined_store = group["Store Stock"].sum()
+                    combined_consumption = group["Monthly Consumption"].sum()
+                    combined_removals = group["Total Removals"].sum()
+                    combined_name = group["Instrument Name"].iloc[0]
+                    combined_specs = group["Specs"].iloc[0]
+                    combined_cycle = round(1 / combined_consumption, 1) if combined_consumption > 0 else 0.0
+
+                    grouped_records.append({
+                        "Area": f"Plant-wide ({combined_area_tag})",
+                        "Material Code": mat_code,
+                        "Instrument Name": combined_name,
+                        "Specs": combined_specs,
+                        "Field Count": combined_field,
+                        "Store Stock": combined_store,
+                        "Monthly Consumption": combined_consumption,
+                        "Replacement Cycle": combined_cycle,
+                        "Total Removals": combined_removals
+                    })
+                master_df = pd.DataFrame(grouped_records)
+
+            search_query = st.text_input("🔍 Universal Search (Enter Material Code or Instrument Description):", "").strip()
+
+            if search_query:
+                filtered_df = master_df[
+                    master_df["Material Code"].str.contains(search_query, case=False, na=False) |
+                    master_df["Instrument Name"].str.contains(search_query, case=False, na=False) |
+                    master_df["Specs"].str.contains(search_query, case=False, na=False)
+                ]
+            else:
+                if pr_display_limit != "All":
+                    filtered_df = master_df.head(int(pr_display_limit))
+                else:
+                    filtered_df = master_df
+
+            if not filtered_df.empty:
+                st.markdown(f"### 🔎 Analytics Results ({len(filtered_df)} items displayed)")
+                
+                for _, item in filtered_df.iterrows():
+                    monthly_consumption = item["Monthly Consumption"]
+                    store_stock = item["Store Stock"]
+                    
+                    if monthly_consumption > 0:
+                        days_remaining = int((store_stock / monthly_consumption) * 30)
+                        exhaustion_date = datetime.now() + timedelta(days=days_remaining)
+                        lead_time_days = lead_time_months * 30
+                        pr_trigger_date = exhaustion_date - timedelta(days=lead_time_days)
+                        is_urgent = pr_trigger_date <= datetime.now()
+                        pr_date_str = pr_trigger_date.strftime('%d %b %Y')
+                    else:
+                        pr_date_str = "No History / Stable"
+                        is_urgent = False
+
+                    urgency_badge = '<span style="background-color: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">🚨 URGENT PR REQUIRED</span>' if is_urgent else '<span style="background-color: #dcfce7; color: #16a34a; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">✅ Stock Healthy</span>'
+
+                    card_html = f"""
+                    <div class="inventory-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
+                            <div>
+                                <span style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase;">📍 {item['Area']}</span>
+                                <h4 style="margin: 2px 0 0 0; color: #0f172a; font-size: 16px; font-weight: 700;">{item['Instrument Name']}</h4>
+                            </div>
+                            <div>{urgency_badge}</div>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                            <div style="flex: 2;"><b>Material Code:</b> <span style="color: #0284c7; font-weight: 600;">{item['Material Code']}</span><br><b>Specs:</b> {item['Specs']}</div>
+                            <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 10px; color: #64748b; font-weight: bold;">INSTALLED / STORE</div>
+                                <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Field Count']} / {store_stock}</div>
+                            </div>
+                            <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 10px; color: #64748b; font-weight: bold;">AVG. CONSUMPTION RATE</div>
+                                <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Monthly Consumption']} / mo</div>
+                            </div>
+                            <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 10px; color: #64748b; font-weight: bold;">REPLACEMENT CYCLE</div>
+                                <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Replacement Cycle']} mos</div>
+                            </div>
+                            <div style="flex: 1.2; background: #eff6ff; padding: 6px; border-radius: 6px; text-align: center; border: 1px solid #bfdbfe;">
+                                <div style="font-size: 10px; color: #1e40af; font-weight: bold;">RECOMMENDED PR DATE</div>
+                                <div style="font-size: 14px; font-weight: 800; color: #1e3a8a;">{pr_date_str}</div>
+                            </div>
+                        </div>
+                    </div>
+                    """
+                    st.components.v1.html(card_html, height=140, scrolling=False)
+            else:
+                st.info("No matching material codes or instruments found.")
+        else:
+            st.warning("No inventory records available across active sheets.")
 
 # --- GLOBAL EXACT MATERIAL CODE SEARCH MODE ---
 elif st.session_state["global_search_mode"]:
@@ -630,8 +716,7 @@ else:
         all_instruments = ["All System Data"] + list(df[NAME_COL].dropna().unique())
         selected_instrument = st.sidebar.selectbox("Select Instrument Category:", all_instruments)
         
-        # Adjustable items per page so you can easily view 40+ or more entries without being cut off
-        items_per_page = st.sidebar.selectbox("Items Per Page:", [10, 20, 30, 40, 50, 100], index=3) # Default 40 items per page!
+        items_per_page = st.sidebar.selectbox("Items Per Page:", [10, 20, 30, 40, 50, 100], index=3)
         st.sidebar.markdown("---")
 
         if selected_instrument != "All System Data":
@@ -648,7 +733,6 @@ else:
         st.sidebar.caption(f"Showing page {page_number} of {total_pages} (Total unique: {total_items} items)")
         st.sidebar.markdown("---")
 
-        # Slice the unique names list for the current page
         start_idx = (page_number - 1) * items_per_page
         end_idx = start_idx + items_per_page
         paginated_names = unique_names_ordered[start_idx:end_idx]
