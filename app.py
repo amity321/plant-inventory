@@ -246,11 +246,11 @@ def calculate_real_consumption_from_log(target_material_code, removal_df, analys
         df_log["clean_mat"] = df_log[mat_col].apply(clean_material_code)
         item_log = df_log[df_log["clean_mat"] == str(target_material_code)].copy()
         
+        # Strict filtering for actual removals/issues only (No fallback to added-only entries)
         if type_col:
             removal_keywords = ["remov", "issu", "withdraw", "consum"]
             mask = item_log[type_col].astype(str).str.lower().apply(lambda x: any(k in x for k in removal_keywords))
-            if mask.any():
-                item_log = item_log[mask]
+            item_log = item_log[mask]
                 
         if item_log.empty:
             return 0.0, 0.0, 0
