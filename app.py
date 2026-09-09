@@ -7,7 +7,9 @@ from datetime import datetime, timedelta
 # 1. Page Configuration
 st.set_page_config(page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
 
-# --- AREA CONFIGURATIONS (Preserved URLs & Settings) ---
+# --- AREA CONFIGURATIONS & GLOBAL MATRIX URL ---
+AREA_MATRIX_URL = "YOUR_AREA_WISE_STOCK_MATRIX_CSV_URL_HERE"
+
 AREA_CONFIGS = {
     "Area 02/03": {
         "title": "Area 02/03 Instrumentation Inventory",
