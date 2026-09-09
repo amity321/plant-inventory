@@ -676,9 +676,7 @@ else:
     current_area = st.session_state["selected_area"]
     config = AREA_CONFIGS[current_area]
 
-    if st.sidebar.button("⬅️ Back to Master Portal Grid"):
-        st.session_state["selected_area"] = None
-        st.rerun()
+    # Removed the "Back to Master Portal Grid" button block here per your request
 
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
