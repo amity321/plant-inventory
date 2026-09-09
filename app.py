@@ -121,9 +121,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- SESSION STATE INITIALIZATION ---
+# --- SESSION STATE INITIALIZATION & SAFE FALLBACKS ---
 if "selected_area" not in st.session_state:
     st.session_state["selected_area"] = None
+
+if "sample_code_hint" not in globals():
+    sample_code_hint = "e.g., 300xxxx"
 
 # --- SIDEBAR GLOBAL SEARCH & CONTROLS ---
 search_code = st.sidebar.text_input(f"Enter Material Code ({sample_code_hint}):", "").strip()
@@ -333,4 +336,3 @@ else:
         st.cache_data.clear()
         st.session_state["data_timestamp"] = int(time.time())
         st.rerun()
-        
