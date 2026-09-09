@@ -7,9 +7,7 @@ from datetime import datetime, timedelta
 # 1. Page Configuration
 st.set_page_config(page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
 
-# --- AREA CONFIGURATIONS & GLOBAL MATRIX URL ---
-AREA_MATRIX_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=868142398&single=true&output=csv"
-
+# --- AREA CONFIGURATIONS (Preserved URLs & Settings) ---
 AREA_CONFIGS = {
     "Area 02/03": {
         "title": "Area 02/03 Instrumentation Inventory",
@@ -291,29 +289,29 @@ if "pr_selected_view" not in st.session_state:
 
 inject_custom_css()
 
-# --- SIDEBAR NAVIGATION MENU ---
-st.sidebar.markdown("### 🧭 Navigation")
-
-# 1. Home (Landing Page)
-if st.sidebar.button("🏠 Home", use_container_width=True):
-    st.session_state["selected_area"] = None
-    st.session_state["global_search_mode"] = False
-    st.session_state["predictive_pr_mode"] = False
-    st.rerun()
-
-# 2. Predictive PR Intelligence
-if st.sidebar.button("📊 Predictive PR Intelligence", use_container_width=True):
-    st.session_state["predictive_pr_mode"] = True
-    st.session_state["global_search_mode"] = False
-    st.session_state["selected_area"] = None
-    st.rerun()
-
-# 3. Material Search (Exact Material Code Locator)
-if st.sidebar.button("🔢 Material Search", use_container_width=True):
+# --- SIDEBAR NAVIGATION CONTROLS ---
+st.sidebar.markdown("### 🧭 Navigation & Tools")
+if st.sidebar.button("🔍 Material Code Search", use_container_width=True):
     st.session_state["global_search_mode"] = True
-    st.session_state["predictive_pr_mode"] = False
+    st.session_state["smart_intelligence_mode"] = False
     st.session_state["selected_area"] = None
+    st.session_state["pr_selected_view"] = None
     st.rerun()
+
+if st.sidebar.button("📈 Predictive PR Intelligence", use_container_width=True):
+    st.session_state["smart_intelligence_mode"] = True
+    st.session_state["global_search_mode"] = False
+    st.session_state["selected_area"] = None
+    st.session_state["pr_selected_view"] = None
+    st.rerun()
+
+if st.sidebar.button("🏠 Home / Portal Grid", use_container_width=True):
+    st.session_state["global_search_mode"] = False
+    st.session_state["smart_intelligence_mode"] = False
+    st.session_state["selected_area"] = None
+    st.session_state["pr_selected_view"] = None
+    st.rerun()
+
 st.sidebar.markdown("---")
 
 # --- PREDICTIVE PR INTELLIGENCE & CONSUMPTION ANALYTICS MODE ---
