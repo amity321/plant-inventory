@@ -291,7 +291,7 @@ inject_custom_css()
 
 # --- SIDEBAR NAVIGATION CONTROLS ---
 st.sidebar.markdown("### 🧭 Navigation & Tools")
-if st.sidebar.button("🔍 Exact Material Code Search", use_container_width=True):
+if st.sidebar.button("🔍 Material Code Search", use_container_width=True):
     st.session_state["global_search_mode"] = True
     st.session_state["smart_intelligence_mode"] = False
     st.session_state["selected_area"] = None
