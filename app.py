@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 st.set_page_config(page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
 
 # --- AREA CONFIGURATIONS & GLOBAL MATRIX URL ---
-AREA_MATRIX_URL = "YOUR_AREA_WISE_STOCK_MATRIX_CSV_URL_HERE"
+AREA_MATRIX_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=868142398&single=true&output=csv"
 
 AREA_CONFIGS = {
     "Area 02/03": {
