@@ -21,33 +21,33 @@ AREA_CONFIGS = {
     },
     "Area 06/07": {
         "title": "Area 06/07 Instrumentation Inventory",
-        "sheet_url": "YOUR_AREA_06_07_CSV_URL_HERE",
-        "removal_url": None
+        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu7xjMzOaBojfDgk4JLijhGFxA987o2zi7-etXZ7RjYCS8WgZR0IU_gx1eyn5PIZc0HFCuUxwr9xY1/pub?gid=2114506451&single=true&output=csv",
+        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQu7xjMzOaBojfDgk4JLijhGFxA987o2zi7-etXZ7RjYCS8WgZR0IU_gx1eyn5PIZc0HFCuUxwr9xY1/pub?gid=687360060&single=true&output=csv"
     },
     "Area 08": {
         "title": "Area 08 Instrumentation Inventory",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSEnzn9n4L_uGO9VkLMe8_ylvyaZkskIZZEFJSTqXDQJJ1uEHevl9FfKWhnpcltGsDlhwsxnIEOflaK/pub?gid=1609301093&single=true&output=csv",
-        "removal_url": None
+        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSEnzn9n4L_uGO9VkLMe8_ylvyaZkskIZZEFJSTqXDQJJ1uEHevl9FfKWhnpcltGsDlhwsxnIEOflaK/pub?gid=1399282472&single=true&output=csv"
     },
     "Area 09/10": {
         "title": "Area 09/10 Instrumentation Inventory",
-        "sheet_url": "YOUR_AREA_09_10_CSV_URL_HERE",
-        "removal_url": None
+        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxzP4Xek0tErBRzBaaNpYvQfjCiCEbcvi3EwQU-PzUkr7uH319JvwGO6baTWnVqBcACiyKrz96D3s0/pub?gid=1452315016&single=true&output=csv",
+        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxzP4Xek0tErBRzBaaNpYvQfjCiCEbcvi3EwQU-PzUkr7uH319JvwGO6baTWnVqBcACiyKrz96D3s0/pub?gid=230600100&single=true&output=csv"
     },
     "SPP TG": {
         "title": "SPP TG Instrumentation Inventory",
-        "sheet_url": "YOUR_SPP_TG_CSV_URL_HERE",
-        "removal_url": None
+        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSv2eRmgJQbwKowu9TW_-4t-PiHzOZf3ENGr4Evum-vdB5qjSmTibk6GZOH5eHdibLRtF_6CQmjUZM-/pub?gid=1122212956&single=true&output=csv",
+        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSv2eRmgJQbwKowu9TW_-4t-PiHzOZf3ENGr4Evum-vdB5qjSmTibk6GZOH5eHdibLRtF_6CQmjUZM-/pub?gid=909280818&single=true&output=csv"
     },
     "SPP Boiler": {
         "title": "SPP Boiler Instrumentation Inventory",
-        "sheet_url": "YOUR_SPP_BOILER_CSV_URL_HERE",
-        "removal_url": None
+        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1ml_IQGF1JYovetx58rU5XXPEiNmAuj11Vco1l9eO0DBCS_fWeZ-RAkFauvkDHlo2lMdYB1mLZJOa/pub?gid=53758522&single=true&output=csv",
+        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1ml_IQGF1JYovetx58rU5XXPEiNmAuj11Vco1l9eO0DBCS_fWeZ-RAkFauvkDHlo2lMdYB1mLZJOa/pub?gid=1357503643&single=true&output=csv"
     },
     "C&I Sub Store": {
         "title": "C&I Sub Store Instrumentation Inventory",
-        "sheet_url": "YOUR_CNI_SUB_STORE_CSV_URL_HERE",
-        "removal_url": None
+        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vShKNuZOaBiPF6I2VlTiA27izZ8DMIdRvOmo9sfVEwSz8wwoxw_f1rc4jFv4gOgMxw4kspnMEFxPTHi/pub?gid=1522866968&single=true&output=csv",
+        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vShKNuZOaBiPF6I2VlTiA27izZ8DMIdRvOmo9sfVEwSz8wwoxw_f1rc4jFv4gOgMxw4kspnMEFxPTHi/pub?gid=454657357&single=true&output=csv"
     }
 }
 
