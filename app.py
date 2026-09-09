@@ -289,29 +289,29 @@ if "pr_selected_view" not in st.session_state:
 
 inject_custom_css()
 
-# --- SIDEBAR NAVIGATION MENU ---
-st.sidebar.markdown("### 🧭 Navigation")
-
-# 1. Home (Landing Page)
-if st.sidebar.button("🏠 Home", use_container_width=True):
-    st.session_state["selected_area"] = None
-    st.session_state["global_search_mode"] = False
-    st.session_state["predictive_pr_mode"] = False
-    st.rerun()
-
-# 2. Predictive PR Intelligence
-if st.sidebar.button("📊 Predictive PR Intelligence", use_container_width=True):
-    st.session_state["predictive_pr_mode"] = True
-    st.session_state["global_search_mode"] = False
-    st.session_state["selected_area"] = None
-    st.rerun()
-
-# 3. Material Search (Exact Material Code Locator)
-if st.sidebar.button("🔢 Material Search", use_container_width=True):
+# --- SIDEBAR NAVIGATION CONTROLS ---
+st.sidebar.markdown("### 🧭 Navigation & Tools")
+if st.sidebar.button("🔍 Material Code", use_container_width=True):
     st.session_state["global_search_mode"] = True
-    st.session_state["predictive_pr_mode"] = False
+    st.session_state["smart_intelligence_mode"] = False
     st.session_state["selected_area"] = None
+    st.session_state["pr_selected_view"] = None
     st.rerun()
+
+if st.sidebar.button("📈 Predictive PR Intelligence", use_container_width=True):
+    st.session_state["smart_intelligence_mode"] = True
+    st.session_state["global_search_mode"] = False
+    st.session_state["selected_area"] = None
+    st.session_state["pr_selected_view"] = None
+    st.rerun()
+
+if st.sidebar.button("🏠 Home", use_container_width=True):
+    st.session_state["global_search_mode"] = False
+    st.session_state["smart_intelligence_mode"] = False
+    st.session_state["selected_area"] = None
+    st.session_state["pr_selected_view"] = None
+    st.rerun()
+
 st.sidebar.markdown("---")
 
 # --- PREDICTIVE PR INTELLIGENCE & CONSUMPTION ANALYTICS MODE ---
