@@ -349,7 +349,13 @@ if st.session_state["stock_matrix_mode"]:
             filtered_matrix = df_matrix
             
         st.markdown(f"### 📋 Matrix Data View")
-        st.dataframe(filtered_matrix, use_container_width=True, height=600)
+        
+        # Apply Pandas Styler to make row/column headers bold and black
+        styled_matrix = filtered_matrix.style.set_table_styles([
+            {'selector': 'th', 'props': [('font-weight', 'bold'), ('color', '#000000')]}
+        ])
+        
+        st.dataframe(styled_matrix, use_container_width=True, height=600)
             
     except Exception as e:
         st.error(f"Error loading Stock Matrix data from published link: {e}")
