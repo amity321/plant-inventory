@@ -627,33 +627,57 @@ elif st.session_state["global_search_mode"]:
         st.session_state["data_timestamp"] = int(time.time())
 
 # --- DEFAULT HOME SCREEN VIEW ---
+# --- DEFAULT HOME SCREEN VIEW ---
 else:
-    st.markdown("""
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">🏭 Master Plant Instrumentation Inventory</h1>
-            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Select an area below to inspect live field metrics, spare stock counts, and threshold statuses.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
 
-    areas = list(AREA_CONFIGS.keys())
-    for i in range(0, len(areas), 3):
-        cols = st.columns(3)
-        for j in range(3):
-            if i + j < len(areas):
-                area_name = areas[i + j]
-                with cols[j]:
-                    st.markdown(f"""
-                        <div style="background: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 12px; text-align: center;">
-                            <h4 style="margin: 0 0 6px 0; color: #0f172a; font-size: 16px; font-weight: 700;">📍 {area_name}</h4>
-                            <p style="color: #64748b; font-size: 12px; margin: 0;">Live inventory monitoring node.</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    if st.button(f"Open {area_name}", use_container_width=True, key=f"home_btn_{area_name}"):
-                        st.session_state["selected_area"] = area_name
-                        st.rerun()
+    # If an area is selected from home screen
+    if st.session_state["selected_area"]:
+        selected_area = st.session_state["selected_area"]
+        config = AREA_CONFIGS[selected_area]
+        
+        st.markdown(f"<hr style='margin: 30px 0; border: none; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
+        st.markdown(f"## 📋 {selected_area} Live Inventory Status")
+
+        if st.button("⬅️ Close Area View"):
+            st.session_state["selected_area"] = None
+            st.rerun()
+
+        try:
+            df = fetch_data(config["sheet_url"], st.session_state["data_timestamp"])
+            df.columns = df.columns.str.strip()
+            mapping = resolve_columns(df)
+            
+            for _, row in df.iterrows():
+                render_row(row, mapping, selected_area)
+        except Exception as e:
+            st.error(f"Failed to load inventory for {selected_area}: {e}")
+            
+    else:
+        st.markdown("""
+            <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">🏭 Master Plant Instrumentation Inventory</h1>
+                <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Select an area below to inspect live field metrics, spare stock counts, and threshold statuses.</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        areas = list(AREA_CONFIGS.keys())
+        for i in range(0, len(areas), 3):
+            cols = st.columns(3)
+            for j in range(3):
+                if i + j < len(areas):
+                    area_name = areas[i + j]
+                    with cols[j]:
+                        st.markdown(f"""
+                            <div style="background: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 12px; text-align: center;">
+                                <h4 style="margin: 0 0 6px 0; color: #0f172a; font-size: 16px; font-weight: 700;">📍 {area_name}</h4>
+                                <p style="color: #64748b; font-size: 12px; margin: 0;">Live inventory monitoring node.</p>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        if st.button(f"Open {area_name}", use_container_width=True, key=f"home_btn_{area_name}"):
+                            st.session_state["selected_area"] = area_name
+                            st.rerun()
 
     # If an area is selected from home screen
     if st.session_state["selected_area"]:
