@@ -63,7 +63,7 @@ def clean_material_code(val):
 
 def resolve_columns(df):
     cols = df.columns
-    mat_col, field_col, store_col, shop_col, total_col, specs_col, name_col, threshold_col = None, None, None, None, None, None, None, None
+    mat_col, field_col, store_col, shop_col, total_col, specs_col, name_col = None, None, None, None, None, None, None
     
     for col in cols:
         c_low = col.lower()
@@ -81,8 +81,6 @@ def resolve_columns(df):
             specs_col = col
         elif not name_col and ("instrument" in c_low or "name" in c_low):
             name_col = col
-        elif not threshold_col and "threshold" in c_low:
-            threshold_col = col
 
     return {
         "name": name_col or "Instrument Name",
@@ -91,8 +89,7 @@ def resolve_columns(df):
         "field": field_col or "Existing Instrument on Field",
         "store": store_col or "Remaining Spares in Store-Room",
         "shop": shop_col or "Remaining Spares in Shop-Floor",
-        "total": total_col or "Total Spares",
-        "threshold": threshold_col or "Threshold"
+        "total": total_col or "Total Spares"
     }
 
 def render_row(row, mapping, current_area_name):
@@ -290,9 +287,6 @@ if "smart_intelligence_mode" not in st.session_state:
 if "pr_selected_view" not in st.session_state:
     st.session_state["pr_selected_view"] = None
 
-if "urgent_requirement_mode" not in st.session_state:
-    st.session_state["urgent_requirement_mode"] = False
-
 inject_custom_css()
 
 # --- SIDEBAR NAVIGATION CONTROLS ---
@@ -303,7 +297,6 @@ if st.sidebar.button("🏠 Home", use_container_width=True):
     st.session_state["smart_intelligence_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
-    st.session_state["urgent_requirement_mode"] = False
     st.rerun()
     
 if st.sidebar.button("📈 Predictive PR Intelligence", use_container_width=True):
@@ -311,7 +304,6 @@ if st.sidebar.button("📈 Predictive PR Intelligence", use_container_width=True
     st.session_state["global_search_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
-    st.session_state["urgent_requirement_mode"] = False
     st.rerun()
 
 if st.sidebar.button("🔍 Material Code", use_container_width=True):
@@ -319,90 +311,12 @@ if st.sidebar.button("🔍 Material Code", use_container_width=True):
     st.session_state["smart_intelligence_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
-    st.session_state["urgent_requirement_mode"] = False
-    st.rerun()
-
-# --- Added Urgent Requirement Button here ---
-if st.sidebar.button("🚨 Urgent Requirement", use_container_width=True):
-    st.session_state["urgent_requirement_mode"] = True
-    st.session_state["global_search_mode"] = False
-    st.session_state["smart_intelligence_mode"] = False
-    st.session_state["selected_area"] = None
-    st.session_state["pr_selected_view"] = None
     st.rerun()
 
 st.sidebar.markdown("---")
 
-# --- URGENT REQUIREMENT MODE VIEW ---
-if st.session_state["urgent_requirement_mode"]:
-    st.markdown("""
-        <div style="background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%); padding: 30px; border-radius: 16px; border: 2px solid #f87171; box-shadow: 0 10px 25px rgba(220,38,38,0.05); text-align: center; margin-bottom: 25px;">
-            <h1 style="color: #991b1b !important; margin: 0; font-size: 28px; font-weight: 800;">🚨 Urgent Requirement - Low Stock Dashboard</h1>
-            <p style="color: #7f1d1d !important; margin-top: 8px; font-size: 14px;">Scanning all active plant areas for items where Total Stock has breached the Minimum Threshold limit.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    if "data_timestamp" not in st.session_state:
-        st.session_state["data_timestamp"] = int(time.time())
-
-    urgent_records = []
-    for area_key, area_cfg in AREA_CONFIGS.items():
-        if "YOUR_" in area_cfg["sheet_url"]:
-            continue
-        try:
-            df_area = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
-            df_area.columns = df_area.columns.str.strip()
-            mapping = resolve_columns(df_area)
-            
-            mat_col = mapping["material"]
-            name_col = mapping["name"]
-            specs_col = mapping["specs"]
-            total_col = mapping["total"]
-            threshold_col = mapping["threshold"]
-
-            for _, r in df_area.iterrows():
-                mat_code = clean_material_code(r.get(mat_col, "N/A"))
-                if mat_code == "N/A":
-                    continue
-                
-                # Extract Total Stock and Threshold dynamically based on columns
-                # If 'Total Spares' or 'Total Stock' column exists, use it, otherwise fallback to store stock sum or compute it
-                total_stock = safe_int(r.get(total_col, 0))
-                threshold_val = safe_int(r.get(threshold_col, 0))
-
-                # If threshold column exists and value is defined, check condition: Total Stock <= Threshold
-                if threshold_col in df_area.columns and total_stock <= threshold_val:
-                    urgent_records.append({
-                        "Area": area_key,
-                        "Instrument Name": str(r.get(name_col, "No Name")).strip(),
-                        "Specs": str(r.get(specs_col, "N/A")).strip(),
-                        "Material Code": mat_code,
-                        "Total Stock": total_stock,
-                        "Threshold": threshold_val
-                    })
-        except Exception as e:
-            pass
-
-    if urgent_records:
-        urgent_df = pd.DataFrame(urgent_records)
-        st.markdown(f"### ⚠️ Found {len(urgent_df)} items below threshold level!")
-        
-        # Display table cleanly
-        st.dataframe(urgent_df, use_container_width=True)
-
-        # Download button for procurement list
-        csv = urgent_df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download Urgent Requirement List (CSV)",
-            data=csv,
-            file_name="urgent_requirements.csv",
-            mime="text/csv",
-        )
-    else:
-        st.success("🎉 All items across all plant areas are currently above their safety threshold!")
-
 # --- PREDICTIVE PR INTELLIGENCE & CONSUMPTION ANALYTICS MODE ---
-elif st.session_state["smart_intelligence_mode"]:
+if st.session_state["smart_intelligence_mode"]:
     
     if st.session_state["pr_selected_view"] is None:
         st.markdown("""
@@ -626,81 +540,6 @@ elif st.session_state["global_search_mode"]:
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
 
-# --- DEFAULT HOME SCREEN VIEW ---
-# --- DEFAULT HOME SCREEN VIEW ---
-else:
-    if "data_timestamp" not in st.session_state:
-        st.session_state["data_timestamp"] = int(time.time())
-
-    # If an area is selected from home screen
-    if st.session_state["selected_area"]:
-        selected_area = st.session_state["selected_area"]
-        config = AREA_CONFIGS[selected_area]
-        
-        st.markdown(f"<hr style='margin: 30px 0; border: none; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
-        st.markdown(f"## 📋 {selected_area} Live Inventory Status")
-
-        if st.button("⬅️ Close Area View"):
-            st.session_state["selected_area"] = None
-            st.rerun()
-
-        try:
-            df = fetch_data(config["sheet_url"], st.session_state["data_timestamp"])
-            df.columns = df.columns.str.strip()
-            mapping = resolve_columns(df)
-            
-            for _, row in df.iterrows():
-                render_row(row, mapping, selected_area)
-        except Exception as e:
-            st.error(f"Failed to load inventory for {selected_area}: {e}")
-            
-    else:
-        st.markdown("""
-            <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">🏭 Master Plant Instrumentation Inventory</h1>
-                <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Select an area below to inspect live field metrics, spare stock counts, and threshold statuses.</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-        areas = list(AREA_CONFIGS.keys())
-        for i in range(0, len(areas), 3):
-            cols = st.columns(3)
-            for j in range(3):
-                if i + j < len(areas):
-                    area_name = areas[i + j]
-                    with cols[j]:
-                        st.markdown(f"""
-                            <div style="background: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 12px; text-align: center;">
-                                <h4 style="margin: 0 0 6px 0; color: #0f172a; font-size: 16px; font-weight: 700;">📍 {area_name}</h4>
-                                <p style="color: #64748b; font-size: 12px; margin: 0;">Live inventory monitoring node.</p>
-                            </div>
-                        """, unsafe_allow_html=True)
-                        if st.button(f"Open {area_name}", use_container_width=True, key=f"home_btn_{area_name}"):
-                            st.session_state["selected_area"] = area_name
-                            st.rerun()
-
-    # If an area is selected from home screen
-    if st.session_state["selected_area"]:
-        selected_area = st.session_state["selected_area"]
-        config = AREA_CONFIGS[selected_area]
-        
-        st.markdown(f"<hr style='margin: 30px 0; border: none; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
-        st.markdown(f"## 📋 {selected_area} Live Inventory Status")
-
-        if st.button("⬅️ Close Area View"):
-            st.session_state["selected_area"] = None
-            st.rerun()
-
-        try:
-            df = fetch_data(config["sheet_url"], st.session_state["data_timestamp"])
-            df.columns = df.columns.str.strip()
-            mapping = resolve_columns(df)
-            
-            for _, row in df.iterrows():
-                render_row(row, mapping, selected_area)
-        except Exception as e:
-            st.error(f"Failed to load inventory for {selected_area}: {e}")
-
     for area_key, area_cfg in AREA_CONFIGS.items():
         if "YOUR_" in area_cfg["sheet_url"]:
             continue
@@ -741,41 +580,41 @@ else:
             except Exception:
                 pass
 
-     if all_results:
-        res_df = pd.DataFrame(all_results)
-        st.success(f"Found match for material code **{search_code}** in {len(res_df)} location(s) across the plant!")
-        
-        for _, row in res_df.iterrows():
-            area_tag = row["Area_Name"]
-            mapping = row["Resolved_Mapping"]
-            mapping["show_name"] = True
+        if all_results:
+            res_df = pd.DataFrame(all_results)
+            st.success(f"Found match for material code **{search_code}** in {len(res_df)} location(s) across the plant!")
             
-            inst_name = str(row[mapping["name"]]).strip() if mapping["name"] in row and pd.notna(row[mapping["name"]]) else "No Name"
-            mat_code_val = clean_material_code(row[mapping["material"]])
-            full_spec = str(row[mapping["specs"]]).strip() if mapping["specs"] in row and pd.notna(row[mapping["specs"]]) else "No Specs Added"
-            
-            field_count = safe_int(row[mapping["field"]]) if mapping["field"] in row else 0
-            spares_store = safe_int(row[mapping["store"]]) if mapping["store"] in row else 0
-            
-            name_lower = inst_name.lower()
-            if "transmitter" in name_lower or "converter" in name_lower:
-                healthy_stock = max(2, int(field_count * 0.20))
-            elif "element" in name_lower or "switch" in name_lower or "probe" in name_lower:
-                healthy_stock = max(3, int(field_count * 0.30))
-            else:
-                healthy_stock = max(2, int(field_count * 0.15))
-            
-            shortfall_excess = spares_store - healthy_stock
-            cleaned_spec = full_spec.replace('•', '').strip()
+            for _, row in res_df.iterrows():
+                area_tag = row["Area_Name"]
+                mapping = row["Resolved_Mapping"]
+                mapping["show_name"] = True
+                
+                inst_name = str(row[mapping["name"]]).strip() if mapping["name"] in row and pd.notna(row[mapping["name"]]) else "No Name"
+                mat_code_val = clean_material_code(row[mapping["material"]])
+                full_spec = str(row[mapping["specs"]]).strip() if mapping["specs"] in row and pd.notna(row[mapping["specs"]]) else "No Specs Added"
+                
+                field_count = safe_int(row[mapping["field"]]) if mapping["field"] in row else 0
+                spares_store = safe_int(row[mapping["store"]]) if mapping["store"] in row else 0
+                
+                name_lower = inst_name.lower()
+                if "transmitter" in name_lower or "converter" in name_lower:
+                    healthy_stock = max(2, int(field_count * 0.20))
+                elif "element" in name_lower or "switch" in name_lower or "probe" in name_lower:
+                    healthy_stock = max(3, int(field_count * 0.30))
+                else:
+                    healthy_stock = max(2, int(field_count * 0.15))
+                
+                shortfall_excess = spares_store - healthy_stock
+                cleaned_spec = full_spec.replace('•', '').strip()
 
-            if shortfall_excess < 0:
-                status_html = f'<div class="status-badge status-shortfall">🚨 Shortfall ({shortfall_excess})</div>'
-            elif shortfall_excess > 0:
-                status_html = f'<div class="status-badge status-surplus">✅ Surplus (+{shortfall_excess})</div>'
-            else:
-                status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
+                if shortfall_excess < 0:
+                    status_html = f'<div class="status-badge status-shortfall">🚨 Shortfall ({shortfall_excess})</div>'
+                elif shortfall_excess > 0:
+                    status_html = f'<div class="status-badge status-surplus">✅ Surplus (+{shortfall_excess})</div>'
+                else:
+                    status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
 
-            card_html = f"""
+                card_html = f"""
                 <div class="inventory-card">
                     <div style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">📍 Plant Area: {area_tag}</div>
                     <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
@@ -801,12 +640,14 @@ else:
                     </div>
                 </div>
                 """
-            st.components.v1.html(card_html, height=125, scrolling=False)
+                st.components.v1.html(card_html, height=125, scrolling=False)
+        else:
+            st.info(f"No item with exact material code '{search_code}' found across the connected areas.")
     else:
-        st.info(f"No item with exact material code '{search_code}' found across the connected areas.")
+        st.info(f"💡 Type material code above to instantly locate it across all plant areas ({sample_code_hint}).")
 
 # --- HOD LANDING PAGE ---
-if st.session_state["selected_area"] is None:
+elif st.session_state["selected_area"] is None:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 35px;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">🏭 Master Instrumentation Portal</h1>
