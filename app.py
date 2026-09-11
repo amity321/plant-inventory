@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # 1. Page Configuration
 st.set_page_config(page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
 
-# --- AREA CONFIGURATIONS (Preserved URLs & Settings) ---   // sheet url- dashbaord link and removal url- form response-1 url
+# --- AREA CONFIGURATIONS (Preserved URLs & Settings) ---
 AREA_CONFIGS = {
     "Area 02/03": {
         "title": "Area 02/03 Instrumentation Inventory",
@@ -284,6 +284,9 @@ if "global_search_mode" not in st.session_state:
 if "smart_intelligence_mode" not in st.session_state:
     st.session_state["smart_intelligence_mode"] = False
 
+if "stock_matrix_mode" not in st.session_state:
+    st.session_state["stock_matrix_mode"] = False
+
 if "pr_selected_view" not in st.session_state:
     st.session_state["pr_selected_view"] = None
 
@@ -295,6 +298,7 @@ st.sidebar.markdown("### 🧭 Navigation & Tools")
 if st.sidebar.button("🏠 Home", use_container_width=True):
     st.session_state["global_search_mode"] = False
     st.session_state["smart_intelligence_mode"] = False
+    st.session_state["stock_matrix_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
     st.rerun()
@@ -302,6 +306,7 @@ if st.sidebar.button("🏠 Home", use_container_width=True):
 if st.sidebar.button("📈 Predictive PR Intelligence", use_container_width=True):
     st.session_state["smart_intelligence_mode"] = True
     st.session_state["global_search_mode"] = False
+    st.session_state["stock_matrix_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
     st.rerun()
@@ -309,14 +314,64 @@ if st.sidebar.button("📈 Predictive PR Intelligence", use_container_width=True
 if st.sidebar.button("🔍 Material Code", use_container_width=True):
     st.session_state["global_search_mode"] = True
     st.session_state["smart_intelligence_mode"] = False
+    st.session_state["stock_matrix_mode"] = False
+    st.session_state["selected_area"] = None
+    st.session_state["pr_selected_view"] = None
+    st.rerun()
+
+if st.sidebar.button("📊 Areawise Stock Matrix", use_container_width=True):
+    st.session_state["stock_matrix_mode"] = True
+    st.session_state["global_search_mode"] = False
+    st.session_state["smart_intelligence_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
     st.rerun()
 
 st.sidebar.markdown("---")
 
+# --- AREAIWISE STOCK MATRIX EXCEL VIEWER MODE ---
+if st.session_state["stock_matrix_mode"]:
+    st.markdown("""
+        <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
+            <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📊 Areawise Stock Matrix</h1>
+            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Upload your Excel sheet to analyze and view areawise stock distribution matrices.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    uploaded_excel = st.sidebar.file_uploader("📂 Upload Stock Matrix Excel File (.xlsx, .xls)", type=["xlsx", "xls"])
+    
+    if uploaded_excel is not None:
+        try:
+            df_matrix = pd.read_excel(uploaded_excel)
+            df_matrix.columns = df_matrix.columns.str.strip()
+            st.success("Excel file loaded successfully!")
+            
+            matrix_search = st.text_input("🔍 Search Matrix (Material Code, Description, or Area):", "").strip()
+            if matrix_search:
+                mask = df_matrix.astype(str).apply(lambda x: x.str.contains(matrix_search, case=False, na=False)).any(axis=1)
+                filtered_matrix = df_matrix[mask]
+            else:
+                filtered_matrix = df_matrix
+                
+            st.markdown(f"### 📋 Matrix Data View ({len(filtered_matrix)} rows)")
+            st.dataframe(filtered_matrix, use_container_width=True)
+            
+            st.markdown("### 📈 Quick Metrics Summary")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Rows", len(df_matrix))
+            with col2:
+                st.metric("Total Columns", len(df_matrix.columns))
+            with col3:
+                st.metric("Matching Rows", len(filtered_matrix))
+                
+        except Exception as e:
+            st.error(f"Error reading Excel file: {e}")
+    else:
+        st.info("👈 Please upload your Areawise Stock Matrix Excel file using the sidebar uploader to view the dashboard matrix report.")
+
 # --- PREDICTIVE PR INTELLIGENCE & CONSUMPTION ANALYTICS MODE ---
-if st.session_state["smart_intelligence_mode"]:
+elif st.session_state["smart_intelligence_mode"]:
     
     if st.session_state["pr_selected_view"] is None:
         st.markdown("""
@@ -676,8 +731,6 @@ elif st.session_state["selected_area"] is None:
 else:
     current_area = st.session_state["selected_area"]
     config = AREA_CONFIGS[current_area]
-
-    # Removed the "Back to Master Portal Grid" button block here per your request
 
     if "data_timestamp" not in st.session_state:
         st.session_state["data_timestamp"] = int(time.time())
