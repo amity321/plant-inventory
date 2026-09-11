@@ -291,13 +291,14 @@ inject_custom_css()
 
 # --- SIDEBAR NAVIGATION CONTROLS ---
 st.sidebar.markdown("### 🧭 Navigation & Tools")
-if st.sidebar.button("🔍 Material Code", use_container_width=True):
-    st.session_state["global_search_mode"] = True
+
+if st.sidebar.button("🏠 Home", use_container_width=True):
+    st.session_state["global_search_mode"] = False
     st.session_state["smart_intelligence_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
     st.rerun()
-
+    
 if st.sidebar.button("📈 Predictive PR Intelligence", use_container_width=True):
     st.session_state["smart_intelligence_mode"] = True
     st.session_state["global_search_mode"] = False
@@ -305,8 +306,8 @@ if st.sidebar.button("📈 Predictive PR Intelligence", use_container_width=True
     st.session_state["pr_selected_view"] = None
     st.rerun()
 
-if st.sidebar.button("🏠 Home", use_container_width=True):
-    st.session_state["global_search_mode"] = False
+if st.sidebar.button("🔍 Material Code", use_container_width=True):
+    st.session_state["global_search_mode"] = True
     st.session_state["smart_intelligence_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
