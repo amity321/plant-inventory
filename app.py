@@ -741,41 +741,41 @@ else:
             except Exception:
                 pass
 
-        if all_results:
-            res_df = pd.DataFrame(all_results)
-            st.success(f"Found match for material code **{search_code}** in {len(res_df)} location(s) across the plant!")
+       if all_results:
+        res_df = pd.DataFrame(all_results)
+        st.success(f"Found match for material code **{search_code}** in {len(res_df)} location(s) across the plant!")
+        
+        for _, row in res_df.iterrows():
+            area_tag = row["Area_Name"]
+            mapping = row["Resolved_Mapping"]
+            mapping["show_name"] = True
             
-            for _, row in res_df.iterrows():
-                area_tag = row["Area_Name"]
-                mapping = row["Resolved_Mapping"]
-                mapping["show_name"] = True
-                
-                inst_name = str(row[mapping["name"]]).strip() if mapping["name"] in row and pd.notna(row[mapping["name"]]) else "No Name"
-                mat_code_val = clean_material_code(row[mapping["material"]])
-                full_spec = str(row[mapping["specs"]]).strip() if mapping["specs"] in row and pd.notna(row[mapping["specs"]]) else "No Specs Added"
-                
-                field_count = safe_int(row[mapping["field"]]) if mapping["field"] in row else 0
-                spares_store = safe_int(row[mapping["store"]]) if mapping["store"] in row else 0
-                
-                name_lower = inst_name.lower()
-                if "transmitter" in name_lower or "converter" in name_lower:
-                    healthy_stock = max(2, int(field_count * 0.20))
-                elif "element" in name_lower or "switch" in name_lower or "probe" in name_lower:
-                    healthy_stock = max(3, int(field_count * 0.30))
-                else:
-                    healthy_stock = max(2, int(field_count * 0.15))
-                
-                shortfall_excess = spares_store - healthy_stock
-                cleaned_spec = full_spec.replace('•', '').strip()
+            inst_name = str(row[mapping["name"]]).strip() if mapping["name"] in row and pd.notna(row[mapping["name"]]) else "No Name"
+            mat_code_val = clean_material_code(row[mapping["material"]])
+            full_spec = str(row[mapping["specs"]]).strip() if mapping["specs"] in row and pd.notna(row[mapping["specs"]]) else "No Specs Added"
+            
+            field_count = safe_int(row[mapping["field"]]) if mapping["field"] in row else 0
+            spares_store = safe_int(row[mapping["store"]]) if mapping["store"] in row else 0
+            
+            name_lower = inst_name.lower()
+            if "transmitter" in name_lower or "converter" in name_lower:
+                healthy_stock = max(2, int(field_count * 0.20))
+            elif "element" in name_lower or "switch" in name_lower or "probe" in name_lower:
+                healthy_stock = max(3, int(field_count * 0.30))
+            else:
+                healthy_stock = max(2, int(field_count * 0.15))
+            
+            shortfall_excess = spares_store - healthy_stock
+            cleaned_spec = full_spec.replace('•', '').strip()
 
-                if shortfall_excess < 0:
-                    status_html = f'<div class="status-badge status-shortfall">🚨 Shortfall ({shortfall_excess})</div>'
-                elif shortfall_excess > 0:
-                    status_html = f'<div class="status-badge status-surplus">✅ Surplus (+{shortfall_excess})</div>'
-                else:
-                    status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
+            if shortfall_excess < 0:
+                status_html = f'<div class="status-badge status-shortfall">🚨 Shortfall ({shortfall_excess})</div>'
+            elif shortfall_excess > 0:
+                status_html = f'<div class="status-badge status-surplus">✅ Surplus (+{shortfall_excess})</div>'
+            else:
+                status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
 
-                card_html = f"""
+            card_html = f"""
                 <div class="inventory-card">
                     <div style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">📍 Plant Area: {area_tag}</div>
                     <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
@@ -801,14 +801,12 @@ else:
                     </div>
                 </div>
                 """
-                st.components.v1.html(card_html, height=125, scrolling=False)
-        else:
-            st.info(f"No item with exact material code '{search_code}' found across the connected areas.")
+            st.components.v1.html(card_html, height=125, scrolling=False)
     else:
-        st.info(f"💡 Type material code above to instantly locate it across all plant areas ({sample_code_hint}).")
+        st.info(f"No item with exact material code '{search_code}' found across the connected areas.")
 
 # --- HOD LANDING PAGE ---
-elif st.session_state["selected_area"] is None:
+if st.session_state["selected_area"] is None:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 35px;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">🏭 Master Instrumentation Portal</h1>
