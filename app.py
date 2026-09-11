@@ -350,10 +350,12 @@ if st.session_state["stock_matrix_mode"]:
             
         st.markdown(f"### 📋 Matrix Data View")
         
-        # Apply Pandas Styler to make row/column headers bold and black
+        # Apply Pandas Styler to make table headers (columns) and index (rows) bold and black, 
+        # and inject CSS to ensure table header elements render clearly in black and bold.
         styled_matrix = filtered_matrix.style.set_table_styles([
-            {'selector': 'th', 'props': [('font-weight', 'bold'), ('color', '#000000')]}
-        ])
+            {'selector': 'th', 'props': [('font-weight', 'bold'), ('color', '#000000')]},
+            {'selector': 'tr th', 'props': [('font-weight', 'bold'), ('color', '#000000')]}
+        ]).set_properties(**{'color': '#000000'})
         
         st.dataframe(styled_matrix, use_container_width=True, height=600)
             
