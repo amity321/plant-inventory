@@ -328,12 +328,12 @@ if st.sidebar.button("📊 Areawise Stock", use_container_width=True):
 
 st.sidebar.markdown("---")
 
-# --- AREAIWISE STOCK MATRIX WEB-PUBLISHED VIEWER MODE ---
+# --- AREAWISE STOCK MATRIX WEB-PUBLISHED VIEWER MODE ---
 if st.session_state["stock_matrix_mode"]:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📊 Areawise Stock Matrix</h1>
-            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Live data fetched directly from your web-published Google Sheet matrix.</p>
+            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Live data fetching...</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -348,7 +348,7 @@ if st.session_state["stock_matrix_mode"]:
         else:
             filtered_matrix = df_matrix
             
-        st.markdown(f"### 📋 Matrix Data View ({len(filtered_matrix)} rows)")
+        st.markdown(f"### 📋 Matrix Data View")
         st.dataframe(filtered_matrix, use_container_width=True, height=600)
             
     except Exception as e:
