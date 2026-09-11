@@ -741,7 +741,7 @@ else:
             except Exception:
                 pass
 
-       if all_results:
+     if all_results:
         res_df = pd.DataFrame(all_results)
         st.success(f"Found match for material code **{search_code}** in {len(res_df)} location(s) across the plant!")
         
