@@ -317,13 +317,6 @@ if st.sidebar.button("📈 Predictive PR Intelligence", use_container_width=True
     st.session_state["pr_selected_view"] = None
     st.rerun()
 
-if st.sidebar.button("🔍 Material Code", use_container_width=True):
-    st.session_state["global_search_mode"] = True
-    st.session_state["smart_intelligence_mode"] = False
-    st.session_state["stock_matrix_mode"] = False
-    st.session_state["selected_area"] = None
-    st.session_state["pr_selected_view"] = None
-    st.rerun()
 
 if st.sidebar.button("📊 Areawise Stock Matrix", use_container_width=True):
     st.session_state["stock_matrix_mode"] = True
