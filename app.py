@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # 1. Page Configuration
 st.set_page_config(page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
 
-# --- AREA CONFIGURATIONS (Preserved URLs & Settings) ---
+# --- AREA CONFIGURATIONS (Preserved URLs & Settings) ---   // sheet url- overall stock link and removal url- form response-1 url
 AREA_CONFIGS = {
     "Area 02/03": {
         "title": "Area 02/03 Instrumentation Inventory",
