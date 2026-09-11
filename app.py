@@ -51,6 +51,9 @@ AREA_CONFIGS = {
     }
 }
 
+# Stock Matrix Published URL provided by user
+STOCK_MATRIX_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=868142398&single=true&output=csv"
+
 def clean_material_code(val):
     if pd.isna(val):
         return "N/A"
@@ -290,6 +293,9 @@ if "stock_matrix_mode" not in st.session_state:
 if "pr_selected_view" not in st.session_state:
     st.session_state["pr_selected_view"] = None
 
+if "data_timestamp" not in st.session_state:
+    st.session_state["data_timestamp"] = int(time.time())
+
 inject_custom_css()
 
 # --- SIDEBAR NAVIGATION CONTROLS ---
@@ -329,46 +335,40 @@ if st.sidebar.button("📊 Areawise Stock Matrix", use_container_width=True):
 
 st.sidebar.markdown("---")
 
-# --- AREAIWISE STOCK MATRIX EXCEL VIEWER MODE ---
+# --- AREAIWISE STOCK MATRIX WEB-PUBLISHED VIEWER MODE ---
 if st.session_state["stock_matrix_mode"]:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📊 Areawise Stock Matrix</h1>
-            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Upload your Excel sheet to analyze and view areawise stock distribution matrices.</p>
+            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Live data fetched directly from your web-published Google Sheet matrix.</p>
         </div>
     """, unsafe_allow_html=True)
 
-    uploaded_excel = st.sidebar.file_uploader("📂 Upload Stock Matrix Excel File (.xlsx, .xls)", type=["xlsx", "xls"])
-    
-    if uploaded_excel is not None:
-        try:
-            df_matrix = pd.read_excel(uploaded_excel)
-            df_matrix.columns = df_matrix.columns.str.strip()
-            st.success("Excel file loaded successfully!")
+    try:
+        df_matrix = fetch_data(STOCK_MATRIX_URL, st.session_state["data_timestamp"])
+        df_matrix.columns = df_matrix.columns.str.strip()
+        
+        matrix_search = st.text_input("🔍 Search Matrix (Material Code, Description, or Area):", "").strip()
+        if matrix_search:
+            mask = df_matrix.astype(str).apply(lambda x: x.str.contains(matrix_search, case=False, na=False)).any(axis=1)
+            filtered_matrix = df_matrix[mask]
+        else:
+            filtered_matrix = df_matrix
             
-            matrix_search = st.text_input("🔍 Search Matrix (Material Code, Description, or Area):", "").strip()
-            if matrix_search:
-                mask = df_matrix.astype(str).apply(lambda x: x.str.contains(matrix_search, case=False, na=False)).any(axis=1)
-                filtered_matrix = df_matrix[mask]
-            else:
-                filtered_matrix = df_matrix
-                
-            st.markdown(f"### 📋 Matrix Data View ({len(filtered_matrix)} rows)")
-            st.dataframe(filtered_matrix, use_container_width=True)
+        st.markdown(f"### 📋 Matrix Data View ({len(filtered_matrix)} rows)")
+        st.dataframe(filtered_matrix, use_container_width=True)
+        
+        st.markdown("### 📈 Quick Metrics Summary")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Rows", len(df_matrix))
+        with col2:
+            st.metric("Total Columns", len(df_matrix.columns))
+        with col3:
+            st.metric("Matching Rows", len(filtered_matrix))
             
-            st.markdown("### 📈 Quick Metrics Summary")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Total Rows", len(df_matrix))
-            with col2:
-                st.metric("Total Columns", len(df_matrix.columns))
-            with col3:
-                st.metric("Matching Rows", len(filtered_matrix))
-                
-        except Exception as e:
-            st.error(f"Error reading Excel file: {e}")
-    else:
-        st.info("👈 Please upload your Areawise Stock Matrix Excel file using the sidebar uploader to view the dashboard matrix report.")
+    except Exception as e:
+        st.error(f"Error loading Stock Matrix data from published link: {e}")
 
 # --- PREDICTIVE PR INTELLIGENCE & CONSUMPTION ANALYTICS MODE ---
 elif st.session_state["smart_intelligence_mode"]:
@@ -426,9 +426,6 @@ elif st.session_state["smart_intelligence_mode"]:
                 <p style="color: #475569 !important; margin-top: 6px; font-size: 13px;">Real-time consumption logs and lead-time-adjusted Purchase Requisition schedules.</p>
             </div>
         """, unsafe_allow_html=True)
-
-        if "data_timestamp" not in st.session_state:
-            st.session_state["data_timestamp"] = int(time.time())
 
         st.sidebar.markdown("### ⚙️ Intelligence Parameters")
         lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6, help="Total procedural delay from PR generation to final delivery.")
@@ -592,9 +589,6 @@ elif st.session_state["global_search_mode"]:
     """, unsafe_allow_html=True)
 
     sample_code_hint = "e.g., 86501873151"
-    if "data_timestamp" not in st.session_state:
-        st.session_state["data_timestamp"] = int(time.time())
-
     for area_key, area_cfg in AREA_CONFIGS.items():
         if "YOUR_" in area_cfg["sheet_url"]:
             continue
@@ -731,9 +725,6 @@ elif st.session_state["selected_area"] is None:
 else:
     current_area = st.session_state["selected_area"]
     config = AREA_CONFIGS[current_area]
-
-    if "data_timestamp" not in st.session_state:
-        st.session_state["data_timestamp"] = int(time.time())
 
     st.components.v1.html(f"""
         <div style="background: #ffffff; padding: 22px 25px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
