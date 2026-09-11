@@ -356,16 +356,7 @@ if st.session_state["stock_matrix_mode"]:
             filtered_matrix = df_matrix
             
         st.markdown(f"### 📋 Matrix Data View ({len(filtered_matrix)} rows)")
-        st.dataframe(filtered_matrix, use_container_width=True)
-        
-        st.markdown("### 📈 Quick Metrics Summary")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total Rows", len(df_matrix))
-        with col2:
-            st.metric("Total Columns", len(df_matrix.columns))
-        with col3:
-            st.metric("Matching Rows", len(filtered_matrix))
+        st.dataframe(filtered_matrix, use_container_width=True, height=600)
             
     except Exception as e:
         st.error(f"Error loading Stock Matrix data from published link: {e}")
