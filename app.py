@@ -53,7 +53,7 @@ AREA_CONFIGS = {
 }
 
 # --- URGENT REQUIREMENT CONFIGURATION ---
-URGENT_SHEET_URL = "YOUR_URGENT_SHEET_URL_HERE"  # Yahan web publish hone ke baad link daal dena
+URGENT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=868142398&single=true&output=csv"  # Yahan web publish hone ke baad link daal dena
 
 def clean_material_code(val):
     if pd.isna(val):
