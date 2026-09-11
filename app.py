@@ -1,4 +1,3 @@
-import streamlit as str_lit
 import streamlit as st
 import pandas as pd
 pd.set_option('display.max_rows', None)
@@ -38,7 +37,7 @@ AREA_CONFIGS = {
     "SPP TG": {
         "title": "SPP TG Instrumentation Inventory",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPmgZl9jEQaGMQbxeOu0Xr_GtQ2P4_twAx2qNxUOjoYSvSW27vJsUgRtQB7XtIcU-bcCulPJLX3PLA/pub?gid=974689106&single=true&output=csv",
-        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPmgZl9jEQaGMQbxeOu0Xr_GtQ2P4_twAx2qNxUOjoYSvSW27vJsUgRtQB7XtI🏽PLA/pub?gid=900388666&single=true&output=csv"
+        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPmgZl9jEQaGMQbxeOu0Xr_GtQ2P4_twAx2qNxUOjoYSvSW27vJsUgRtQB7XtIcU-bcCulPJLX3PLA/pub?gid=900388666&single=true&output=csv"
     },
     "SPP Boiler": {
         "title": "SPP Boiler Instrumentation Inventory",
@@ -51,9 +50,6 @@ AREA_CONFIGS = {
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJUMrlU1bWLUsOt0tL-4xsBpsO2kt70Rq4am-OpMb7hsZZxe69JzLwBqT1EOLZtuU-PGkY-mx4EuZ/pub?gid=158170506&single=true&output=csv"
     }
 }
-
-# --- URGENT REQUIREMENT CONFIGURATION ---
-URGENT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=868142398&single=true&output=csv"  # Yahan web publish hone ke baad link daal dena
 
 def clean_material_code(val):
     if pd.isna(val):
@@ -288,9 +284,6 @@ if "global_search_mode" not in st.session_state:
 if "smart_intelligence_mode" not in st.session_state:
     st.session_state["smart_intelligence_mode"] = False
 
-if "urgent_requirement_mode" not in st.session_state:
-    st.session_state["urgent_requirement_mode"] = False
-
 if "pr_selected_view" not in st.session_state:
     st.session_state["pr_selected_view"] = None
 
@@ -302,7 +295,6 @@ st.sidebar.markdown("### 🧭 Navigation & Tools")
 if st.sidebar.button("🏠 Home", use_container_width=True):
     st.session_state["global_search_mode"] = False
     st.session_state["smart_intelligence_mode"] = False
-    st.session_state["urgent_requirement_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
     st.rerun()
@@ -310,7 +302,6 @@ if st.sidebar.button("🏠 Home", use_container_width=True):
 if st.sidebar.button("📈 Predictive PR Intelligence", use_container_width=True):
     st.session_state["smart_intelligence_mode"] = True
     st.session_state["global_search_mode"] = False
-    st.session_state["urgent_requirement_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
     st.rerun()
@@ -318,65 +309,11 @@ if st.sidebar.button("📈 Predictive PR Intelligence", use_container_width=True
 if st.sidebar.button("🔍 Material Code", use_container_width=True):
     st.session_state["global_search_mode"] = True
     st.session_state["smart_intelligence_mode"] = False
-    st.session_state["urgent_requirement_mode"] = False
-    st.session_state["selected_area"] = None
-    st.session_state["pr_selected_view"] = None
-    st.rerun()
-
-if st.sidebar.button("🚨 Urgent Requirement", use_container_width=True):
-    st.session_state["urgent_requirement_mode"] = True
-    st.session_state["global_search_mode"] = False
-    st.session_state["smart_intelligence_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
     st.rerun()
 
 st.sidebar.markdown("---")
-
-# --- URGENT REQUIREMENT MODE ---
-if st.session_state["urgent_requirement_mode"]:
-    st.markdown("""
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #fef2f2 100%); padding: 30px; border-radius: 16px; border: 1px solid #fca5a5; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
-            <h1 style="color: #991b1b !important; margin: 0; font-size: 28px; font-weight: 800;">🚨 Urgent Requirement Tracker</h1>
-            <p style="color: #7f1d1d !important; margin-top: 8px; font-size: 14px;">Viewing items with active requirements based on Column M data validation.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    if "data_timestamp" not in st.session_state:
-        st.session_state["data_timestamp"] = int(time.time())
-
-    if "YOUR_" in URGENT_SHEET_URL:
-        st.warning("⚠️ Please update `URGENT_SHEET_URL` with your actual published Google Sheet CSV link.")
-    else:
-        try:
-            df_urgent = fetch_data(URGENT_SHEET_URL, st.session_state["data_timestamp"])
-            df_urgent.columns = df_urgent.columns.str.strip()
-            
-            # Ensure sheet has at least 13 columns to check Column M (Index 12)
-            if len(df_urgent.columns) >= 13:
-                col_m_name = df_urgent.columns[12]
-                
-                # Filter condition: Column M should not be blank/NaN/empty string
-                df_filtered = df_urgent[
-                    df_urgent[col_m_name].notna() & 
-                    (df_urgent[col_m_name].astype(str).str.strip() != "") & 
-                    (df_urgent[col_m_name].astype(str).str.lower() != "nan")
-                ]
-                
-                st.success(f"Loaded {len(df_filtered)} urgent requirement records (Column M verified).")
-                
-                if not df_filtered.empty:
-                    # Display columns A, B, C, M and others neatly in a table/dataframe view
-                    display_cols = list(df_urgent.columns[:3]) + [col_m_name] + list(df_urgent.columns[3:12])
-                    existing_display_cols = [c for c in display_cols if c in df_filtered.columns]
-                    
-                    st.dataframe(df_filtered[existing_display_cols], use_container_width=True)
-                else:
-                    st.info("No records found where Column M has a value.")
-            else:
-                st.error("The linked sheet does not have up to 13 columns (Column M). Please check your sheet structure.")
-        except Exception as e:
-            st.error(f"Error fetching Urgent Requirement data: {e}")
 
 # --- PREDICTIVE PR INTELLIGENCE & CONSUMPTION ANALYTICS MODE ---
 if st.session_state["smart_intelligence_mode"]:
