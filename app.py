@@ -341,7 +341,7 @@ if st.session_state["stock_matrix_mode"]:
         df_matrix = fetch_data(STOCK_MATRIX_URL, st.session_state["data_timestamp"])
         df_matrix.columns = df_matrix.columns.str.strip()
         
-        matrix_search = st.text_input("🔍 Search Matrix (Material Code, Description, or Area):", "").strip()
+        matrix_search = st.text_input("🔍 Search (Material Code, Description or Area):", "").strip()
         if matrix_search:
             mask = df_matrix.astype(str).apply(lambda x: x.str.contains(matrix_search, case=False, na=False)).any(axis=1)
             filtered_matrix = df_matrix[mask]
