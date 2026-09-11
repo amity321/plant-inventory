@@ -318,7 +318,7 @@ if st.sidebar.button("📈 Predictive PR Date", use_container_width=True):
     st.rerun()
 
 
-if st.sidebar.button("📊 Areawise Stock Matrix", use_container_width=True):
+if st.sidebar.button("📊 Areawise Stock", use_container_width=True):
     st.session_state["stock_matrix_mode"] = True
     st.session_state["global_search_mode"] = False
     st.session_state["smart_intelligence_mode"] = False
