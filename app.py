@@ -26,8 +26,8 @@ AREA_CONFIGS = {
     },
     "Area 08": {
         "title": "Area 08 Instrumentation Inventory",
-        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ6zlQsPz48l4GzLuFf76kSkQje3Y_eY_Y-qwIG9x4ehkPX76qr7f9_ScttwV3gJJrSX7B9xHO6Tfqp/pub?gid=809146825&single=true&output=csv",
-        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ6zlQsPz48l4GzLuFf76kSkQje3Y_eY_Y-qwIG9x4ehkPX76qr7f9_ScttwV3gJJrSX7B9xHO6Tfqp/pub?gid=1898823621&single=true&output=csv"
+        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMj_W_6-T0duFQ_XS8Yf9xTQPQvguuQP9P_aUwkKuiOZeT8BXSkAHeQspMlhXebcmz0ff-VZRdya-M/pub?gid=664188260&single=true&output=csv",
+        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMj_W_6-T0duFQ_XS8Yf9xTQPQvguuQP9P_aUwkKuiOZeT8BXSkAHeQspMlhXebcmz0ff-VZRdya-M/pub?gid=260669801&single=true&output=csv"
     },
     "Area 09/10": {
         "title": "Area 09/10 Instrumentation Inventory",
