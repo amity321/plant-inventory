@@ -19,7 +19,7 @@ DEFAULT_HASH = hash_pass("nalco123")
 
 def fetch_passwords_from_sheet():
     try:
-        res = requests.get(AUTH_API_URL, timeout=6)
+        res = requests.get(AUTH_API_URL, timeout=12)
         if res.status_code == 200:
             return res.json()
     except Exception:
@@ -32,10 +32,21 @@ def update_password_in_sheet(area_key, new_password_hash):
             "area": area_key,
             "new_hash": new_password_hash
         }
-        res = requests.post(AUTH_API_URL, json=payload, timeout=8)
-        if res.status_code == 200 and "OK" in res.text:
+        res = requests.post(
+            AUTH_API_URL, 
+            json=payload, 
+            timeout=15,
+            headers={"Content-Type": "application/json"}
+        )
+        if res.status_code in [200, 302] and ("OK" in res.text or res.status_code == 200):
             return True, "Success"
         return False, f"API Response: {res.text}"
+    except requests.exceptions.Timeout:
+        time.sleep(2)
+        verify_db = fetch_passwords_from_sheet()
+        if verify_db.get(area_key) == new_password_hash:
+            return True, "Success (Verified from Sheet)"
+        return False, "Request timed out. Google Apps Script took too long to respond. Please try once more."
     except Exception as e:
         return False, str(e)
 
@@ -93,9 +104,128 @@ AREA_CONFIGS = {
 
 STOCK_MATRIX_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=868142398&single=true&output=csv"
 
-# --- SESSION STATE INITIALIZATION ---
+# --- URL QUERY PARAMETERS & ROUTING ---
+query_params = st.query_params
+url_area = query_params.get("area", None)
+url_view = query_params.get("view", None)
+url_pr_area = query_params.get("pr_area", None)
+
+is_area_direct_mode = bool(url_area and url_area in AREA_CONFIGS)
+
 if "auth_status" not in st.session_state:
     st.session_state["auth_status"] = {}
+
+if "selected_area" not in st.session_state:
+    st.session_state["selected_area"] = url_area if is_area_direct_mode else None
+
+if "smart_intelligence_mode" not in st.session_state:
+    st.session_state["smart_intelligence_mode"] = (url_view == "pr")
+
+if "stock_matrix_mode" not in st.session_state:
+    st.session_state["stock_matrix_mode"] = (url_view == "stock_matrix")
+
+if "pr_selected_view" not in st.session_state:
+    if is_area_direct_mode and st.session_state["smart_intelligence_mode"]:
+        st.session_state["pr_selected_view"] = url_area
+    else:
+        st.session_state["pr_selected_view"] = url_pr_area
+
+if "data_timestamp" not in st.session_state:
+    st.session_state["data_timestamp"] = int(time.time())
+
+# --- INVENTORY TEAM HIERARCHY MODAL POPUP ---
+@st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
+def show_team_modal():
+    svg_tree = """
+    <svg viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg" style="background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border-radius: 12px; border: 1px solid #e2e8f0; width: 100%;">
+      <defs>
+        <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
+          <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.08"/>
+        </filter>
+      </defs>
+
+      <g transform="translate(365, 20)" filter="url(#shadow)">
+        <rect width="370" height="75" rx="10" fill="#0f172a"/>
+        <text x="185" y="32" fill="#38bdf8" font-size="12" font-weight="700" text-anchor="middle" letter-spacing="1">NALCO REFINERY &amp; SPP</text>
+        <text x="185" y="54" fill="#ffffff" font-size="16" font-weight="700" text-anchor="middle">🏢 C&amp;I Inventory &amp; Spares Team</text>
+      </g>
+
+      <path d="M 550 95 L 550 140" stroke="#0284c7" stroke-width="2.5" fill="none"/>
+      <path d="M 185 140 L 915 140" stroke="#0284c7" stroke-width="2.5" fill="none"/>
+
+      <path d="M 185 140 L 185 165" stroke="#0284c7" stroke-width="2" fill="none"/>
+      <rect x="65" y="165" width="240" height="34" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+      <text x="185" y="187" fill="#0369a1" font-size="13" font-weight="700" text-anchor="middle">⚙️ Refinery Process Areas</text>
+
+      <path d="M 550 140 L 550 165" stroke="#0284c7" stroke-width="2" fill="none"/>
+      <rect x="430" y="165" width="240" height="34" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+      <text x="550" y="187" fill="#b45309" font-size="13" font-weight="700" text-anchor="middle">⚡ Steam Power Plant (SPP)</text>
+
+      <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2" fill="none"/>
+      <rect x="795" y="165" width="240" height="34" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+      <text x="915" y="187" fill="#15803d" font-size="13" font-weight="700" text-anchor="middle">📦 Inventory Store</text>
+
+      <path d="M 185 199 L 185 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
+      <g transform="translate(65, 220)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#0284c7"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 02/03</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er. Amit Jangra | <tspan fill="#0284c7" font-weight="600">P.No. 10372</tspan></text>
+      </g>
+
+      <g transform="translate(65, 290)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#0284c7"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 04/05</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er D.C. Mishra | <tspan fill="#0284c7" font-weight="600">P.No. 09074</tspan></text>
+      </g>
+
+      <g transform="translate(65, 360)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#0284c7"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 06/07</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er R. Swarup | <tspan fill="#0284c7" font-weight="600">P.No. 10565</tspan></text>
+      </g>
+
+      <g transform="translate(65, 430)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#0284c7"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 08</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er P. Bagde | <tspan fill="#0284c7" font-weight="600">P.No. 09644</tspan></text>
+      </g>
+
+      <g transform="translate(65, 500)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#0284c7"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 09/10</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er K. Kumar | <tspan fill="#0284c7" font-weight="600">P.No. 09643</tspan></text>
+      </g>
+
+      <path d="M 550 199 L 550 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
+      <g transform="translate(430, 220)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#d97706"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">⚡ SPP TG</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er H.S. Mallick | <tspan fill="#d97706" font-weight="600">P.No. 10873</tspan></text>
+      </g>
+
+      <g transform="translate(430, 290)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#d97706"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">🔥 SPP Boiler</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er Sachin Ray | <tspan fill="#d97706" font-weight="600">P.No. 10913</tspan></text>
+      </g>
+
+      <path d="M 915 199 L 915 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
+      <g transform="translate(795, 220)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#16a34a"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📦 C&amp;I Sub Store</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er Astha Singh | <tspan fill="#16a34a" font-weight="600">P.No. 10567</tspan></text>
+      </g>
+    </svg>
+    """
+    st.components.v1.html(svg_tree, height=600, scrolling=True)
 
 # --- MODAL: CHANGE PASSWORD (DIRECT TO GOOGLE SHEET) ---
 @st.dialog("🔑 Change Area Password")
@@ -113,7 +243,6 @@ def change_password_dialog(area_key):
         db = fetch_passwords_from_sheet()
         stored_val = str(db.get(area_key, "")).strip()
 
-        # Matches against raw password in sheet, hashed password in sheet, or default nalco123
         is_curr_valid = (
             c_curr == stored_val or 
             hash_pass(c_curr) == stored_val or 
@@ -137,9 +266,10 @@ def change_password_dialog(area_key):
                 else:
                     st.error(f"❌ Failed to update password in Google Sheet: {msg}")
 
-# --- LOGIN PROMPT SCREEN ---
+# --- LOGIN PROMPT SCREEN (Bypassed for HOD Portal) ---
 def check_authentication(area_key):
-    if st.session_state.get("auth_status", {}).get(area_key, False):
+    # Free access for HOD flow; password protected for direct area links (?area=...)
+    if not is_area_direct_mode or st.session_state.get("auth_status", {}).get(area_key, False):
         return True
 
     st.markdown(f"""
@@ -166,8 +296,6 @@ def check_authentication(area_key):
             )
 
             if is_valid:
-                if "auth_status" not in st.session_state:
-                    st.session_state["auth_status"] = {}
                 st.session_state["auth_status"][area_key] = True
                 st.rerun()
             else:
@@ -289,6 +417,86 @@ def inject_custom_css():
     .stApp { background-color: #f8fafc; }
     h1, h2, h3 { color: #1e293b !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     
+    .header-pill {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        padding: 8px 16px;
+        border-radius: 24px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #0f172a;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    }
+
+    /* DIRECT ROOT STYLING: HIGH-VISIBILITY TEAM BUTTON */
+    button[data-testid="baseButton-primary"] {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+        color: #ffffff !important;
+        border: 2.5px solid #38bdf8 !important;
+        border-radius: 30px !important;
+        font-weight: 800 !important;
+        font-size: 14.5px !important;
+        padding: 10px 18px !important;
+        box-shadow: 0 0 16px rgba(2, 132, 199, 0.6), 0 4px 12px rgba(15, 23, 42, 0.15) !important;
+        transition: all 0.25s ease-in-out !important;
+    }
+
+    button[data-testid="baseButton-primary"] p,
+    button[data-testid="baseButton-primary"] span {
+        color: #ffffff !important;
+        font-weight: 800 !important;
+    }
+
+    button[data-testid="baseButton-primary"]:hover {
+        background: linear-gradient(135deg, #0369a1 0%, #0c4a6e 100%) !important;
+        border-color: #7dd3fc !important;
+        box-shadow: 0 0 24px rgba(56, 189, 248, 0.85) !important;
+        transform: translateY(-2px) scale(1.02) !important;
+    }
+
+    /* Sidebar Base Styling */
+    section[data-testid="stSidebar"] {
+        background-color: #f1f5f9 !important;
+        border-right: 2px solid #cbd5e1 !important;
+    }
+    
+    .sidebar-section-title {
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        color: #0f172a !important;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-top: 15px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    section[data-testid="stSidebar"] button[data-testid="baseButton-secondary"] {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        padding: 10px 14px !important;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.03) !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        margin-bottom: 6px !important;
+    }
+    
+    section[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+        color: #ffffff !important;
+        border-color: #0284c7 !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 14px rgba(2, 132, 199, 0.25) !important;
+    }
+
     .inventory-card { 
         background-color: #ffffff; 
         border-radius: 12px; 
@@ -296,6 +504,11 @@ def inject_custom_css():
         box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
         border: 1px solid #e2e8f0; 
         margin-bottom: 15px; 
+        transition: all 0.2s ease-in-out;
+    }
+    .inventory-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.05);
     }
     .metric-box { 
         text-align: center; 
@@ -339,6 +552,19 @@ def inject_custom_css():
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
+
+def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
+    c_left, c_right = st.columns([7.0, 3.0])
+    with c_left:
+        st.markdown(f"""
+            <div class="header-pill">
+                <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
+            </div>
+        """, unsafe_allow_html=True)
+    with c_right:
+        if st.button("👥 Inventory Team Hierarchy", key="team_btn", type="primary", use_container_width=True):
+            show_team_modal()
+    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
 @st.cache_data(ttl=60)
 def fetch_data(url, timestamp):
@@ -391,55 +617,42 @@ def calculate_real_consumption_from_log(target_material_code, removal_df, analys
     except Exception:
         return 0.0, 0.0, 0
 
-# --- URL QUERY PARAMETERS & ROUTING ---
-query_params = st.query_params
-url_area = query_params.get("area", None)
-url_view = query_params.get("view", None)
-url_pr_area = query_params.get("pr_area", None)
-
-is_area_direct_mode = bool(url_area and url_area in AREA_CONFIGS)
-
-if "selected_area" not in st.session_state:
-    st.session_state["selected_area"] = url_area if is_area_direct_mode else None
-
-if "smart_intelligence_mode" not in st.session_state:
-    st.session_state["smart_intelligence_mode"] = (url_view == "pr")
-
-if "stock_matrix_mode" not in st.session_state:
-    st.session_state["stock_matrix_mode"] = (url_view == "stock_matrix")
-
-if "pr_selected_view" not in st.session_state:
-    if is_area_direct_mode and st.session_state["smart_intelligence_mode"]:
-        st.session_state["pr_selected_view"] = url_area
-    else:
-        st.session_state["pr_selected_view"] = url_pr_area
-
-if "data_timestamp" not in st.session_state:
-    st.session_state["data_timestamp"] = int(time.time())
-
 inject_custom_css()
 
-# --- SIDEBAR NAVIGATION CONTROLS ---
-st.sidebar.markdown("### 🧭 Navigation & Security")
+active_tag = f"📍 Active Area: {st.session_state['selected_area']}" if st.session_state["selected_area"] else "🏭 Master Control Room"
+render_top_bar(status_text=active_tag)
 
+# --- USER-FRIENDLY SIDEBAR DESIGN ---
+st.sidebar.markdown("""
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 14px; border-radius: 10px; margin-bottom: 15px; text-align: center; border: 1px solid #334155;">
+        <h4 style="margin:0; color:#38bdf8; font-size:15px; font-weight:800; letter-spacing:0.5px;">⚙️ CONTROL PANEL</h4>
+        <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; font-weight:500;">C&I Instrumentation Suite</p>
+    </div>
+""", unsafe_allow_html=True)
+
+# 1. DIRECT AREA USER MODE
 if is_area_direct_mode:
+    st.sidebar.markdown('<div class="sidebar-section-title">📌 Area Dedicated Modules</div>', unsafe_allow_html=True)
     if not st.session_state["smart_intelligence_mode"]:
-        if st.sidebar.button("📈 Predictive PR Date", use_container_width=True):
+        if st.sidebar.button("📈  Predictive PR Date", use_container_width=True):
             st.session_state["smart_intelligence_mode"] = True
             st.session_state["pr_selected_view"] = url_area
             st.query_params["area"] = url_area
             st.query_params["view"] = "pr"
             st.rerun()
     else:
-        if st.sidebar.button("📦 Back to Area Stock", use_container_width=True):
+        if st.sidebar.button("📦  Back to Area Stock", use_container_width=True):
             st.session_state["smart_intelligence_mode"] = False
             st.session_state["pr_selected_view"] = None
             st.query_params["area"] = url_area
             if "view" in st.query_params:
                 del st.query_params["view"]
             st.rerun()
+
+# 2. HOD / MASTER PORTAL MODE
 else:
-    if st.sidebar.button("🏠 Home", use_container_width=True):
+    st.sidebar.markdown('<div class="sidebar-section-title">🧭 Portal Navigation</div>', unsafe_allow_html=True)
+    if st.sidebar.button("🏠  Dashboard Home", use_container_width=True):
         st.session_state["smart_intelligence_mode"] = False
         st.session_state["stock_matrix_mode"] = False
         st.session_state["selected_area"] = None
@@ -447,7 +660,7 @@ else:
         st.query_params.clear()
         st.rerun()
         
-    if st.sidebar.button("📈 Predictive PR Date", use_container_width=True):
+    if st.sidebar.button("📈  Predictive PR Intelligence", use_container_width=True):
         st.session_state["smart_intelligence_mode"] = True
         st.session_state["stock_matrix_mode"] = False
         st.session_state["selected_area"] = None
@@ -455,7 +668,7 @@ else:
         st.query_params["view"] = "pr"
         st.rerun()
 
-    if st.sidebar.button("📊 Areawise Stock", use_container_width=True):
+    if st.sidebar.button("📊  Areawise Stock Matrix", use_container_width=True):
         st.session_state["stock_matrix_mode"] = True
         st.session_state["smart_intelligence_mode"] = False
         st.session_state["selected_area"] = None
@@ -463,7 +676,7 @@ else:
         st.query_params["view"] = "stock_matrix"
         st.rerun()
 
-st.sidebar.markdown("---")
+st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
 
 # --- AREAWISE STOCK MATRIX VIEWER ---
 if st.session_state["stock_matrix_mode"] and not is_area_direct_mode:
@@ -479,7 +692,11 @@ if st.session_state["stock_matrix_mode"] and not is_area_direct_mode:
         df_matrix.columns = df_matrix.columns.str.strip()
         matrix_search = st.text_input("🔍 Search (Material Code, Description or Area):", "").strip()
         filtered_matrix = df_matrix[df_matrix.astype(str).apply(lambda x: x.str.contains(matrix_search, case=False, na=False)).any(axis=1)] if matrix_search else df_matrix
-        st.dataframe(filtered_matrix, use_container_width=True, height=600)
+        styled_matrix = filtered_matrix.style.set_table_styles([
+            {'selector': 'th', 'props': [('font-weight', 'bold'), ('color', '#000000')]},
+            {'selector': 'tr th', 'props': [('font-weight', 'bold'), ('color', '#000000')]}
+        ]).set_properties(**{'color': '#000000'})
+        st.dataframe(styled_matrix, use_container_width=True, height=600)
     except Exception as e:
         st.error(f"Error loading Stock Matrix data: {e}")
 
@@ -490,8 +707,15 @@ elif st.session_state["smart_intelligence_mode"]:
     if current_view is None:
         st.markdown("""
             <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📈 Predictive PR Intelligence Portal</h1>
-                <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Select area to analyze procurement timeline.</p>
+                <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📈 Predictive PR Intelligence & Consumption Portal</h1>
+                <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Select a specific plant area or choose <b>Combined Areas</b> for centralized planning cell PR analysis.</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+            <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 20px; border-radius: 12px; border: 2px solid #3b82f6; margin-bottom: 25px; text-align: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);">
+                <h3 style="margin: 0 0 5px 0; color: #1e3a8a; font-size: 20px; font-weight: 800;">🌐 Combined Areas (Plant-wide / Planning Cell View)</h3>
+                <p style="margin: 0; color: #1e40af; font-size: 13px;">Merges identical material codes across all active areas for centralized bulk procurement and unified PR dates.</p>
             </div>
         """, unsafe_allow_html=True)
 
@@ -501,6 +725,9 @@ elif st.session_state["smart_intelligence_mode"]:
             st.query_params["pr_area"] = "Combined"
             st.rerun()
 
+        st.markdown("<div style='margin: 20px 0; border-top: 1px solid #e2e8f0;'></div>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #0f172a; font-size: 18px; font-weight: 700; margin-bottom: 15px;'>🎛️ Or Select Individual Area Block:</h3>", unsafe_allow_html=True)
+
         areas = list(AREA_CONFIGS.keys())
         for i in range(0, len(areas), 3):
             cols = st.columns(3)
@@ -508,30 +735,43 @@ elif st.session_state["smart_intelligence_mode"]:
                 if i + j < len(areas):
                     area_name = areas[i + j]
                     with cols[j]:
+                        st.markdown(f"""
+                            <div style="background: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 12px; text-align: center;">
+                                <h4 style="margin: 0 0 6px 0; color: #0f172a; font-size: 16px; font-weight: 700;">📍 {area_name}</h4>
+                                <p style="color: #64748b; font-size: 12px; margin: 0;">Area-specific stock & PR analyzer.</p>
+                            </div>
+                        """, unsafe_allow_html=True)
                         if st.button(f"Open {area_name}", use_container_width=True, key=f"pr_btn_{area_name}"):
                             st.session_state["pr_selected_view"] = area_name
                             st.query_params["view"] = "pr"
                             st.query_params["pr_area"] = area_name
                             st.rerun()
     else:
-        # Check authentication if viewing specific area
+        # Check authentication if accessing area directly via URL
         if current_view != "Combined" and not check_authentication(current_view):
             st.stop()
 
         if not is_area_direct_mode:
-            if st.sidebar.button("⬅️ Back to PR Area Selector"):
+            if st.sidebar.button("⬅️  Back to PR Area Selector", use_container_width=True):
                 st.session_state["pr_selected_view"] = None
                 st.query_params["view"] = "pr"
                 if "pr_area" in st.query_params:
                     del st.query_params["pr_area"]
                 st.rerun()
 
-        header_title = "🌐 Combined Plant-wide PR Intelligence" if current_view == "Combined" else f"📍 Predictive PR Intelligence — {current_view}"
-        st.markdown(f"### {header_title}")
+        header_title = "🌐 Combined Plant-wide PR Intelligence (Planning Cell)" if current_view == "Combined" else f"📍 Predictive PR Intelligence — {current_view}"
+        
+        st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 25px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); margin-bottom: 25px;">
+                <h1 style="color: #0f172a !important; margin: 0; font-size: 24px; font-weight: 800;">{header_title}</h1>
+                <p style="color: #475569 !important; margin-top: 6px; font-size: 13px;">Real-time consumption logs and lead-time-adjusted Purchase Requisition schedules.</p>
+            </div>
+        """, unsafe_allow_html=True)
 
+        st.sidebar.markdown('<div class="sidebar-section-title">⚙️ Analysis Parameters</div>', unsafe_allow_html=True)
         lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6)
         analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
-        pr_display_limit = st.sidebar.selectbox("Display Records Limit:", [25, 50, 100, "All"], index=0)
+        pr_display_limit = st.sidebar.selectbox("Display Records Limit:", [25, 50, 100, 200, "All"], index=0)
 
         target_configs = AREA_CONFIGS if current_view == "Combined" else {current_view: AREA_CONFIGS[current_view]}
 
@@ -574,47 +814,101 @@ elif st.session_state["smart_intelligence_mode"]:
 
         if master_records:
             master_df = pd.DataFrame(master_records)
-            search_query = st.text_input("🔍 Search PR Items:", "").strip()
+            if current_view == "Combined":
+                grouped_records = []
+                for mat_code, group in master_df.groupby("Material Code"):
+                    combined_area_tag = ", ".join(group["Area"].unique())
+                    combined_field = group["Field Count"].sum()
+                    combined_store = group["Store Stock"].sum()
+                    combined_consumption = round(group["Monthly Consumption"].sum(), 2)
+                    combined_removals = group["Total Removals"].sum()
+                    combined_name = group["Instrument Name"].iloc[0]
+                    combined_specs = group["Specs"].iloc[0]
+                    combined_cycle = round(1.0 / combined_consumption, 1) if combined_consumption > 0 else 0.0
+
+                    grouped_records.append({
+                        "Area": f"Plant-wide ({combined_area_tag})",
+                        "Material Code": mat_code,
+                        "Instrument Name": combined_name,
+                        "Specs": combined_specs,
+                        "Field Count": combined_field,
+                        "Store Stock": combined_store,
+                        "Monthly Consumption": combined_consumption,
+                        "Replacement Cycle": combined_cycle,
+                        "Total Removals": combined_removals
+                    })
+                master_df = pd.DataFrame(grouped_records)
+
+            search_query = st.text_input("🔍 Search (Enter Material Code or Instrument Description):", "").strip()
             if search_query:
-                filtered_df = master_df[master_df["Instrument Name"].str.contains(search_query, case=False, na=False) | master_df["Material Code"].str.contains(search_query, case=False, na=False)]
+                filtered_df = master_df[
+                    master_df["Material Code"].str.contains(search_query, case=False, na=False) |
+                    master_df["Instrument Name"].str.contains(search_query, case=False, na=False) |
+                    master_df["Specs"].str.contains(search_query, case=False, na=False)
+                ]
             else:
                 filtered_df = master_df.head(int(pr_display_limit)) if pr_display_limit != "All" else master_df
 
-            for _, item in filtered_df.iterrows():
-                monthly_consumption = item["Monthly Consumption"]
-                store_stock = item["Store Stock"]
-                if monthly_consumption > 0:
-                    days_remaining = int((store_stock / monthly_consumption) * 30)
-                    pr_trigger_date = (datetime.now() + timedelta(days=days_remaining)) - timedelta(days=lead_time_months * 30)
-                    is_urgent = pr_trigger_date <= datetime.now()
-                    pr_date_str = pr_trigger_date.strftime('%d %b %Y')
-                else:
-                    pr_date_str = "Stable / No History"
-                    is_urgent = False
+            if not filtered_df.empty:
+                st.markdown(f"### 🔎 Analytics Results ({len(filtered_df)} items displayed)")
+                for _, item in filtered_df.iterrows():
+                    monthly_consumption = item["Monthly Consumption"]
+                    store_stock = item["Store Stock"]
+                    if monthly_consumption > 0:
+                        days_remaining = int((store_stock / monthly_consumption) * 30)
+                        exhaustion_date = datetime.now() + timedelta(days=days_remaining)
+                        lead_time_days = lead_time_months * 30
+                        pr_trigger_date = exhaustion_date - timedelta(days=lead_time_days)
+                        is_urgent = pr_trigger_date <= datetime.now()
+                        pr_date_str = pr_trigger_date.strftime('%d %b %Y')
+                    else:
+                        pr_date_str = "No History / Stable"
+                        is_urgent = False
 
-                urgency_badge = '<span style="background-color: #fee2e2; color: #dc2626; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px;">🚨 URGENT</span>' if is_urgent else '<span style="background-color: #dcfce7; color: #16a34a; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px;">✅ Healthy</span>'
+                    urgency_badge = '<span style="background-color: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">🚨 URGENT PR REQUIRED</span>' if is_urgent else '<span style="background-color: #dcfce7; color: #16a34a; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">✅ Stock Healthy</span>'
 
-                card_html = f"""
-                <div class="inventory-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; margin-bottom: 8px;">
-                        <div><b style="color: #0284c7;">📍 {item['Area']}</b> — <b>{item['Instrument Name']}</b> (Mat: {item['Material Code']})</div>
-                        <div>{urgency_badge}</div>
+                    card_html = f"""
+                    <div class="inventory-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
+                            <div>
+                                <span style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase;">📍 {item['Area']}</span>
+                                <h4 style="margin: 2px 0 0 0; color: #0f172a; font-size: 16px; font-weight: 700;">{item['Instrument Name']}</h4>
+                            </div>
+                            <div>{urgency_badge}</div>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                            <div style="flex: 2;"><b>Material Code:</b> <span style="color: #0284c7; font-weight: 600;">{item['Material Code']}</span><br><b>Specs:</b> {item['Specs']}</div>
+                            <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 10px; color: #64748b; font-weight: bold;">INSTALLED / STORE</div>
+                                <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Field Count']} / {store_stock}</div>
+                            </div>
+                            <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 10px; color: #64748b; font-weight: bold;">AVG. CONSUMPTION RATE</div>
+                                <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Monthly Consumption']:.2f} / mo</div>
+                            </div>
+                            <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 10px; color: #64748b; font-weight: bold;">REPLACEMENT CYCLE</div>
+                                <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Replacement Cycle']} mos</div>
+                            </div>
+                            <div style="flex: 1.2; background: #eff6ff; padding: 6px; border-radius: 6px; text-align: center; border: 1px solid #bfdbfe;">
+                                <div style="font-size: 10px; color: #1e40af; font-weight: bold;">RECOMMENDED PR DATE</div>
+                                <div style="font-size: 14px; font-weight: 800; color: #1e3a8a;">{pr_date_str}</div>
+                            </div>
+                        </div>
                     </div>
-                    <div style="display: flex; gap: 12px; font-size: 12px;">
-                        <div><b>Field:</b> {item['Field Count']} | <b>Store:</b> {store_stock}</div>
-                        <div><b>Avg Consumption:</b> {item['Monthly Consumption']:.2f}/mo</div>
-                        <div><b>Suggested PR Date:</b> <span style="color: #0284c7; font-weight: bold;">{pr_date_str}</span></div>
-                    </div>
-                </div>
-                """
-                st.components.v1.html(card_html, height=85)
+                    """
+                    st.components.v1.html(card_html, height=140, scrolling=False)
+            else:
+                st.info("No matching material codes or instruments found.")
+        else:
+            st.warning("No inventory records available for this area.")
 
-# --- LANDING PAGE (PORTAL SELECTION) ---
+# --- LANDING PAGE (PORTAL SELECTION - FREE HOD NAVIGATION) ---
 elif st.session_state["selected_area"] is None:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 35px;">
-            <h1 style="color: #0f172a !important; margin: 0; font-size: 32px; font-weight: 800;">🏭 Master Instrumentation Portal</h1>
-            <p style="color: #475569 !important; margin-top: 10px; font-size: 15px; font-weight: 500;">Select an operational area block below (Password required)</p>
+            <h1 style="color: #0f172a !important; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">🏭 Master Instrumentation Portal</h1>
+            <p style="color: #475569 !important; margin-top: 10px; font-size: 15px; font-weight: 500;">Direct access to operational area dashboards and spares analytics</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -626,33 +920,33 @@ elif st.session_state["selected_area"] is None:
                 area_name = areas[i + j]
                 with cols[j]:
                     st.markdown(f"""
-                        <div style="background: #ffffff; padding: 22px; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center; margin-bottom: 12px;">
-                            <h3 style="margin: 0 0 6px 0; color: #0f172a;">🔒 {area_name}</h3>
-                            <p style="color: #64748b; font-size: 13px; margin: 0;">Password-protected area database</p>
+                        <div style="background: #ffffff; padding: 22px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 15px; text-align: center;">
+                            <h3 style="margin-top: 0; margin-bottom: 8px; color: #0f172a; font-size: 18px; font-weight: 700;">🎛️ {area_name}</h3>
+                            <p style="color: #64748b; font-size: 13px; line-height: 1.4; margin: 0; min-height: 38px;">Live instrumentation spares and inventory status tracker.</p>
                         </div>
                     """, unsafe_allow_html=True)
-                    if st.button(f"Enter {area_name}", use_container_width=True, key=f"btn_{area_name}"):
+                    if st.button(f"Open {area_name}", use_container_width=True, key=f"btn_{area_name}"):
                         st.session_state["selected_area"] = area_name
                         st.rerun()
 
-# --- ACTIVE AREA DASHBOARD VIEW (PASSWORD PROTECTED) ---
+# --- ACTIVE AREA DASHBOARD VIEW ---
 else:
     current_area = st.session_state["selected_area"]
 
-    # Gatekeeper check
+    # Authentication Gatekeeper (Only prompts if direct ?area= link was opened)
     if not check_authentication(current_area):
         st.stop()
 
-    # Password Management in Sidebar
-    st.sidebar.markdown(f"**Current Area:** `{current_area}`")
-    if st.sidebar.button("🔑 Change Password", use_container_width=True):
-        change_password_dialog(current_area)
+    # Password Management in Sidebar (Visible only for area in-charges with direct links)
+    if is_area_direct_mode:
+        st.sidebar.markdown(f"**Current Area:** `{current_area}`")
+        if st.sidebar.button("🔑 Change Password", use_container_width=True):
+            change_password_dialog(current_area)
 
-    if st.sidebar.button("🔒 Logout", use_container_width=True):
-        st.session_state["auth_status"][current_area] = False
-        st.rerun()
-
-    st.sidebar.markdown("---")
+        if st.sidebar.button("🔒 Logout", use_container_width=True):
+            st.session_state["auth_status"][current_area] = False
+            st.rerun()
+        st.sidebar.markdown("---")
 
     config = AREA_CONFIGS[current_area]
     manager_name = config.get("manager", "Er. Amit Jangra | P.No. 10372")
@@ -663,7 +957,7 @@ else:
                 🏭 {config['title']}
             </h1>
             <p style="color: #475569 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
-                Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 700;">{manager_name} (Inventory Team, C&I, NALCO)</span>
+                Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 700;">{manager_name}, Inventory Team, C&I, NALCO</span>
             </p>
         </div>
     """, height=100)
@@ -680,23 +974,26 @@ else:
 
         df = df.dropna(subset=[NAME_COL])
         
-        st.sidebar.header("🔍 Filter & Pagination")
+        st.sidebar.markdown('<div class="sidebar-section-title">🔍 Filter &amp; Search</div>', unsafe_allow_html=True)
         all_instruments = ["All System Data"] + list(df[NAME_COL].dropna().unique())
         selected_instrument = st.sidebar.selectbox("Select Instrument Category:", all_instruments)
+        
         items_per_page = st.sidebar.selectbox("Items Per Page:", [10, 20, 30, 40, 50, 100], index=3)
-        st.sidebar.markdown("---")
+        st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
 
         if selected_instrument != "All System Data":
             df = df[df[NAME_COL].str.strip() == selected_instrument]
 
         unique_names_ordered = df[NAME_COL].unique()
         total_items = len(unique_names_ordered)
+
+        # --- PAGINATION LOGIC ---
         total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
 
-        st.sidebar.header("📄 Page Navigation")
+        st.sidebar.markdown('<div class="sidebar-section-title">📄 Page Navigation</div>', unsafe_allow_html=True)
         page_number = st.sidebar.number_input("Select Page Number:", min_value=1, max_value=total_pages, value=1, step=1)
         st.sidebar.caption(f"Showing page {page_number} of {total_pages} (Total unique: {total_items} items)")
-        st.sidebar.markdown("---")
+        st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
 
         start_idx = (page_number - 1) * items_per_page
         end_idx = start_idx + items_per_page
@@ -712,14 +1009,16 @@ else:
                 render_row(row, mapping, current_area)
             else:
                 total_current_store = sum(safe_int(r[STORE_COL]) for _, r in sub_df.iterrows() if STORE_COL in r)
+                
                 st.markdown(f"""
-                <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 8px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 15px !important; font-weight: 700 !important; color: #0f172a !important;">
+                <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 8px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <span style="font-size: 15px !important; font-weight: 700 !important; color: #0f172a !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                         📂 {current_name} — ({entry_count} Variants Grouped) | Combined Store Stock: {total_current_store}
                     </span>
-                    <span style="font-size: 12px; color: #475569; font-weight: bold;">▼</span>
+                    <span style="font-size: 12px; color: #475569; font-weight: bold; margin-right: 5px;">▼</span>
                 </div>
                 """, unsafe_allow_html=True)
+                
                 with st.expander(" "):
                     for idx, row in sub_df.iterrows():
                         mapping["show_name"] = False
@@ -728,7 +1027,8 @@ else:
     except Exception as e:
         st.error(f"Error accessing Google Sheets Database for {current_area}: {e}")
 
-    if st.sidebar.button("🔄 Sync Live Data Now"):
+    st.sidebar.markdown('<div class="sidebar-section-title">🔄 Database Control</div>', unsafe_allow_html=True)
+    if st.sidebar.button("🔄  Sync Live Data Now", use_container_width=True):
         st.cache_data.clear()
         st.session_state["data_timestamp"] = int(time.time())
         st.rerun()
