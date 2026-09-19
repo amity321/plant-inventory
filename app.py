@@ -562,7 +562,7 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
             </div>
         """, unsafe_allow_html=True)
     with c_right:
-        if st.button("👥 Inventory Team Hierarchy", key="team_btn", type="primary", use_container_width=True):
+        if st.button("👥 Inventory Team", key="team_btn", type="primary", use_container_width=True):
             show_team_modal()
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
