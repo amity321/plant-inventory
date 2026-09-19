@@ -7,45 +7,53 @@ from datetime import datetime, timedelta
 # 1. Page Configuration
 st.set_page_config(page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
 
-# --- AREA CONFIGURATIONS (Preserved URLs & Settings) ---
+# --- AREA CONFIGURATIONS (Preserved URLs, Settings & In-charge Names) ---
 AREA_CONFIGS = {
     "Area 02/03": {
         "title": "Area 02/03 Instrumentation Inventory",
+        "incharge": "Er. Amit Jangra",  # <-- Apne hisaab se update kar lena
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=1345118798&single=true&output=csv"
     },
     "Area 04/05": {
         "title": "Area 04/05 Instrumentation Inventory",
+        "incharge": "Area In-charge Name",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZopDMRgkBThhmBF8NAXoBERx24tj7Ae2y6HlvimEHUhahXEWY8tmXoNDSM_MNlkDB7TfGpHB9I2H_/pub?gid=1836901304&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZopDMRgkBThhmBF8NAXoBERx24tj7Ae2y6HlvimEHUhahXEWY8tmXoNDSM_MNlkDB7TfGpHB9I2H_/pub?gid=1951924870&single=true&output=csv"
     },
     "Area 06/07": {
         "title": "Area 06/07 Instrumentation Inventory",
+        "incharge": "Area In-charge Name",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vStPdBa-nm7i9eHjSxpyrIOyyu5VJZo77E4KF3tk2R9ewp0hK58RDVYBKiW5UsRD2DxBTrafX-CfJry/pub?gid=175582315&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vStPdBa-nm7i9eHjSxpyrIOyyu5VJZo77E4KF3tk2R9ewp0hK58RDVYBKiW5UsRD2DxBTrafX-CfJry/pub?gid=1371227319&single=true&output=csv"
     },
     "Area 08": {
         "title": "Area 08 Instrumentation Inventory",
+        "incharge": "Area In-charge Name",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMj_W_6-T0duFQ_XS8Yf9xTQPQvguuQP9P_aUwkKuiOZeT8BXSkAHeQspMlhXebcmz0ff-VZRdya-M/pub?gid=664188260&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMj_W_6-T0duFQ_XS8Yf9xTQPQvguuQP9P_aUwkKuiOZeT8BXSkAHeQspMlhXebcmz0ff-VZRdya-M/pub?gid=260669801&single=true&output=csv"
     },
     "Area 09/10": {
         "title": "Area 09/10 Instrumentation Inventory",
+        "incharge": "Area In-charge Name",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7NvVXAcew2ZWcA_kSTmCQJk6OVq3RQfqGqCZ08jGKosNmTYWprvR4JUMC3-vXI28wF6HJ1B_Wk1uo/pub?gid=87821600&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7NvVXAcew2ZWcA_kSTmCQJk6OVq3RQfqGqCZ08jGKosNmTYWprvR4JUMC3-vXI28wF6HJ1B_Wk1uo/pub?gid=1187023151&single=true&output=csv"
     },
     "SPP TG": {
         "title": "SPP TG Instrumentation Inventory",
+        "incharge": "Area In-charge Name",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPmgZl9jEQaGMQbxeOu0Xr_GtQ2P4_twAx2qNxUOjoYSvSW27vJsUgRtQB7XtIcU-bcCulPJLX3PLA/pub?gid=974689106&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPmgZl9jEQaGMQbxeOu0Xr_GtQ2P4_twAx2qNxUOjoYSvSW27vJsUgRtQB7XtIcU-bcCulPJLX3PLA/pub?gid=900388666&single=true&output=csv"
     },
     "SPP Boiler": {
         "title": "SPP Boiler Instrumentation Inventory",
+        "incharge": "Area In-charge Name",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVTH56rybWjsWYThgCiTWzafjabniWhqHUUuXoVdqexuWIjrmvh65AtimfDlFNB5V4StSi5G4BWuKf/pub?gid=1937643350&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVTH56rybWjsWYThgCiTWzafjabniWhqHUUuXoVdqexuWIjrmvh65AtimfDlFNB5V4StSi5G4BWuKf/pub?gid=223018013&single=true&output=csv"
     },
     "C&I Sub Store": {
         "title": "C&I Sub Store Instrumentation Inventory",
+        "incharge": "Area In-charge Name",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJUMrlU1bWLUsOt0tL-4xsBpsO2kt70Rq4am-OpMb7hsZZxe69JzLwBqT1EOLZtuU-PGkY-mx4EuZ/pub?gid=2014684236&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJUMrlU1bWLUsOt0tL-4xsBpsO2kt70Rq4am-OpMb7hsZZxe69JzLwBqT1EOLZtuU-PGkY-mx4EuZ/pub?gid=158170506&single=true&output=csv"
     }
@@ -187,7 +195,7 @@ def inject_custom_css():
         padding: 6px; 
         background-color: #f8fafc; 
         border-radius: 8px; 
-        border: 1px solid #f1f5f9;
+        border: 1px solid #f1f5f9; 
     }
     .metric-val { 
         font-size: 17px; 
@@ -441,7 +449,7 @@ elif st.session_state["smart_intelligence_mode"]:
                             
     # 2. PR Analytics View (Shown for chosen area or locked direct area)
     else:
-        # Back button in HOD mode returns to PR Selector; In direct mode it returns to stock view
+        # Back button in HOD mode returns to PR Selector
         if not is_area_direct_mode:
             if st.sidebar.button("⬅️ Back to PR Area Selector"):
                 st.session_state["pr_selected_view"] = None
@@ -641,6 +649,7 @@ elif st.session_state["selected_area"] is None:
 else:
     current_area = st.session_state["selected_area"]
     config = AREA_CONFIGS[current_area]
+    incharge_name = config.get("incharge", "N/A")
 
     st.components.v1.html(f"""
         <div style="background: #ffffff; padding: 22px 25px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
@@ -648,7 +657,7 @@ else:
                 🏭 {config['title']}
             </h1>
             <p style="color: #475569 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
-                Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 600;">Inventory Team, C&I, NALCO</span>
+                Live Spares Tracking Sheet &bull; Area In-charge: <span style="color: #0f172a; font-weight: 700;">{incharge_name}</span> &bull; Managed by <span style="color: #0284c7; font-weight: 600;">Inventory Team, C&I, NALCO</span>
             </p>
         </div>
     """, height=100)
