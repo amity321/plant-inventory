@@ -16,8 +16,7 @@ PASSWORDS_FILE = "passwords.json"
 def hash_pass(pwd: str) -> str:
     return hashlib.sha256(pwd.strip().encode()).hexdigest()
 
-# Default initial password for all areas (e.g., 'nalco123')
-DEFAULT_INIT_PASS_HASH = hash_pass("nalco123")
+
 
 def load_passwords():
     if not os.path.exists(PASSWORDS_FILE):
