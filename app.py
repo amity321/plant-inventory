@@ -95,6 +95,14 @@ def resolve_columns(df):
         "total": total_col or "Total Spares"
     }
 
+def safe_int(val):
+    if pd.isna(val):
+        return 0
+    try:
+        return int(float(str(val).strip()))
+    except ValueError:
+        return 0
+
 def render_row(row, mapping, current_area_name):
     name_key = mapping["name"]
     mat_key = mapping["material"]
@@ -190,7 +198,7 @@ def inject_custom_css():
         font-size: 10px; 
         text-transform: uppercase; 
         color: #64748b; 
-        font-weight: 600;
+        font-weight: 600; 
         margin-bottom: 2px; 
     }
     .status-badge { 
@@ -216,14 +224,6 @@ def inject_custom_css():
     </style>
     """
     st.components.v1.html(css, height=0, width=0)
-
-def safe_int(val):
-    if pd.isna(val):
-        return 0
-    try:
-        return int(float(str(val).strip()))
-    except ValueError:
-        return 0
 
 @st.cache_data(ttl=60)
 def fetch_data(url, timestamp):
@@ -277,21 +277,26 @@ def calculate_real_consumption_from_log(target_material_code, removal_df, analys
     except Exception:
         return 0.0, 0.0, 0
 
-# Initialize session state for navigation
+# --- URL QUERY PARAMETERS & SESSION ROUTING HANDLER ---
+query_params = st.query_params
+url_area = query_params.get("area", None)
+url_view = query_params.get("view", None)
+url_pr_area = query_params.get("pr_area", None)
+
 if "selected_area" not in st.session_state:
-    st.session_state["selected_area"] = None
+    st.session_state["selected_area"] = url_area if (url_area and url_area in AREA_CONFIGS) else None
 
 if "global_search_mode" not in st.session_state:
-    st.session_state["global_search_mode"] = False
+    st.session_state["global_search_mode"] = (url_view == "search")
 
 if "smart_intelligence_mode" not in st.session_state:
-    st.session_state["smart_intelligence_mode"] = False
+    st.session_state["smart_intelligence_mode"] = (url_view == "pr")
 
 if "stock_matrix_mode" not in st.session_state:
-    st.session_state["stock_matrix_mode"] = False
+    st.session_state["stock_matrix_mode"] = (url_view == "stock_matrix")
 
 if "pr_selected_view" not in st.session_state:
-    st.session_state["pr_selected_view"] = None
+    st.session_state["pr_selected_view"] = url_pr_area
 
 if "data_timestamp" not in st.session_state:
     st.session_state["data_timestamp"] = int(time.time())
@@ -307,6 +312,7 @@ if st.sidebar.button("🏠 Home", use_container_width=True):
     st.session_state["stock_matrix_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
+    st.query_params.clear()
     st.rerun()
     
 if st.sidebar.button("📈 Predictive PR Date", use_container_width=True):
@@ -315,8 +321,8 @@ if st.sidebar.button("📈 Predictive PR Date", use_container_width=True):
     st.session_state["stock_matrix_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
+    st.query_params["view"] = "pr"
     st.rerun()
-
 
 if st.sidebar.button("📊 Areawise Stock", use_container_width=True):
     st.session_state["stock_matrix_mode"] = True
@@ -324,6 +330,7 @@ if st.sidebar.button("📊 Areawise Stock", use_container_width=True):
     st.session_state["smart_intelligence_mode"] = False
     st.session_state["selected_area"] = None
     st.session_state["pr_selected_view"] = None
+    st.query_params["view"] = "stock_matrix"
     st.rerun()
 
 st.sidebar.markdown("---")
@@ -350,8 +357,6 @@ if st.session_state["stock_matrix_mode"]:
             
         st.markdown(f"### 📋 Matrix Data View")
         
-        # Apply Pandas Styler to make table headers (columns) and index (rows) bold and black, 
-        # and inject CSS to ensure table header elements render clearly in black and bold.
         styled_matrix = filtered_matrix.style.set_table_styles([
             {'selector': 'th', 'props': [('font-weight', 'bold'), ('color', '#000000')]},
             {'selector': 'tr th', 'props': [('font-weight', 'bold'), ('color', '#000000')]}
@@ -382,6 +387,8 @@ elif st.session_state["smart_intelligence_mode"]:
         
         if st.button("🚀 Open Combined Plant-wide PR View", use_container_width=True):
             st.session_state["pr_selected_view"] = "Combined"
+            st.query_params["view"] = "pr"
+            st.query_params["pr_area"] = "Combined"
             st.rerun()
 
         st.markdown("<div style='margin: 20px 0; border-top: 1px solid #e2e8f0;'></div>", unsafe_allow_html=True)
@@ -402,12 +409,17 @@ elif st.session_state["smart_intelligence_mode"]:
                         """, unsafe_allow_html=True)
                         if st.button(f"Open {area_name}", use_container_width=True, key=f"pr_btn_{area_name}"):
                             st.session_state["pr_selected_view"] = area_name
+                            st.query_params["view"] = "pr"
+                            st.query_params["pr_area"] = area_name
                             st.rerun()
     else:
         current_view = st.session_state["pr_selected_view"]
         
         if st.sidebar.button("⬅️ Back to PR Area Selector"):
             st.session_state["pr_selected_view"] = None
+            st.query_params["view"] = "pr"
+            if "pr_area" in st.query_params:
+                del st.query_params["pr_area"]
             st.rerun()
 
         header_title = "🌐 Combined Plant-wide PR Intelligence (Planning Cell)" if current_view == "Combined" else f"📍 Predictive PR Intelligence — {current_view}"
@@ -711,6 +723,7 @@ elif st.session_state["selected_area"] is None:
                     """, unsafe_allow_html=True)
                     if st.button(f"Open {area_name}", use_container_width=True, key=f"btn_{area_name}"):
                         st.session_state["selected_area"] = area_name
+                        st.query_params["area"] = area_name
                         st.rerun()
 
 # --- ACTIVE AREA DASHBOARD VIEW ---
