@@ -277,17 +277,17 @@ def calculate_real_consumption_from_log(target_material_code, removal_df, analys
     except Exception:
         return 0.0, 0.0, 0
 
-# --- URL QUERY PARAMETERS & SESSION ROUTING HANDLER ---
+# --- URL QUERY PARAMETERS & ROUTING LOGIC ---
 query_params = st.query_params
 url_area = query_params.get("area", None)
 url_view = query_params.get("view", None)
 url_pr_area = query_params.get("pr_area", None)
 
-if "selected_area" not in st.session_state:
-    st.session_state["selected_area"] = url_area if (url_area and url_area in AREA_CONFIGS) else None
+# Check if user came via a dedicated Area Direct Link
+is_area_direct_mode = bool(url_area and url_area in AREA_CONFIGS)
 
-if "global_search_mode" not in st.session_state:
-    st.session_state["global_search_mode"] = (url_view == "search")
+if "selected_area" not in st.session_state:
+    st.session_state["selected_area"] = url_area if is_area_direct_mode else None
 
 if "smart_intelligence_mode" not in st.session_state:
     st.session_state["smart_intelligence_mode"] = (url_view == "pr")
@@ -296,7 +296,10 @@ if "stock_matrix_mode" not in st.session_state:
     st.session_state["stock_matrix_mode"] = (url_view == "stock_matrix")
 
 if "pr_selected_view" not in st.session_state:
-    st.session_state["pr_selected_view"] = url_pr_area
+    if is_area_direct_mode and st.session_state["smart_intelligence_mode"]:
+        st.session_state["pr_selected_view"] = url_area
+    else:
+        st.session_state["pr_selected_view"] = url_pr_area
 
 if "data_timestamp" not in st.session_state:
     st.session_state["data_timestamp"] = int(time.time())
@@ -306,41 +309,58 @@ inject_custom_css()
 # --- SIDEBAR NAVIGATION CONTROLS ---
 st.sidebar.markdown("### 🧭 Navigation & Tools")
 
-if st.sidebar.button("🏠 Home", use_container_width=True):
-    st.session_state["global_search_mode"] = False
-    st.session_state["smart_intelligence_mode"] = False
-    st.session_state["stock_matrix_mode"] = False
-    st.session_state["selected_area"] = None
-    st.session_state["pr_selected_view"] = None
-    st.query_params.clear()
-    st.rerun()
-    
-if st.sidebar.button("📈 Predictive PR Date", use_container_width=True):
-    st.session_state["smart_intelligence_mode"] = True
-    st.session_state["global_search_mode"] = False
-    st.session_state["stock_matrix_mode"] = False
-    st.session_state["selected_area"] = None
-    st.session_state["pr_selected_view"] = None
-    st.query_params["view"] = "pr"
-    st.rerun()
+# 1. DIRECT AREA USER MODE (Simplified Sidebar: Only Predictive PR Date)
+if is_area_direct_mode:
+    if not st.session_state["smart_intelligence_mode"]:
+        if st.sidebar.button("📈 Predictive PR Date", use_container_width=True):
+            st.session_state["smart_intelligence_mode"] = True
+            st.session_state["pr_selected_view"] = url_area
+            st.query_params["area"] = url_area
+            st.query_params["view"] = "pr"
+            st.rerun()
+    else:
+        if st.sidebar.button("📦 Back to Area Stock", use_container_width=True):
+            st.session_state["smart_intelligence_mode"] = False
+            st.session_state["pr_selected_view"] = None
+            st.query_params["area"] = url_area
+            if "view" in st.query_params:
+                del st.query_params["view"]
+            st.rerun()
 
-if st.sidebar.button("📊 Areawise Stock", use_container_width=True):
-    st.session_state["stock_matrix_mode"] = True
-    st.session_state["global_search_mode"] = False
-    st.session_state["smart_intelligence_mode"] = False
-    st.session_state["selected_area"] = None
-    st.session_state["pr_selected_view"] = None
-    st.query_params["view"] = "stock_matrix"
-    st.rerun()
+# 2. HOD / MASTER PORTAL MODE (Full Features)
+else:
+    if st.sidebar.button("🏠 Home", use_container_width=True):
+        st.session_state["smart_intelligence_mode"] = False
+        st.session_state["stock_matrix_mode"] = False
+        st.session_state["selected_area"] = None
+        st.session_state["pr_selected_view"] = None
+        st.query_params.clear()
+        st.rerun()
+        
+    if st.sidebar.button("📈 Predictive PR Date", use_container_width=True):
+        st.session_state["smart_intelligence_mode"] = True
+        st.session_state["stock_matrix_mode"] = False
+        st.session_state["selected_area"] = None
+        st.session_state["pr_selected_view"] = None
+        st.query_params["view"] = "pr"
+        st.rerun()
+
+    if st.sidebar.button("📊 Areawise Stock", use_container_width=True):
+        st.session_state["stock_matrix_mode"] = True
+        st.session_state["smart_intelligence_mode"] = False
+        st.session_state["selected_area"] = None
+        st.session_state["pr_selected_view"] = None
+        st.query_params["view"] = "stock_matrix"
+        st.rerun()
 
 st.sidebar.markdown("---")
 
-# --- AREAWISE STOCK MATRIX WEB-PUBLISHED VIEWER MODE ---
-if st.session_state["stock_matrix_mode"]:
+# --- AREAWISE STOCK MATRIX VIEWER (HOD Mode Only) ---
+if st.session_state["stock_matrix_mode"] and not is_area_direct_mode:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📊 Areawise Stock Matrix</h1>
-            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Live data fetching...</p>
+            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Live centralized stock overview across all operating areas.</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -356,7 +376,6 @@ if st.session_state["stock_matrix_mode"]:
             filtered_matrix = df_matrix
             
         st.markdown(f"### 📋 Matrix Data View")
-        
         styled_matrix = filtered_matrix.style.set_table_styles([
             {'selector': 'th', 'props': [('font-weight', 'bold'), ('color', '#000000')]},
             {'selector': 'tr th', 'props': [('font-weight', 'bold'), ('color', '#000000')]}
@@ -365,12 +384,19 @@ if st.session_state["stock_matrix_mode"]:
         st.dataframe(styled_matrix, use_container_width=True, height=600)
             
     except Exception as e:
-        st.error(f"Error loading Stock Matrix data from published link: {e}")
+        st.error(f"Error loading Stock Matrix data: {e}")
 
 # --- PREDICTIVE PR INTELLIGENCE & CONSUMPTION ANALYTICS MODE ---
 elif st.session_state["smart_intelligence_mode"]:
     
-    if st.session_state["pr_selected_view"] is None:
+    # If in Area Direct Mode, lock current_view to that area only
+    if is_area_direct_mode:
+        current_view = url_area
+    else:
+        current_view = st.session_state["pr_selected_view"]
+
+    # 1. Selection Screen (Only available for HOD Portal when no area selected)
+    if current_view is None:
         st.markdown("""
             <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 30px;">
                 <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📈 Predictive PR Intelligence & Consumption Portal</h1>
@@ -412,15 +438,17 @@ elif st.session_state["smart_intelligence_mode"]:
                             st.query_params["view"] = "pr"
                             st.query_params["pr_area"] = area_name
                             st.rerun()
+                            
+    # 2. PR Analytics View (Shown for chosen area or locked direct area)
     else:
-        current_view = st.session_state["pr_selected_view"]
-        
-        if st.sidebar.button("⬅️ Back to PR Area Selector"):
-            st.session_state["pr_selected_view"] = None
-            st.query_params["view"] = "pr"
-            if "pr_area" in st.query_params:
-                del st.query_params["pr_area"]
-            st.rerun()
+        # Back button in HOD mode returns to PR Selector; In direct mode it returns to stock view
+        if not is_area_direct_mode:
+            if st.sidebar.button("⬅️ Back to PR Area Selector"):
+                st.session_state["pr_selected_view"] = None
+                st.query_params["view"] = "pr"
+                if "pr_area" in st.query_params:
+                    del st.query_params["pr_area"]
+                st.rerun()
 
         header_title = "🌐 Combined Plant-wide PR Intelligence (Planning Cell)" if current_view == "Combined" else f"📍 Predictive PR Intelligence — {current_view}"
         
@@ -513,7 +541,7 @@ elif st.session_state["smart_intelligence_mode"]:
                     })
                 master_df = pd.DataFrame(grouped_records)
 
-            search_query = st.text_input("🔍 Universal Search (Enter Material Code or Instrument Description):", "").strip()
+            search_query = st.text_input("🔍 Search (Enter Material Code or Instrument Description):", "").strip()
 
             if search_query:
                 filtered_df = master_df[
@@ -581,125 +609,9 @@ elif st.session_state["smart_intelligence_mode"]:
             else:
                 st.info("No matching material codes or instruments found.")
         else:
-            st.warning("No inventory records available across active sheets.")
+            st.warning("No inventory records available for this area.")
 
-# --- GLOBAL EXACT MATERIAL CODE SEARCH MODE ---
-elif st.session_state["global_search_mode"]:
-    st.markdown("""
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
-            <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">🔢 Exact Material Code Locator</h1>
-            <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Enter the exact material code number to precisely scan which area holds it and check its live stock quantities.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    sample_code_hint = "e.g., 86501873151"
-    for area_key, area_cfg in AREA_CONFIGS.items():
-        if "YOUR_" in area_cfg["sheet_url"]:
-            continue
-        try:
-            df_sample = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
-            df_sample.columns = df_sample.columns.str.strip()
-            mapping = resolve_columns(df_sample)
-            valid_codes = df_sample[mapping["material"]].dropna().apply(clean_material_code)
-            valid_codes = valid_codes[valid_codes != "N/A"]
-            if not valid_codes.empty:
-                sample_code_hint = f"e.g., {valid_codes.iloc[0]}"
-                break
-        except Exception:
-            pass
-
-    search_code = st.text_input(f"Enter Material Code ({sample_code_hint}):", "").strip()
-
-    if search_code:
-        all_results = []
-        for area_key, area_cfg in AREA_CONFIGS.items():
-            if "YOUR_" in area_cfg["sheet_url"]:
-                continue
-            try:
-                df_area = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
-                df_area.columns = df_area.columns.str.strip()
-                mapping = resolve_columns(df_area)
-                mat_col = mapping["material"]
-                
-                if mat_col in df_area.columns:
-                    cleaned_codes = df_area[mat_col].apply(clean_material_code)
-                    mask = cleaned_codes == search_code
-                    matched_rows = df_area[mask]
-                    for _, r in matched_rows.iterrows():
-                        r_dict = r.to_dict()
-                        r_dict["Area_Name"] = area_key
-                        r_dict["Resolved_Mapping"] = mapping
-                        all_results.append(r_dict)
-            except Exception:
-                pass
-
-        if all_results:
-            res_df = pd.DataFrame(all_results)
-            st.success(f"Found match for material code **{search_code}** in {len(res_df)} location(s) across the plant!")
-            
-            for _, row in res_df.iterrows():
-                area_tag = row["Area_Name"]
-                mapping = row["Resolved_Mapping"]
-                mapping["show_name"] = True
-                
-                inst_name = str(row[mapping["name"]]).strip() if mapping["name"] in row and pd.notna(row[mapping["name"]]) else "No Name"
-                mat_code_val = clean_material_code(row[mapping["material"]])
-                full_spec = str(row[mapping["specs"]]).strip() if mapping["specs"] in row and pd.notna(row[mapping["specs"]]) else "No Specs Added"
-                
-                field_count = safe_int(row[mapping["field"]]) if mapping["field"] in row else 0
-                spares_store = safe_int(row[mapping["store"]]) if mapping["store"] in row else 0
-                
-                name_lower = inst_name.lower()
-                if "transmitter" in name_lower or "converter" in name_lower:
-                    healthy_stock = max(2, int(field_count * 0.20))
-                elif "element" in name_lower or "switch" in name_lower or "probe" in name_lower:
-                    healthy_stock = max(3, int(field_count * 0.30))
-                else:
-                    healthy_stock = max(2, int(field_count * 0.15))
-                
-                shortfall_excess = spares_store - healthy_stock
-                cleaned_spec = full_spec.replace('•', '').strip()
-
-                if shortfall_excess < 0:
-                    status_html = f'<div class="status-badge status-shortfall">🚨 Shortfall ({shortfall_excess})</div>'
-                elif shortfall_excess > 0:
-                    status_html = f'<div class="status-badge status-surplus">✅ Surplus (+{shortfall_excess})</div>'
-                else:
-                    status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
-
-                card_html = f"""
-                <div class="inventory-card">
-                    <div style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">📍 Plant Area: {area_tag}</div>
-                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                        <div style="flex: 2; min-width: 180px;">
-                            <h4 style="margin:0; color:#0f172a; font-size:16px; font-weight:700;">{inst_name}</h4>
-                            <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code_val}</div>
-                        </div>
-                        <div style="flex: 2.5; min-width: 200px;">
-                            <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
-                        </div>
-                        <div style="flex: 1; min-width: 90px;" class="metric-box">
-                            <div class="metric-lbl">On Field</div><div class="metric-val">{field_count}</div>
-                        </div>
-                        <div style="flex: 1; min-width: 110px;" class="metric-box">
-                            <div class="metric-lbl">Store-Room Stock</div><div class="metric-val">{spares_store}</div>
-                        </div>
-                        <div style="flex: 1; min-width: 90px;" class="metric-box">
-                            <div class="metric-lbl">AI Target</div><div class="metric-val">{healthy_stock}</div>
-                        </div>
-                        <div style="flex: 1.5; min-width: 130px; text-align: center;">
-                            {status_html}
-                        </div>
-                    </div>
-                </div>
-                """
-                st.components.v1.html(card_html, height=125, scrolling=False)
-        else:
-            st.info(f"No item with exact material code '{search_code}' found across the connected areas.")
-    else:
-        st.info(f"💡 Type material code above to instantly locate it across all plant areas ({sample_code_hint}).")
-
-# --- HOD LANDING PAGE ---
+# --- HOD LANDING PAGE (When no area is selected) ---
 elif st.session_state["selected_area"] is None:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 35px;">
@@ -723,7 +635,6 @@ elif st.session_state["selected_area"] is None:
                     """, unsafe_allow_html=True)
                     if st.button(f"Open {area_name}", use_container_width=True, key=f"btn_{area_name}"):
                         st.session_state["selected_area"] = area_name
-                        st.query_params["area"] = area_name
                         st.rerun()
 
 # --- ACTIVE AREA DASHBOARD VIEW ---
