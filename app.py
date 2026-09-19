@@ -657,7 +657,7 @@ else:
                 🏭 {config['title']}
             </h1>
             <p style="color: #475569 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
-                Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 600;">{manager_name}, Inventory Team, C&I, NALCO</span>
+                Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 600;">{manager_name} (Inventory Team, C&I, NALCO)</span>
             </p>
         </div>
     """, height=100)
