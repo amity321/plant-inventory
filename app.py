@@ -59,6 +59,7 @@ AREA_CONFIGS = {
     }
 }
 
+# Stock Matrix Published URL provided by user
 STOCK_MATRIX_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=868142398&single=true&output=csv"
 
 # --- INVENTORY TEAM HIERARCHY MODAL POPUP ---
@@ -176,162 +177,11 @@ def show_team_modal():
     """
     st.components.v1.html(svg_tree, height=600, scrolling=True)
 
-def inject_custom_css():
-    css = """
-    <style>
-    .stApp { background-color: #f8fafc; }
-    h1, h2, h3 { color: #1e293b !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    
-    /* Top Header Bar Container */
-    .header-pill {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        padding: 6px 14px;
-        border-radius: 24px;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        color: #0f172a;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-    }
-
-    /* Prominent Sidebar Styling */
-    section[data-testid="stSidebar"] {
-        background-color: #f1f5f9 !important;
-        border-right: 2px solid #cbd5e1 !important;
-    }
-    
-    .sidebar-section-title {
-        font-size: 12px !important;
-        font-weight: 800 !important;
-        color: #0f172a !important;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        margin-top: 15px;
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    /* Make Sidebar Buttons Look Like Prominent Action Cards */
-    section[data-testid="stSidebar"] .stButton > button {
-        background: #ffffff !important;
-        color: #0f172a !important;
-        border: 1.5px solid #cbd5e1 !important;
-        border-radius: 10px !important;
-        font-weight: 700 !important;
-        font-size: 14px !important;
-        padding: 10px 14px !important;
-        text-align: left !important;
-        display: flex !important;
-        justify-content: flex-start !important;
-        align-items: center !important;
-        gap: 10px !important;
-        box-shadow: 0 3px 6px rgba(0,0,0,0.03) !important;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        margin-bottom: 6px !important;
-    }
-    
-    section[data-testid="stSidebar"] .stButton > button:hover {
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-        color: #ffffff !important;
-        border-color: #0284c7 !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 6px 14px rgba(2, 132, 199, 0.25) !important;
-    }
-
-    /* Highlighted Inventory Team Button in Main Container */
-    .team-highlight-btn > button {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
-        color: #38bdf8 !important;
-        border: 1.5px solid #38bdf8 !important;
-        border-radius: 24px !important;
-        font-weight: 700 !important;
-        font-size: 13.5px !important;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12) !important;
-        transition: all 0.2s ease-in-out !important;
-    }
-    .team-highlight-btn > button:hover {
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-        color: #ffffff !important;
-        border-color: #0284c7 !important;
-        transform: scale(1.02) !important;
-    }
-
-    /* Inventory Cards */
-    .inventory-card { 
-        background-color: #ffffff; 
-        border-radius: 12px; 
-        padding: 14px 18px; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
-        border: 1px solid #e2e8f0; 
-        margin-bottom: 15px; 
-        transition: all 0.2s ease-in-out;
-    }
-    .inventory-card:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.05);
-    }
-    .metric-box { 
-        text-align: center; 
-        padding: 6px; 
-        background-color: #f8fafc; 
-        border-radius: 8px; 
-        border: 1px solid #f1f5f9; 
-    }
-    .metric-val { 
-        font-size: 17px; 
-        font-weight: 700; 
-        color: #0f172a; 
-    }
-    .metric-lbl { 
-        font-size: 10px; 
-        text-transform: uppercase; 
-        color: #64748b; 
-        font-weight: 600; 
-        margin-bottom: 2px; 
-    }
-    .status-badge { 
-        display: inline-block; 
-        padding: 6px 10px; 
-        border-radius: 20px; 
-        font-size: 12px; 
-        font-weight: 600; 
-        text-align: center; 
-        width: 100%; 
-    }
-    .status-shortfall { background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-    .status-surplus { background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; }
-    .status-balanced { background-color: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
-    .specs-box { 
-        background-color: #f8fafc; 
-        border-left: 3px solid #0284c7; 
-        padding: 6px 10px; 
-        border-radius: 6px; 
-        font-size: 11.5px; 
-        color: #334155; 
-    }
-    </style>
-    """
-    st.components.v1.html(css, height=0, width=0)
-
-def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
-    c_left, c_right = st.columns([7.5, 2.5])
-    with c_left:
-        st.markdown(f"""
-            <div class="header-pill">
-                <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
-            </div>
-        """, unsafe_allow_html=True)
+def render_top_bar():
+    c_left, c_right = st.columns([8, 2])
     with c_right:
-        st.markdown('<div class="team-highlight-btn">', unsafe_allow_html=True)
-        if st.button("👥 Inventory Team Hierarchy", use_container_width=True):
+        if st.button("👥 Inventory Team", use_container_width=True):
             show_team_modal()
-        st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
 def clean_material_code(val):
     if pd.isna(val):
@@ -443,6 +293,67 @@ def render_row(row, mapping, current_area_name):
     """
     st.components.v1.html(card_html, height=115, scrolling=False)
 
+def inject_custom_css():
+    css = """
+    <style>
+    .stApp { background-color: #f8fafc; }
+    h1, h2, h3 { color: #1e293b !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .inventory-card { 
+        background-color: #ffffff; 
+        border-radius: 12px; 
+        padding: 14px 18px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
+        border: 1px solid #e2e8f0; 
+        margin-bottom: 15px; 
+        transition: all 0.2s ease-in-out;
+    }
+    .inventory-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+    }
+    .metric-box { 
+        text-align: center; 
+        padding: 6px; 
+        background-color: #f8fafc; 
+        border-radius: 8px; 
+        border: 1px solid #f1f5f9; 
+    }
+    .metric-val { 
+        font-size: 17px; 
+        font-weight: 700; 
+        color: #0f172a; 
+    }
+    .metric-lbl { 
+        font-size: 10px; 
+        text-transform: uppercase; 
+        color: #64748b; 
+        font-weight: 600; 
+        margin-bottom: 2px; 
+    }
+    .status-badge { 
+        display: inline-block; 
+        padding: 6px 10px; 
+        border-radius: 20px; 
+        font-size: 12px; 
+        font-weight: 600; 
+        text-align: center; 
+        width: 100%; 
+    }
+    .status-shortfall { background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+    .status-surplus { background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; }
+    .status-balanced { background-color: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
+    .specs-box { 
+        background-color: #f8fafc; 
+        border-left: 3px solid #0284c7; 
+        padding: 6px 10px; 
+        border-radius: 6px; 
+        font-size: 11.5px; 
+        color: #334155; 
+    }
+    </style>
+    """
+    st.components.v1.html(css, height=0, width=0)
+
 @st.cache_data(ttl=60)
 def fetch_data(url, timestamp):
     live_url = f"{url}&t={timestamp}"
@@ -523,30 +434,23 @@ if "data_timestamp" not in st.session_state:
 
 inject_custom_css()
 
-# Header status text customization
-active_tag = f"📍 Active Area: {st.session_state['selected_area']}" if st.session_state["selected_area"] else "🏭 Master Control Room"
-render_top_bar(status_text=active_tag)
+# Render persistent top bar with Inventory Team button
+render_top_bar()
 
-# --- USER-FRIENDLY SIDEBAR DESIGN ---
-st.sidebar.markdown("""
-    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 14px; border-radius: 10px; margin-bottom: 15px; text-align: center; border: 1px solid #334155;">
-        <h4 style="margin:0; color:#38bdf8; font-size:15px; font-weight:800; letter-spacing:0.5px;">⚙️ CONTROL PANEL</h4>
-        <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; font-weight:500;">C&I Instrumentation Suite</p>
-    </div>
-""", unsafe_allow_html=True)
+# --- SIDEBAR NAVIGATION CONTROLS ---
+st.sidebar.markdown("### 🧭 Navigation & Tools")
 
-# 1. DIRECT AREA USER MODE (Simplified Sidebar)
+# 1. DIRECT AREA USER MODE
 if is_area_direct_mode:
-    st.sidebar.markdown('<div class="sidebar-section-title">📌 Area Dedicated Modules</div>', unsafe_allow_html=True)
     if not st.session_state["smart_intelligence_mode"]:
-        if st.sidebar.button("📈  Predictive PR Date", use_container_width=True):
+        if st.sidebar.button("📈 Predictive PR Date", use_container_width=True):
             st.session_state["smart_intelligence_mode"] = True
             st.session_state["pr_selected_view"] = url_area
             st.query_params["area"] = url_area
             st.query_params["view"] = "pr"
             st.rerun()
     else:
-        if st.sidebar.button("📦  Back to Area Stock", use_container_width=True):
+        if st.sidebar.button("📦 Back to Area Stock", use_container_width=True):
             st.session_state["smart_intelligence_mode"] = False
             st.session_state["pr_selected_view"] = None
             st.query_params["area"] = url_area
@@ -554,10 +458,9 @@ if is_area_direct_mode:
                 del st.query_params["view"]
             st.rerun()
 
-# 2. HOD / MASTER PORTAL MODE (Full Navigation Suite)
+# 2. HOD / MASTER PORTAL MODE
 else:
-    st.sidebar.markdown('<div class="sidebar-section-title">🧭 Portal Navigation</div>', unsafe_allow_html=True)
-    if st.sidebar.button("🏠  Dashboard Home", use_container_width=True):
+    if st.sidebar.button("🏠 Home", use_container_width=True):
         st.session_state["smart_intelligence_mode"] = False
         st.session_state["stock_matrix_mode"] = False
         st.session_state["selected_area"] = None
@@ -565,7 +468,7 @@ else:
         st.query_params.clear()
         st.rerun()
         
-    if st.sidebar.button("📈  Predictive PR Intelligence", use_container_width=True):
+    if st.sidebar.button("📈 Predictive PR Date", use_container_width=True):
         st.session_state["smart_intelligence_mode"] = True
         st.session_state["stock_matrix_mode"] = False
         st.session_state["selected_area"] = None
@@ -573,7 +476,7 @@ else:
         st.query_params["view"] = "pr"
         st.rerun()
 
-    if st.sidebar.button("📊  Areawise Stock Matrix", use_container_width=True):
+    if st.sidebar.button("📊 Areawise Stock", use_container_width=True):
         st.session_state["stock_matrix_mode"] = True
         st.session_state["smart_intelligence_mode"] = False
         st.session_state["selected_area"] = None
@@ -581,7 +484,7 @@ else:
         st.query_params["view"] = "stock_matrix"
         st.rerun()
 
-st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
+st.sidebar.markdown("---")
 
 # --- AREAWISE STOCK MATRIX VIEWER (HOD Mode Only) ---
 if st.session_state["stock_matrix_mode"] and not is_area_direct_mode:
@@ -666,7 +569,7 @@ elif st.session_state["smart_intelligence_mode"]:
                             st.rerun()
     else:
         if not is_area_direct_mode:
-            if st.sidebar.button("⬅️  Back to PR Area Selector", use_container_width=True):
+            if st.sidebar.button("⬅️ Back to PR Area Selector"):
                 st.session_state["pr_selected_view"] = None
                 st.query_params["view"] = "pr"
                 if "pr_area" in st.query_params:
@@ -682,7 +585,7 @@ elif st.session_state["smart_intelligence_mode"]:
             </div>
         """, unsafe_allow_html=True)
 
-        st.sidebar.markdown('<div class="sidebar-section-title">⚙️ Analysis Parameters</div>', unsafe_allow_html=True)
+        st.sidebar.markdown("### ⚙️ Intelligence Parameters")
         lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6, help="Total procedural delay from PR generation to final delivery.")
         analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
         pr_display_limit = st.sidebar.selectbox("Display Records Limit:", [25, 50, 100, 200, "All"], index=0)
@@ -889,12 +792,12 @@ else:
 
         df = df.dropna(subset=[NAME_COL])
         
-        st.sidebar.markdown('<div class="sidebar-section-title">🔍 Filter &amp; Search</div>', unsafe_allow_html=True)
+        st.sidebar.header("🔍 Filter & Pagination")
         all_instruments = ["All System Data"] + list(df[NAME_COL].dropna().unique())
         selected_instrument = st.sidebar.selectbox("Select Instrument Category:", all_instruments)
         
         items_per_page = st.sidebar.selectbox("Items Per Page:", [10, 20, 30, 40, 50, 100], index=3)
-        st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
+        st.sidebar.markdown("---")
 
         if selected_instrument != "All System Data":
             df = df[df[NAME_COL].str.strip() == selected_instrument]
@@ -905,10 +808,10 @@ else:
         # --- PAGINATION LOGIC ---
         total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
 
-        st.sidebar.markdown('<div class="sidebar-section-title">📄 Page Navigation</div>', unsafe_allow_html=True)
+        st.sidebar.header("📄 Page Navigation")
         page_number = st.sidebar.number_input("Select Page Number:", min_value=1, max_value=total_pages, value=1, step=1)
         st.sidebar.caption(f"Showing page {page_number} of {total_pages} (Total unique: {total_items} items)")
-        st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
+        st.sidebar.markdown("---")
 
         start_idx = (page_number - 1) * items_per_page
         end_idx = start_idx + items_per_page
@@ -942,8 +845,7 @@ else:
     except Exception as e:
         st.error(f"Error accessing Google Sheets Database for {current_area}: {e}")
 
-    st.sidebar.markdown('<div class="sidebar-section-title">🔄 Database Control</div>', unsafe_allow_html=True)
-    if st.sidebar.button("🔄  Sync Live Data Now", use_container_width=True):
+    if st.sidebar.button("🔄 Sync Live Data Now"):
         st.cache_data.clear()
         st.session_state["data_timestamp"] = int(time.time())
         st.rerun()
