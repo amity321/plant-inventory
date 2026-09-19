@@ -59,7 +59,6 @@ AREA_CONFIGS = {
     }
 }
 
-# Stock Matrix Published URL provided by user
 STOCK_MATRIX_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=868142398&single=true&output=csv"
 
 # --- INVENTORY TEAM HIERARCHY MODAL POPUP ---
@@ -73,38 +72,28 @@ def show_team_modal():
         </filter>
       </defs>
 
-      <!-- ROOT NODE: C&I DEPT -->
       <g transform="translate(365, 20)" filter="url(#shadow)">
         <rect width="370" height="75" rx="10" fill="#0f172a"/>
         <text x="185" y="32" fill="#38bdf8" font-size="12" font-weight="700" text-anchor="middle" letter-spacing="1">NALCO REFINERY &amp; SPP</text>
         <text x="185" y="54" fill="#ffffff" font-size="16" font-weight="700" text-anchor="middle">🏢 C&amp;I Inventory &amp; Spares Team</text>
       </g>
 
-      <!-- MAIN SPINE CONNECTOR -->
       <path d="M 550 95 L 550 140" stroke="#0284c7" stroke-width="2.5" fill="none"/>
-      
-      <!-- LEVEL 1 SPLIT BUS -->
       <path d="M 185 140 L 915 140" stroke="#0284c7" stroke-width="2.5" fill="none"/>
 
-      <!-- CATEGORY 1: REFINERY PROCESS AREAS -->
       <path d="M 185 140 L 185 165" stroke="#0284c7" stroke-width="2" fill="none"/>
       <rect x="65" y="165" width="240" height="34" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
       <text x="185" y="187" fill="#0369a1" font-size="13" font-weight="700" text-anchor="middle">⚙️ Refinery Process Areas</text>
 
-      <!-- CATEGORY 2: STEAM POWER PLANT (SPP) -->
       <path d="M 550 140 L 550 165" stroke="#0284c7" stroke-width="2" fill="none"/>
       <rect x="430" y="165" width="240" height="34" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
       <text x="550" y="187" fill="#b45309" font-size="13" font-weight="700" text-anchor="middle">⚡ Steam Power Plant (SPP)</text>
 
-      <!-- CATEGORY 3: INVENTORY STORE -->
       <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2" fill="none"/>
       <rect x="795" y="165" width="240" height="34" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
       <text x="915" y="187" fill="#15803d" font-size="13" font-weight="700" text-anchor="middle">📦 Inventory Store</text>
 
-      <!-- REFINERY AREA DROPS (5 NODES) -->
       <path d="M 185 199 L 185 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
-      
-      <!-- Node 1: Area 02/03 -->
       <g transform="translate(65, 220)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
         <rect width="6" height="58" rx="3" fill="#0284c7"/>
@@ -112,7 +101,6 @@ def show_team_modal():
         <text x="18" y="42" fill="#475569" font-size="12">Er. Amit Jangra | <tspan fill="#0284c7" font-weight="600">P.No. 10372</tspan></text>
       </g>
 
-      <!-- Node 2: Area 04/05 -->
       <g transform="translate(65, 290)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
         <rect width="6" height="58" rx="3" fill="#0284c7"/>
@@ -120,7 +108,6 @@ def show_team_modal():
         <text x="18" y="42" fill="#475569" font-size="12">Er D.C. Mishra | <tspan fill="#0284c7" font-weight="600">P.No. 09074</tspan></text>
       </g>
 
-      <!-- Node 3: Area 06/07 -->
       <g transform="translate(65, 360)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
         <rect width="6" height="58" rx="3" fill="#0284c7"/>
@@ -128,7 +115,6 @@ def show_team_modal():
         <text x="18" y="42" fill="#475569" font-size="12">Er R. Swarup | <tspan fill="#0284c7" font-weight="600">P.No. 10565</tspan></text>
       </g>
 
-      <!-- Node 4: Area 08 -->
       <g transform="translate(65, 430)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
         <rect width="6" height="58" rx="3" fill="#0284c7"/>
@@ -136,7 +122,6 @@ def show_team_modal():
         <text x="18" y="42" fill="#475569" font-size="12">Er P. Bagde | <tspan fill="#0284c7" font-weight="600">P.No. 09644</tspan></text>
       </g>
 
-      <!-- Node 5: Area 09/10 -->
       <g transform="translate(65, 500)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
         <rect width="6" height="58" rx="3" fill="#0284c7"/>
@@ -144,10 +129,7 @@ def show_team_modal():
         <text x="18" y="42" fill="#475569" font-size="12">Er K. Kumar | <tspan fill="#0284c7" font-weight="600">P.No. 09643</tspan></text>
       </g>
 
-      <!-- SPP DROPS (2 NODES) -->
       <path d="M 550 199 L 550 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
-
-      <!-- Node 6: SPP TG -->
       <g transform="translate(430, 220)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
         <rect width="6" height="58" rx="3" fill="#d97706"/>
@@ -155,7 +137,6 @@ def show_team_modal():
         <text x="18" y="42" fill="#475569" font-size="12">Er H.S. Mallick | <tspan fill="#d97706" font-weight="600">P.No. 10873</tspan></text>
       </g>
 
-      <!-- Node 7: SPP Boiler -->
       <g transform="translate(430, 290)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
         <rect width="6" height="58" rx="3" fill="#d97706"/>
@@ -163,10 +144,7 @@ def show_team_modal():
         <text x="18" y="42" fill="#475569" font-size="12">Er Sachin Ray | <tspan fill="#d97706" font-weight="600">P.No. 10913</tspan></text>
       </g>
 
-      <!-- SUB STORE DROP (1 NODE) -->
       <path d="M 915 199 L 915 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
-
-      <!-- Node 8: Sub Store -->
       <g transform="translate(795, 220)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
         <rect width="6" height="58" rx="3" fill="#16a34a"/>
@@ -177,11 +155,162 @@ def show_team_modal():
     """
     st.components.v1.html(svg_tree, height=600, scrolling=True)
 
-def render_top_bar():
-    c_left, c_right = st.columns([8, 2])
+def inject_custom_css():
+    css = """
+    <style>
+    .stApp { background-color: #f8fafc; }
+    h1, h2, h3 { color: #1e293b !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    
+    .header-pill {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        padding: 8px 16px;
+        border-radius: 24px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #0f172a;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    }
+
+    /* HIGH-CONTRAST NEON GLOW INVENTORY TEAM BUTTON */
+    button[key="team_btn"] {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+        color: #ffffff !important;
+        border: 2px solid #38bdf8 !important;
+        border-radius: 26px !important;
+        font-weight: 800 !important;
+        font-size: 14.5px !important;
+        letter-spacing: 0.3px !important;
+        box-shadow: 0 4px 18px rgba(2, 132, 199, 0.45) !important;
+        transition: all 0.25s ease-in-out !important;
+    }
+    button[key="team_btn"] * {
+        color: #ffffff !important;
+        font-weight: 800 !important;
+    }
+    button[key="team_btn"]:hover {
+        background: linear-gradient(135deg, #0369a1 0%, #075985 100%) !important;
+        border-color: #7dd3fc !important;
+        box-shadow: 0 6px 24px rgba(56, 189, 248, 0.65) !important;
+        transform: translateY(-2px) scale(1.02) !important;
+    }
+
+    /* Prominent Sidebar Styling */
+    section[data-testid="stSidebar"] {
+        background-color: #f1f5f9 !important;
+        border-right: 2px solid #cbd5e1 !important;
+    }
+    
+    .sidebar-section-title {
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        color: #0f172a !important;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-top: 15px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    section[data-testid="stSidebar"] .stButton > button {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        padding: 10px 14px !important;
+        text-align: left !important;
+        display: flex !important;
+        justify-content: flex-start !important;
+        align-items: center !important;
+        gap: 10px !important;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.03) !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        margin-bottom: 6px !important;
+    }
+    
+    section[data-testid="stSidebar"] .stButton > button:hover {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+        color: #ffffff !important;
+        border-color: #0284c7 !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 14px rgba(2, 132, 199, 0.25) !important;
+    }
+
+    .inventory-card { 
+        background-color: #ffffff; 
+        border-radius: 12px; 
+        padding: 14px 18px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
+        border: 1px solid #e2e8f0; 
+        margin-bottom: 15px; 
+        transition: all 0.2s ease-in-out;
+    }
+    .inventory-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+    }
+    .metric-box { 
+        text-align: center; 
+        padding: 6px; 
+        background-color: #f8fafc; 
+        border-radius: 8px; 
+        border: 1px solid #f1f5f9; 
+    }
+    .metric-val { 
+        font-size: 17px; 
+        font-weight: 700; 
+        color: #0f172a; 
+    }
+    .metric-lbl { 
+        font-size: 10px; 
+        text-transform: uppercase; 
+        color: #64748b; 
+        font-weight: 600; 
+        margin-bottom: 2px; 
+    }
+    .status-badge { 
+        display: inline-block; 
+        padding: 6px 10px; 
+        border-radius: 20px; 
+        font-size: 12px; 
+        font-weight: 600; 
+        text-align: center; 
+        width: 100%; 
+    }
+    .status-shortfall { background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+    .status-surplus { background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; }
+    .status-balanced { background-color: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
+    .specs-box { 
+        background-color: #f8fafc; 
+        border-left: 3px solid #0284c7; 
+        padding: 6px 10px; 
+        border-radius: 6px; 
+        font-size: 11.5px; 
+        color: #334155; 
+    }
+    </style>
+    """
+    st.components.v1.html(css, height=0, width=0)
+
+def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
+    c_left, c_right = st.columns([7.0, 3.0])
+    with c_left:
+        st.markdown(f"""
+            <div class="header-pill">
+                <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
+            </div>
+        """, unsafe_allow_html=True)
     with c_right:
-        if st.button("👥 Inventory Team", use_container_width=True):
+        if st.button("👥 Inventory Team Hierarchy", key="team_btn", use_container_width=True):
             show_team_modal()
+    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
 def clean_material_code(val):
     if pd.isna(val):
@@ -293,67 +422,6 @@ def render_row(row, mapping, current_area_name):
     """
     st.components.v1.html(card_html, height=115, scrolling=False)
 
-def inject_custom_css():
-    css = """
-    <style>
-    .stApp { background-color: #f8fafc; }
-    h1, h2, h3 { color: #1e293b !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    .inventory-card { 
-        background-color: #ffffff; 
-        border-radius: 12px; 
-        padding: 14px 18px; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
-        border: 1px solid #e2e8f0; 
-        margin-bottom: 15px; 
-        transition: all 0.2s ease-in-out;
-    }
-    .inventory-card:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.05);
-    }
-    .metric-box { 
-        text-align: center; 
-        padding: 6px; 
-        background-color: #f8fafc; 
-        border-radius: 8px; 
-        border: 1px solid #f1f5f9; 
-    }
-    .metric-val { 
-        font-size: 17px; 
-        font-weight: 700; 
-        color: #0f172a; 
-    }
-    .metric-lbl { 
-        font-size: 10px; 
-        text-transform: uppercase; 
-        color: #64748b; 
-        font-weight: 600; 
-        margin-bottom: 2px; 
-    }
-    .status-badge { 
-        display: inline-block; 
-        padding: 6px 10px; 
-        border-radius: 20px; 
-        font-size: 12px; 
-        font-weight: 600; 
-        text-align: center; 
-        width: 100%; 
-    }
-    .status-shortfall { background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-    .status-surplus { background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; }
-    .status-balanced { background-color: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
-    .specs-box { 
-        background-color: #f8fafc; 
-        border-left: 3px solid #0284c7; 
-        padding: 6px 10px; 
-        border-radius: 6px; 
-        font-size: 11.5px; 
-        color: #334155; 
-    }
-    </style>
-    """
-    st.components.v1.html(css, height=0, width=0)
-
 @st.cache_data(ttl=60)
 def fetch_data(url, timestamp):
     live_url = f"{url}&t={timestamp}"
@@ -434,23 +502,29 @@ if "data_timestamp" not in st.session_state:
 
 inject_custom_css()
 
-# Render persistent top bar with Inventory Team button
-render_top_bar()
+active_tag = f"📍 Active Area: {st.session_state['selected_area']}" if st.session_state["selected_area"] else "🏭 Master Control Room"
+render_top_bar(status_text=active_tag)
 
-# --- SIDEBAR NAVIGATION CONTROLS ---
-st.sidebar.markdown("### 🧭 Navigation & Tools")
+# --- USER-FRIENDLY SIDEBAR DESIGN ---
+st.sidebar.markdown("""
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 14px; border-radius: 10px; margin-bottom: 15px; text-align: center; border: 1px solid #334155;">
+        <h4 style="margin:0; color:#38bdf8; font-size:15px; font-weight:800; letter-spacing:0.5px;">⚙️ CONTROL PANEL</h4>
+        <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; font-weight:500;">C&I Instrumentation Suite</p>
+    </div>
+""", unsafe_allow_html=True)
 
 # 1. DIRECT AREA USER MODE
 if is_area_direct_mode:
+    st.sidebar.markdown('<div class="sidebar-section-title">📌 Area Dedicated Modules</div>', unsafe_allow_html=True)
     if not st.session_state["smart_intelligence_mode"]:
-        if st.sidebar.button("📈 Predictive PR Date", use_container_width=True):
+        if st.sidebar.button("📈  Predictive PR Date", use_container_width=True):
             st.session_state["smart_intelligence_mode"] = True
             st.session_state["pr_selected_view"] = url_area
             st.query_params["area"] = url_area
             st.query_params["view"] = "pr"
             st.rerun()
     else:
-        if st.sidebar.button("📦 Back to Area Stock", use_container_width=True):
+        if st.sidebar.button("📦  Back to Area Stock", use_container_width=True):
             st.session_state["smart_intelligence_mode"] = False
             st.session_state["pr_selected_view"] = None
             st.query_params["area"] = url_area
@@ -460,7 +534,8 @@ if is_area_direct_mode:
 
 # 2. HOD / MASTER PORTAL MODE
 else:
-    if st.sidebar.button("🏠 Home", use_container_width=True):
+    st.sidebar.markdown('<div class="sidebar-section-title">🧭 Portal Navigation</div>', unsafe_allow_html=True)
+    if st.sidebar.button("🏠  Dashboard Home", use_container_width=True):
         st.session_state["smart_intelligence_mode"] = False
         st.session_state["stock_matrix_mode"] = False
         st.session_state["selected_area"] = None
@@ -468,7 +543,7 @@ else:
         st.query_params.clear()
         st.rerun()
         
-    if st.sidebar.button("📈 Predictive PR Date", use_container_width=True):
+    if st.sidebar.button("📈  Predictive PR Intelligence", use_container_width=True):
         st.session_state["smart_intelligence_mode"] = True
         st.session_state["stock_matrix_mode"] = False
         st.session_state["selected_area"] = None
@@ -476,7 +551,7 @@ else:
         st.query_params["view"] = "pr"
         st.rerun()
 
-    if st.sidebar.button("📊 Areawise Stock", use_container_width=True):
+    if st.sidebar.button("📊  Areawise Stock Matrix", use_container_width=True):
         st.session_state["stock_matrix_mode"] = True
         st.session_state["smart_intelligence_mode"] = False
         st.session_state["selected_area"] = None
@@ -484,7 +559,7 @@ else:
         st.query_params["view"] = "stock_matrix"
         st.rerun()
 
-st.sidebar.markdown("---")
+st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
 
 # --- AREAWISE STOCK MATRIX VIEWER (HOD Mode Only) ---
 if st.session_state["stock_matrix_mode"] and not is_area_direct_mode:
@@ -569,7 +644,7 @@ elif st.session_state["smart_intelligence_mode"]:
                             st.rerun()
     else:
         if not is_area_direct_mode:
-            if st.sidebar.button("⬅️ Back to PR Area Selector"):
+            if st.sidebar.button("⬅️  Back to PR Area Selector", use_container_width=True):
                 st.session_state["pr_selected_view"] = None
                 st.query_params["view"] = "pr"
                 if "pr_area" in st.query_params:
@@ -585,7 +660,7 @@ elif st.session_state["smart_intelligence_mode"]:
             </div>
         """, unsafe_allow_html=True)
 
-        st.sidebar.markdown("### ⚙️ Intelligence Parameters")
+        st.sidebar.markdown('<div class="sidebar-section-title">⚙️ Analysis Parameters</div>', unsafe_allow_html=True)
         lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6, help="Total procedural delay from PR generation to final delivery.")
         analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
         pr_display_limit = st.sidebar.selectbox("Display Records Limit:", [25, 50, 100, 200, "All"], index=0)
@@ -792,12 +867,12 @@ else:
 
         df = df.dropna(subset=[NAME_COL])
         
-        st.sidebar.header("🔍 Filter & Pagination")
+        st.sidebar.markdown('<div class="sidebar-section-title">🔍 Filter &amp; Search</div>', unsafe_allow_html=True)
         all_instruments = ["All System Data"] + list(df[NAME_COL].dropna().unique())
         selected_instrument = st.sidebar.selectbox("Select Instrument Category:", all_instruments)
         
         items_per_page = st.sidebar.selectbox("Items Per Page:", [10, 20, 30, 40, 50, 100], index=3)
-        st.sidebar.markdown("---")
+        st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
 
         if selected_instrument != "All System Data":
             df = df[df[NAME_COL].str.strip() == selected_instrument]
@@ -808,10 +883,10 @@ else:
         # --- PAGINATION LOGIC ---
         total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
 
-        st.sidebar.header("📄 Page Navigation")
+        st.sidebar.markdown('<div class="sidebar-section-title">📄 Page Navigation</div>', unsafe_allow_html=True)
         page_number = st.sidebar.number_input("Select Page Number:", min_value=1, max_value=total_pages, value=1, step=1)
         st.sidebar.caption(f"Showing page {page_number} of {total_pages} (Total unique: {total_items} items)")
-        st.sidebar.markdown("---")
+        st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
 
         start_idx = (page_number - 1) * items_per_page
         end_idx = start_idx + items_per_page
@@ -845,7 +920,8 @@ else:
     except Exception as e:
         st.error(f"Error accessing Google Sheets Database for {current_area}: {e}")
 
-    if st.sidebar.button("🔄 Sync Live Data Now"):
+    st.sidebar.markdown('<div class="sidebar-section-title">🔄 Database Control</div>', unsafe_allow_html=True)
+    if st.sidebar.button("🔄  Sync Live Data Now", use_container_width=True):
         st.cache_data.clear()
         st.session_state["data_timestamp"] = int(time.time())
         st.rerun()
