@@ -134,7 +134,7 @@ if "data_timestamp" not in st.session_state:
     st.session_state["data_timestamp"] = int(time.time())
 
 # --- INVENTORY TEAM HIERARCHY MODAL POPUP ---
-@st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
+@st.dialog("🏢 C&I Inventory Team ", width="large")
 def show_team_modal():
     svg_tree = """
     <svg viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg" style="background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border-radius: 12px; border: 1px solid #e2e8f0; width: 100%;">
@@ -257,14 +257,14 @@ def change_password_dialog(area_key):
         elif c_new != c_conf:
             st.error("❌ New passwords do not match!")
         else:
-            with st.spinner("Updating password in Google Sheet..."):
+            with st.spinner("Updating password..."):
                 success, msg = update_password_in_sheet(area_key, hash_pass(c_new))
                 if success:
-                    st.success("✅ Password successfully updated in Google Sheet!")
+                    st.success("✅ Password successfully updated!")
                     time.sleep(1.2)
                     st.rerun()
                 else:
-                    st.error(f"❌ Failed to update password in Google Sheet: {msg}")
+                    st.error(f"❌ Failed to update password: {msg}")
 
 # --- LOGIN PROMPT SCREEN (Bypassed for HOD Portal) ---
 def check_authentication(area_key):
@@ -299,7 +299,7 @@ def check_authentication(area_key):
                 st.session_state["auth_status"][area_key] = True
                 st.rerun()
             else:
-                st.error("❌ Incorrect Password. Contact C&I Admin.")
+                st.error("❌ Incorrect Password. Contact Amit Jangra, Mob.- 9742900004.")
     return False
 
 def clean_material_code(val):
