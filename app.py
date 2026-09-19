@@ -133,8 +133,9 @@ if "pr_selected_view" not in st.session_state:
 if "data_timestamp" not in st.session_state:
     st.session_state["data_timestamp"] = int(time.time())
 
+
 # --- INVENTORY TEAM HIERARCHY MODAL POPUP ---
-@st.dialog("🏢 C&I Inventory Team ", width="large")
+@st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
 def show_team_modal():
     svg_tree = """
     <svg viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg" style="background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border-radius: 12px; border: 1px solid #e2e8f0; width: 100%;">
@@ -144,10 +145,11 @@ def show_team_modal():
         </filter>
       </defs>
 
+      <!-- ROOT NODE: HOD (HEAD OF C&I INVENTORY & SPARES TEAM) -->
       <g transform="translate(365, 20)" filter="url(#shadow)">
         <rect width="370" height="75" rx="10" fill="#0f172a"/>
-        <text x="185" y="32" fill="#38bdf8" font-size="12" font-weight="700" text-anchor="middle" letter-spacing="1">NALCO REFINERY &amp; SPP</text>
-        <text x="185" y="54" fill="#ffffff" font-size="16" font-weight="700" text-anchor="middle">🏢 C&amp;I Inventory &amp; Spares Team</text>
+        <text x="185" y="32" fill="#38bdf8" font-size="12" font-weight="700" text-anchor="middle" letter-spacing="1">🏢 C&amp;I INVENTORY &amp; SPARES TEAM</text>
+        <text x="185" y="55" fill="#ffffff" font-size="16" font-weight="700" text-anchor="middle">Er. S.K. Jain | <tspan fill="#38bdf8" font-weight="600">HOD (C&amp;I)</tspan></text>
       </g>
 
       <path d="M 550 95 L 550 140" stroke="#0284c7" stroke-width="2.5" fill="none"/>
