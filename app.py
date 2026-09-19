@@ -301,7 +301,7 @@ def check_authentication(area_key):
                 st.session_state["auth_status"][area_key] = True
                 st.rerun()
             else:
-                st.error("❌ Incorrect Password. Contact Amit Jangra, Mob.- 9742900004.")
+                st.error("❌ Incorrect Password. Contact- Amit Jangra, 9742900004.")
     return False
 
 def clean_material_code(val):
