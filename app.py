@@ -143,7 +143,7 @@ def check_authentication(area_key):
                 st.rerun()
             else:
                 st.error("❌ Incorrect Password. Contact C&I Admin.")
-        st.caption("Default password on first login is: `nalco123`")
+        
     return False
 
 def clean_material_code(val):
