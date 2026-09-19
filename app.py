@@ -3,38 +3,41 @@ import pandas as pd
 pd.set_option('display.max_rows', None)
 import time
 from datetime import datetime, timedelta
-import os
-import json
 import hashlib
+import requests
 
 # 1. Page Configuration
 st.set_page_config(page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
 
-# --- FILE-BASED PASSWORD DATABASE ---
-PASSWORDS_FILE = "passwords.json"
+# --- GOOGLE APPS SCRIPT AUTH WEBHOOK URL ---
+AUTH_API_URL = "https://script.google.com/macros/s/AKfycbwnf2s_JeEKydIm4xZE5Lc4MTj3D_A30hKIDOBqJa-ykjDbhgCkvL6YaTqG4myn2I52/exec"
 
 def hash_pass(pwd: str) -> str:
     return hashlib.sha256(pwd.strip().encode()).hexdigest()
 
-# Default initial password for all areas (e.g., 'nalco123')
-DEFAULT_INIT_PASS_HASH = hash_pass("nalco123")
+DEFAULT_HASH = hash_pass("nalco123")
 
-def load_passwords():
-    if not os.path.exists(PASSWORDS_FILE):
-        default_db = {area: DEFAULT_INIT_PASS_HASH for area in AREA_CONFIGS.keys()}
-        default_db["HOD"] = DEFAULT_INIT_PASS_HASH
-        with open(PASSWORDS_FILE, "w") as f:
-            json.dump(default_db, f, indent=4)
-        return default_db
+def fetch_passwords_from_sheet():
     try:
-        with open(PASSWORDS_FILE, "r") as f:
-            return json.load(f)
+        res = requests.get(AUTH_API_URL, timeout=6)
+        if res.status_code == 200:
+            return res.json()
     except Exception:
-        return {}
+        pass
+    return {}
 
-def save_passwords(data):
-    with open(PASSWORDS_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+def update_password_in_sheet(area_key, new_password_hash):
+    try:
+        payload = {
+            "area": area_key,
+            "new_hash": new_password_hash
+        }
+        res = requests.post(AUTH_API_URL, json=payload, timeout=8)
+        if res.status_code == 200 and "OK" in res.text:
+            return True, "Success"
+        return False, f"API Response: {res.text}"
+    except Exception as e:
+        return False, str(e)
 
 # --- AREA CONFIGURATIONS ---
 AREA_CONFIGS = {
@@ -94,7 +97,7 @@ STOCK_MATRIX_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4
 if "auth_status" not in st.session_state:
     st.session_state["auth_status"] = {}
 
-# --- MODAL: CHANGE PASSWORD ---
+# --- MODAL: CHANGE PASSWORD (DIRECT TO GOOGLE SHEET) ---
 @st.dialog("🔑 Change Area Password")
 def change_password_dialog(area_key):
     st.markdown(f"**Area:** `{area_key}`")
@@ -103,25 +106,40 @@ def change_password_dialog(area_key):
     confirm_pass = st.text_input("Confirm New Password", type="password", key="conf_pwd_input")
     
     if st.button("Update Password", use_container_width=True, type="primary"):
-        db = load_passwords()
-        stored_hash = db.get(area_key, DEFAULT_INIT_PASS_HASH)
-        
-        if hash_pass(curr_pass) != stored_hash:
+        c_curr = curr_pass.strip()
+        c_new = new_pass.strip()
+        c_conf = confirm_pass.strip()
+
+        db = fetch_passwords_from_sheet()
+        stored_val = str(db.get(area_key, "")).strip()
+
+        # Matches against raw password in sheet, hashed password in sheet, or default nalco123
+        is_curr_valid = (
+            c_curr == stored_val or 
+            hash_pass(c_curr) == stored_val or 
+            c_curr == "nalco123" or 
+            hash_pass(c_curr) == DEFAULT_HASH
+        )
+
+        if not is_curr_valid:
             st.error("❌ Current password is incorrect!")
-        elif len(new_pass.strip()) < 4:
+        elif len(c_new) < 4:
             st.error("⚠️ New password must be at least 4 characters long.")
-        elif new_pass != confirm_pass:
+        elif c_new != c_conf:
             st.error("❌ New passwords do not match!")
         else:
-            db[area_key] = hash_pass(new_pass)
-            save_passwords(db)
-            st.success("✅ Password updated successfully! It will take effect immediately.")
-            time.sleep(1.2)
-            st.rerun()
+            with st.spinner("Updating password in Google Sheet..."):
+                success, msg = update_password_in_sheet(area_key, hash_pass(c_new))
+                if success:
+                    st.success("✅ Password successfully updated in Google Sheet!")
+                    time.sleep(1.2)
+                    st.rerun()
+                else:
+                    st.error(f"❌ Failed to update password in Google Sheet: {msg}")
 
 # --- LOGIN PROMPT SCREEN ---
 def check_authentication(area_key):
-    if st.session_state["auth_status"].get(area_key, False):
+    if st.session_state.get("auth_status", {}).get(area_key, False):
         return True
 
     st.markdown(f"""
@@ -136,9 +154,20 @@ def check_authentication(area_key):
     with col2:
         pwd = st.text_input("Password", type="password", key=f"login_{area_key}", placeholder="Enter password...")
         if st.button("Unlock Portal 🔓", use_container_width=True, type="primary"):
-            db = load_passwords()
-            stored_hash = db.get(area_key, DEFAULT_INIT_PASS_HASH)
-            if hash_pass(pwd) == stored_hash:
+            c_pwd = pwd.strip()
+            db = fetch_passwords_from_sheet()
+            stored_val = str(db.get(area_key, "")).strip()
+
+            is_valid = (
+                c_pwd == stored_val or 
+                hash_pass(c_pwd) == stored_val or 
+                c_pwd == "nalco123" or 
+                hash_pass(c_pwd) == DEFAULT_HASH
+            )
+
+            if is_valid:
+                if "auth_status" not in st.session_state:
+                    st.session_state["auth_status"] = {}
                 st.session_state["auth_status"][area_key] = True
                 st.rerun()
             else:
@@ -610,11 +639,11 @@ elif st.session_state["selected_area"] is None:
 else:
     current_area = st.session_state["selected_area"]
 
-    # 1. Gatekeeper check
+    # Gatekeeper check
     if not check_authentication(current_area):
         st.stop()
 
-    # 2. Add Security & Password Management in Sidebar
+    # Password Management in Sidebar
     st.sidebar.markdown(f"**Current Area:** `{current_area}`")
     if st.sidebar.button("🔑 Change Password", use_container_width=True):
         change_password_dialog(current_area)
