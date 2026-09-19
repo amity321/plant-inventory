@@ -47,7 +47,7 @@ AREA_CONFIGS = {
     },
     "SPP Boiler": {
         "title": "SPP Boiler Instrumentation Inventory",
-        "manager": "Er Sachin Ray | P.No. 10913 ",
+        "manager": "Er Sachin Ray | P.No. 10913",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVTH56rybWjsWYThgCiTWzafjabniWhqHUUuXoVdqexuWIjrmvh65AtimfDlFNB5V4StSi5G4BWuKf/pub?gid=1937643350&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVTH56rybWjsWYThgCiTWzafjabniWhqHUUuXoVdqexuWIjrmvh65AtimfDlFNB5V4StSi5G4BWuKf/pub?gid=223018013&single=true&output=csv"
     },
@@ -61,6 +61,127 @@ AREA_CONFIGS = {
 
 # Stock Matrix Published URL provided by user
 STOCK_MATRIX_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=868142398&single=true&output=csv"
+
+# --- INVENTORY TEAM HIERARCHY MODAL POPUP ---
+@st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
+def show_team_modal():
+    svg_tree = """
+    <svg viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg" style="background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border-radius: 12px; border: 1px solid #e2e8f0; width: 100%;">
+      <defs>
+        <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
+          <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.08"/>
+        </filter>
+      </defs>
+
+      <!-- ROOT NODE: C&I DEPT -->
+      <g transform="translate(365, 20)" filter="url(#shadow)">
+        <rect width="370" height="75" rx="10" fill="#0f172a"/>
+        <text x="185" y="32" fill="#38bdf8" font-size="12" font-weight="700" text-anchor="middle" letter-spacing="1">NALCO REFINERY &amp; SPP</text>
+        <text x="185" y="54" fill="#ffffff" font-size="16" font-weight="700" text-anchor="middle">🏢 C&amp;I Inventory &amp; Spares Team</text>
+      </g>
+
+      <!-- MAIN SPINE CONNECTOR -->
+      <path d="M 550 95 L 550 140" stroke="#0284c7" stroke-width="2.5" fill="none"/>
+      
+      <!-- LEVEL 1 SPLIT BUS -->
+      <path d="M 185 140 L 915 140" stroke="#0284c7" stroke-width="2.5" fill="none"/>
+
+      <!-- CATEGORY 1: REFINERY PROCESS AREAS -->
+      <path d="M 185 140 L 185 165" stroke="#0284c7" stroke-width="2" fill="none"/>
+      <rect x="65" y="165" width="240" height="34" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+      <text x="185" y="187" fill="#0369a1" font-size="13" font-weight="700" text-anchor="middle">⚙️ Refinery Process Areas</text>
+
+      <!-- CATEGORY 2: STEAM POWER PLANT (SPP) -->
+      <path d="M 550 140 L 550 165" stroke="#0284c7" stroke-width="2" fill="none"/>
+      <rect x="430" y="165" width="240" height="34" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+      <text x="550" y="187" fill="#b45309" font-size="13" font-weight="700" text-anchor="middle">⚡ Steam Power Plant (SPP)</text>
+
+      <!-- CATEGORY 3: INVENTORY STORE -->
+      <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2" fill="none"/>
+      <rect x="795" y="165" width="240" height="34" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+      <text x="915" y="187" fill="#15803d" font-size="13" font-weight="700" text-anchor="middle">📦 Inventory Store</text>
+
+      <!-- REFINERY AREA DROPS (5 NODES) -->
+      <path d="M 185 199 L 185 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
+      
+      <!-- Node 1: Area 02/03 -->
+      <g transform="translate(65, 220)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#0284c7"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 02/03</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er. Amit Jangra | <tspan fill="#0284c7" font-weight="600">P.No. 10372</tspan></text>
+      </g>
+
+      <!-- Node 2: Area 04/05 -->
+      <g transform="translate(65, 290)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#0284c7"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 04/05</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er D.C. Mishra | <tspan fill="#0284c7" font-weight="600">P.No. 09074</tspan></text>
+      </g>
+
+      <!-- Node 3: Area 06/07 -->
+      <g transform="translate(65, 360)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#0284c7"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 06/07</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er R. Swarup | <tspan fill="#0284c7" font-weight="600">P.No. 10565</tspan></text>
+      </g>
+
+      <!-- Node 4: Area 08 -->
+      <g transform="translate(65, 430)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#0284c7"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 08</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er P. Bagde | <tspan fill="#0284c7" font-weight="600">P.No. 09644</tspan></text>
+      </g>
+
+      <!-- Node 5: Area 09/10 -->
+      <g transform="translate(65, 500)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#0284c7"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 09/10</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er K. Kumar | <tspan fill="#0284c7" font-weight="600">P.No. 09643</tspan></text>
+      </g>
+
+      <!-- SPP DROPS (2 NODES) -->
+      <path d="M 550 199 L 550 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
+
+      <!-- Node 6: SPP TG -->
+      <g transform="translate(430, 220)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#d97706"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">⚡ SPP TG</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er H.S. Mallick | <tspan fill="#d97706" font-weight="600">P.No. 10873</tspan></text>
+      </g>
+
+      <!-- Node 7: SPP Boiler -->
+      <g transform="translate(430, 290)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#d97706"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">🔥 SPP Boiler</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er Sachin Ray | <tspan fill="#d97706" font-weight="600">P.No. 10913</tspan></text>
+      </g>
+
+      <!-- SUB STORE DROP (1 NODE) -->
+      <path d="M 915 199 L 915 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
+
+      <!-- Node 8: Sub Store -->
+      <g transform="translate(795, 220)" filter="url(#shadow)">
+        <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+        <rect width="6" height="58" rx="3" fill="#16a34a"/>
+        <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📦 C&amp;I Sub Store</text>
+        <text x="18" y="42" fill="#475569" font-size="12">Er Astha Singh | <tspan fill="#16a34a" font-weight="600">P.No. 10567</tspan></text>
+      </g>
+    </svg>
+    """
+    st.components.v1.html(svg_tree, height=600, scrolling=True)
+
+def render_top_bar():
+    c_left, c_right = st.columns([8, 2])
+    with c_right:
+        if st.button("👥 Inventory Team", use_container_width=True):
+            show_team_modal()
 
 def clean_material_code(val):
     if pd.isna(val):
@@ -291,7 +412,6 @@ url_area = query_params.get("area", None)
 url_view = query_params.get("view", None)
 url_pr_area = query_params.get("pr_area", None)
 
-# Check if user came via a dedicated Area Direct Link
 is_area_direct_mode = bool(url_area and url_area in AREA_CONFIGS)
 
 if "selected_area" not in st.session_state:
@@ -314,10 +434,13 @@ if "data_timestamp" not in st.session_state:
 
 inject_custom_css()
 
+# Render persistent top bar with Inventory Team button
+render_top_bar()
+
 # --- SIDEBAR NAVIGATION CONTROLS ---
 st.sidebar.markdown("### 🧭 Navigation & Tools")
 
-# 1. DIRECT AREA USER MODE (Simplified Sidebar: Only Predictive PR Date)
+# 1. DIRECT AREA USER MODE
 if is_area_direct_mode:
     if not st.session_state["smart_intelligence_mode"]:
         if st.sidebar.button("📈 Predictive PR Date", use_container_width=True):
@@ -335,7 +458,7 @@ if is_area_direct_mode:
                 del st.query_params["view"]
             st.rerun()
 
-# 2. HOD / MASTER PORTAL MODE (Full Features)
+# 2. HOD / MASTER PORTAL MODE
 else:
     if st.sidebar.button("🏠 Home", use_container_width=True):
         st.session_state["smart_intelligence_mode"] = False
@@ -397,13 +520,11 @@ if st.session_state["stock_matrix_mode"] and not is_area_direct_mode:
 # --- PREDICTIVE PR INTELLIGENCE & CONSUMPTION ANALYTICS MODE ---
 elif st.session_state["smart_intelligence_mode"]:
     
-    # If in Area Direct Mode, lock current_view to that area only
     if is_area_direct_mode:
         current_view = url_area
     else:
         current_view = st.session_state["pr_selected_view"]
 
-    # 1. Selection Screen (Only available for HOD Portal when no area selected)
     if current_view is None:
         st.markdown("""
             <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 30px;">
@@ -446,10 +567,7 @@ elif st.session_state["smart_intelligence_mode"]:
                             st.query_params["view"] = "pr"
                             st.query_params["pr_area"] = area_name
                             st.rerun()
-                            
-    # 2. PR Analytics View (Shown for chosen area or locked direct area)
     else:
-        # Back button in HOD mode returns to PR Selector
         if not is_area_direct_mode:
             if st.sidebar.button("⬅️ Back to PR Area Selector"):
                 st.session_state["pr_selected_view"] = None
@@ -619,7 +737,7 @@ elif st.session_state["smart_intelligence_mode"]:
         else:
             st.warning("No inventory records available for this area.")
 
-# --- HOD LANDING PAGE (When no area is selected) ---
+# --- HOD LANDING PAGE ---
 elif st.session_state["selected_area"] is None:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 35px;">
@@ -649,7 +767,7 @@ elif st.session_state["selected_area"] is None:
 else:
     current_area = st.session_state["selected_area"]
     config = AREA_CONFIGS[current_area]
-    manager_name = config.get("manager", "Amit Jangra")
+    manager_name = config.get("manager", "Er. Amit Jangra | P.No. 10372")
 
     st.components.v1.html(f"""
         <div style="background: #ffffff; padding: 22px 25px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
@@ -657,7 +775,7 @@ else:
                 🏭 {config['title']}
             </h1>
             <p style="color: #475569 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
-                Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 600;">{manager_name} (Inventory Team, C&I, NALCO)</span>
+                Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 700;">{manager_name}, Inventory Team, C&I, NALCO</span>
             </p>
         </div>
     """, height=100)
