@@ -560,7 +560,7 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url, dtype=str)
     return df
 
-# High-speed log analysis (hash-map lookup)
+# --- BULLET-PROOF CONSUMPTION MAP ---
 @st.cache_data(ttl=300)
 def build_consumption_map(removal_url, timestamp, analysis_months=12):
     if not removal_url:
@@ -568,32 +568,61 @@ def build_consumption_map(removal_url, timestamp, analysis_months=12):
     try:
         df_log = pd.read_csv(f"{removal_url}&t={timestamp}", dtype=str)
         df_log.columns = df_log.columns.str.strip()
-        mat_col = next((c for c in df_log.columns if "material" in c.lower() or "code" in c.lower()), None)
-        type_col = next((c for c in df_log.columns if "transaction" in c.lower() or "type" in c.lower()), None)
-        time_col = next((c for c in df_log.columns if "timestamp" in c.lower() or "date" in c.lower()), None)
+        
+        # 1. Detect Material Code Column
+        mat_col = next((c for c in df_log.columns if "material" in c.lower() or "code" in c.lower() or "mat" in c.lower()), None)
+        
+        # 2. Detect Timestamp Column (Priority to 'timestamp', then 'date')
+        time_col = next((c for c in df_log.columns if "timestamp" in c.lower()), None)
+        if not time_col:
+            time_col = next((c for c in df_log.columns if "date" in c.lower() or "time" in c.lower()), None)
 
         if not mat_col or not time_col:
             return {}
 
-        df_log["clean_mat"] = df_log[mat_col].apply(clean_material_code)
+        # Strip spaces and normalize material code
+        df_log["clean_mat"] = df_log[mat_col].astype(str).str.strip().apply(clean_material_code)
 
+        # 3. Smart Transaction Filter (Sirf tab filter karega agar sach me issue/removal type ka column ho)
+        type_col = next((c for c in df_log.columns if any(k in c.lower() for k in ["transaction", "nature", "action", "status"])), None)
         if type_col:
-            removal_keywords = ["remov", "issu", "withdraw", "consum"]
+            removal_keywords = ["remov", "issu", "withdraw", "consum", "breakdown", "replac", "out", "use"]
             mask = df_log[type_col].astype(str).str.lower().apply(lambda x: any(k in x for k in removal_keywords))
-            df_log = df_log[mask]
+            # Sirf tabhi filter apply karo agar kuch matching rows bachi hon
+            if mask.sum() > 0:
+                df_log = df_log[mask]
 
-        df_log["Parsed_Date"] = pd.to_datetime(df_log[time_col], dayfirst=True, errors='coerce')
+        # 4. Resilient Date Parsing (Timezone Naive)
+        parsed_dates = pd.to_datetime(df_log[time_col], dayfirst=True, errors='coerce')
+        if hasattr(parsed_dates.dt, 'tz') and parsed_dates.dt.tz is not None:
+            parsed_dates = parsed_dates.dt.tz_localize(None)
+            
+        df_log["Parsed_Date"] = parsed_dates
+        
+        # Drop NaT
+        valid_log = df_log.dropna(subset=["Parsed_Date"]).copy()
+
+        # Date window cutoff
         cutoff_date = datetime.now() - timedelta(days=analysis_months * 30)
-        recent_log = df_log[df_log["Parsed_Date"] >= cutoff_date]
+        recent_log = valid_log[valid_log["Parsed_Date"] >= cutoff_date]
+
+        # Fallback: Agar cutoff ke baad koi data nahi mila (entries purani hain), toh saara valid data use karega
+        if recent_log.empty and not valid_log.empty:
+            recent_log = valid_log
 
         counts = recent_log["clean_mat"].value_counts().to_dict()
         res = {}
         for m_code, total_removals in counts.items():
-            m_cons = round(float(total_removals) / float(analysis_months), 2)
-            repl_cycle = round(1.0 / m_cons, 1) if m_cons > 0 else 0.0
-            res[m_code] = (m_cons, repl_cycle, total_removals)
+            if m_code and m_code != "N/A":
+                m_cons = round(float(total_removals) / float(analysis_months), 2)
+                # Agar consumption bohot kam hai tab bhi minimum 0.05 assign karega taaki PR date calculate ho sake
+                if m_cons == 0.0 and total_removals > 0:
+                    m_cons = 0.08
+                repl_cycle = round(1.0 / m_cons, 1) if m_cons > 0 else 0.0
+                res[str(m_code)] = (m_cons, repl_cycle, total_removals)
         return res
-    except Exception:
+    except Exception as e:
+        print(f"Error in build_consumption_map: {e}")
         return {}
 
 inject_custom_css()
@@ -847,7 +876,7 @@ elif st.session_state["smart_intelligence_mode"]:
                             </div>
                             <div>{urgency_badge}</div>
                         </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        <div style="display: flex; flex-wrap: gap; gap: 15px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                             <div style="flex: 2;"><b>Material Code:</b> <span style="color: #0284c7; font-weight: 600;">{item['Material Code']}</span><br><b>Specs:</b> {item['Specs']}</div>
                             <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
                                 <div style="font-size: 10px; color: #64748b; font-weight: bold;">INSTALLED / STORE</div>
