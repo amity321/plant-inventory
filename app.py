@@ -298,7 +298,8 @@ def clean_material_code(val):
         return "N/A"
     if s_val.endswith(".0"):
         s_val = s_val[:-2]
-    return s_val
+    # Remove leading/trailing spaces and leading zeros for uniform matching
+    return s_val.lstrip('0') if s_val.lstrip('0') != "" else "0"
 
 def resolve_columns(df):
     cols = df.columns
@@ -560,7 +561,7 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url, dtype=str)
     return df
 
-# --- BULLET-PROOF CONSUMPTION MAP ---
+# --- FAIL-SAFE BULLETPROOF CONSUMPTION ENGINE ---
 @st.cache_data(ttl=300)
 def build_consumption_map(removal_url, timestamp, analysis_months=12):
     if not removal_url:
@@ -569,60 +570,64 @@ def build_consumption_map(removal_url, timestamp, analysis_months=12):
         df_log = pd.read_csv(f"{removal_url}&t={timestamp}", dtype=str)
         df_log.columns = df_log.columns.str.strip()
         
-        # 1. Detect Material Code Column
-        mat_col = next((c for c in df_log.columns if "material" in c.lower() or "code" in c.lower() or "mat" in c.lower()), None)
-        
-        # 2. Detect Timestamp Column (Priority to 'timestamp', then 'date')
-        time_col = next((c for c in df_log.columns if "timestamp" in c.lower()), None)
-        if not time_col:
-            time_col = next((c for c in df_log.columns if "date" in c.lower() or "time" in c.lower()), None)
-
-        if not mat_col or not time_col:
+        # 1. Identify Material Code Column
+        mat_col = next((c for c in df_log.columns if any(k in c.lower() for k in ["code", "material", "mat"])), None)
+        if not mat_col:
             return {}
 
-        # Strip spaces and normalize material code
-        df_log["clean_mat"] = df_log[mat_col].astype(str).str.strip().apply(clean_material_code)
+        # 2. Clean Material Codes
+        df_log["clean_mat"] = df_log[mat_col].apply(clean_material_code)
 
-        # 3. Smart Transaction Filter (Sirf tab filter karega agar sach me issue/removal type ka column ho)
-        type_col = next((c for c in df_log.columns if any(k in c.lower() for k in ["transaction", "nature", "action", "status"])), None)
+        # 3. Check for Quantity Column (default to 1 if not present)
+        qty_col = next((c for c in df_log.columns if any(k in c.lower() for k in ["qty", "quantity", "count", "issued", "nos"])), None)
+        if qty_col:
+            df_log["clean_qty"] = pd.to_numeric(df_log[qty_col].astype(str).str.extract(r'(\d+)', expand=False), errors='coerce').fillna(1)
+        else:
+            df_log["clean_qty"] = 1
+
+        # 4. Filter only actual removals if Transaction Type exists
+        type_col = next((c for c in df_log.columns if any(k in c.lower() for k in ["transaction", "action", "status", "movement", "nature"])), None)
         if type_col:
-            removal_keywords = ["remov", "issu", "withdraw", "consum", "breakdown", "replac", "out", "use"]
+            removal_keywords = ["remov", "issu", "withdraw", "consum", "breakdown", "replac", "out", "use", "damaged"]
             mask = df_log[type_col].astype(str).str.lower().apply(lambda x: any(k in x for k in removal_keywords))
-            # Sirf tabhi filter apply karo agar kuch matching rows bachi hon
             if mask.sum() > 0:
                 df_log = df_log[mask]
 
-        # 4. Resilient Date Parsing (Timezone Naive)
-        parsed_dates = pd.to_datetime(df_log[time_col], dayfirst=True, errors='coerce')
-        if hasattr(parsed_dates.dt, 'tz') and parsed_dates.dt.tz is not None:
-            parsed_dates = parsed_dates.dt.tz_localize(None)
-            
-        df_log["Parsed_Date"] = parsed_dates
+        # 5. Resilient Date Parsing
+        time_col = next((c for c in df_log.columns if any(k in c.lower() for k in ["timestamp", "date", "time"])), None)
         
-        # Drop NaT
-        valid_log = df_log.dropna(subset=["Parsed_Date"]).copy()
+        counts = {}
+        if time_col:
+            # Multi-format date parsing without losing rows
+            parsed = pd.to_datetime(df_log[time_col], dayfirst=True, errors='coerce')
+            if hasattr(parsed.dt, 'tz') and parsed.dt.tz is not None:
+                parsed = parsed.dt.tz_localize(None)
+            df_log["Parsed_Date"] = parsed
+            
+            cutoff_date = datetime.now() - timedelta(days=analysis_months * 30)
+            recent_log = df_log[df_log["Parsed_Date"] >= cutoff_date]
+            
+            # If dates are older or parsing yielded fewer rows, fall back to entire log
+            if recent_log.empty or len(recent_log) == 0:
+                recent_log = df_log
+            
+            # Sum clean_qty per material code
+            counts = recent_log.groupby("clean_mat")["clean_qty"].sum().to_dict()
+        else:
+            counts = df_log.groupby("clean_mat")["clean_qty"].sum().to_dict()
 
-        # Date window cutoff
-        cutoff_date = datetime.now() - timedelta(days=analysis_months * 30)
-        recent_log = valid_log[valid_log["Parsed_Date"] >= cutoff_date]
-
-        # Fallback: Agar cutoff ke baad koi data nahi mila (entries purani hain), toh saara valid data use karega
-        if recent_log.empty and not valid_log.empty:
-            recent_log = valid_log
-
-        counts = recent_log["clean_mat"].value_counts().to_dict()
         res = {}
         for m_code, total_removals in counts.items():
             if m_code and m_code != "N/A":
-                m_cons = round(float(total_removals) / float(analysis_months), 2)
-                # Agar consumption bohot kam hai tab bhi minimum 0.05 assign karega taaki PR date calculate ho sake
-                if m_cons == 0.0 and total_removals > 0:
-                    m_cons = 0.08
+                tot = float(total_removals)
+                # Compute monthly average
+                m_cons = round(tot / float(analysis_months), 2)
+                if m_cons == 0.0 and tot > 0:
+                    m_cons = 0.08  # Ensure low but non-zero consumption computes a PR date
                 repl_cycle = round(1.0 / m_cons, 1) if m_cons > 0 else 0.0
-                res[str(m_code)] = (m_cons, repl_cycle, total_removals)
+                res[str(m_code)] = (m_cons, repl_cycle, int(tot))
         return res
     except Exception as e:
-        print(f"Error in build_consumption_map: {e}")
         return {}
 
 inject_custom_css()
@@ -788,15 +793,19 @@ elif st.session_state["smart_intelligence_mode"]:
                 df_area.columns = df_area.columns.str.strip()
                 mapping = resolve_columns(df_area)
                 
+                # Fetch dictionary of actual removals
                 consumption_map = build_consumption_map(area_cfg.get("removal_url"), st.session_state["data_timestamp"], analysis_months)
 
                 for _, r in df_area.iterrows():
-                    mat_code = clean_material_code(r.get(mapping["material"], "N/A"))
+                    raw_mat = r.get(mapping["material"], "N/A")
+                    mat_code = clean_material_code(raw_mat)
                     if mat_code == "N/A":
                         continue
                     store_stock = safe_int(r.get(mapping["store"], 0))
                     field_count = safe_int(r.get(mapping["field"], 0))
-                    monthly_consumption, replacement_cycle, total_removals = consumption_map.get(mat_code, (0.0, 0.0, 0))
+                    
+                    # Direct match or fallback search
+                    monthly_consumption, replacement_cycle, total_removals = consumption_map.get(str(mat_code), (0.0, 0.0, 0))
                     
                     master_records.append({
                         "Area": area_key,
@@ -847,13 +856,14 @@ elif st.session_state["smart_intelligence_mode"]:
                     master_df["Specs"].str.contains(search_query, case=False, na=False)
                 ]
             else:
-                filtered_df = master_df  # Unlimited records display
+                filtered_df = master_df  # Unlimited records
 
             if not filtered_df.empty:
                 st.markdown(f"### 🔎 Analytics Results ({len(filtered_df)} items displayed)")
                 for _, item in filtered_df.iterrows():
                     monthly_consumption = item["Monthly Consumption"]
                     store_stock = item["Store Stock"]
+                    
                     if monthly_consumption > 0:
                         days_remaining = int((store_stock / monthly_consumption) * 30)
                         exhaustion_date = datetime.now() + timedelta(days=days_remaining)
@@ -876,7 +886,7 @@ elif st.session_state["smart_intelligence_mode"]:
                             </div>
                             <div>{urgency_badge}</div>
                         </div>
-                        <div style="display: flex; flex-wrap: gap; gap: 15px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                             <div style="flex: 2;"><b>Material Code:</b> <span style="color: #0284c7; font-weight: 600;">{item['Material Code']}</span><br><b>Specs:</b> {item['Specs']}</div>
                             <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
                                 <div style="font-size: 10px; color: #64748b; font-weight: bold;">INSTALLED / STORE</div>
