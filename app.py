@@ -981,7 +981,7 @@ elif st.session_state["smart_intelligence_mode"]:
                 filtered_df = master_df
 
             if not filtered_df.empty:
-                status_text = f"🚨 Showing {len(filtered_df)} Overdue / Urgent PR Items" if only_urgent_pr else f"🔎 Analytics Results ({len(filtered_df)} items displayed - Alphabetical A-Z)"
+                status_text = f"🚨 Showing {len(filtered_df)} Overdue / Urgent PR Items" if only_urgent_pr else f"🔎 Analytics Results"
                 st.markdown(f"### {status_text}")
                 
                 for _, item in filtered_df.iterrows():
