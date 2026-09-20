@@ -298,7 +298,6 @@ def clean_material_code(val):
         return "N/A"
     if s_val.endswith(".0"):
         s_val = s_val[:-2]
-    # Digits normalized
     cleaned = s_val.lstrip('0')
     return cleaned if cleaned != "" else "0"
 
@@ -764,19 +763,6 @@ elif st.session_state["smart_intelligence_mode"]:
                 <p style="color: #475569 !important; margin-top: 6px; font-size: 13px;">Real-time consumption logs and lead-time-adjusted Purchase Requisition schedules.</p>
             </div>
         """, unsafe_allow_html=True)
-
-        # --- DIAGNOSTIC EXPANDER ---
-        with st.expander("🛠️ Debug: Check Removal Sheet Connection & Columns"):
-            test_area = "Area 02/03" if current_view == "Combined" else current_view
-            test_url = AREA_CONFIGS[test_area].get("removal_url")
-            try:
-                debug_df = pd.read_csv(f"{test_url}&t={int(time.time())}", dtype=str)
-                st.write(f"**Connected to:** `{test_area}` Removal Sheet")
-                st.write(f"**Total Rows in Sheet:** {len(debug_df)}")
-                st.write(f"**Columns:**", list(debug_df.columns))
-                st.dataframe(debug_df.head(3), use_container_width=True)
-            except Exception as err:
-                st.error(f"Cannot read Removal Sheet: {err}")
 
         st.sidebar.markdown('<div class="sidebar-section-title">⚙️ Analysis Parameters</div>', unsafe_allow_html=True)
         lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6)
