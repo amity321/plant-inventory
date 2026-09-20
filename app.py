@@ -423,56 +423,72 @@ def inject_custom_css():
         box-shadow: 0 2px 5px rgba(0,0,0,0.03);
     }
 
-    /* BASE PRIMARY BUTTON (Inventory Team - Vibrant Blue Capsule) */
+    /* TOP BAR UNIFIED BUTTON CONTAINER ALIGNMENT */
+    div[data-testid="column"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* SHARED EXACT GEOMETRY FOR BOTH TOP BAR BUTTONS */
+    div:has(> button[key="team_btn"]) button,
+    button[key="team_btn"],
+    div:has(> button[key="urgent_pr_btn"]) button,
+    button[key="urgent_pr_btn"] {
+        height: 42px !important;
+        min-height: 42px !important;
+        max-height: 42px !important;
+        line-height: 42px !important;
+        padding: 0px 18px !important;
+        margin: 0 !important;
+        border-radius: 24px !important;
+        font-weight: 800 !important;
+        font-size: 13.5px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+
+    /* BLUE INVENTORY TEAM BUTTON */
     div:has(> button[key="team_btn"]) button,
     button[key="team_btn"] {
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
         color: #ffffff !important;
-        border: 2.5px solid #38bdf8 !important;
-        border-radius: 30px !important;
-        font-weight: 800 !important;
-        font-size: 14px !important;
-        padding: 9px 18px !important;
-        box-shadow: 0 0 16px rgba(2, 132, 199, 0.6), 0 4px 12px rgba(15, 23, 42, 0.15) !important;
-        transition: all 0.25s ease-in-out !important;
+        border: 2px solid #38bdf8 !important;
+        box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4) !important;
     }
-
     div:has(> button[key="team_btn"]) button p,
-    div:has(> button[key="team_btn"]) button span,
-    button[key="team_btn"] p,
-    button[key="team_btn"] span {
+    button[key="team_btn"] p {
         color: #ffffff !important;
         font-weight: 800 !important;
+        margin: 0 !important;
     }
 
-    div:has(> button[key="team_btn"]) button:hover,
-    button[key="team_btn"]:hover {
-        background: linear-gradient(135deg, #0369a1 0%, #0c4a6e 100%) !important;
-        border-color: #7dd3fc !important;
-        box-shadow: 0 0 24px rgba(56, 189, 248, 0.85) !important;
-        transform: translateY(-2px) scale(1.02) !important;
+    /* RED / GREEN OVERDUE PR TOGGLE BUTTON */
+    div:has(> button[key="urgent_pr_btn"]) button,
+    button[key="urgent_pr_btn"] {
+        color: #ffffff !important;
+        margin: 0 !important;
+    }
+    div:has(> button[key="urgent_pr_btn"]) button p,
+    button[key="urgent_pr_btn"] p {
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        margin: 0 !important;
     }
 
     /* URGENT PR BUTTON - INACTIVE (Vibrant Crimson Red Glowing Capsule) */
-    .urgent-btn-inactive button {
+    div:has(> button[key="urgent_pr_btn"]) button,
+    button[key="urgent_pr_btn"] {
         background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-        color: #ffffff !important;
         border: 2.5px solid #f87171 !important;
-        border-radius: 30px !important;
-        font-weight: 800 !important;
-        font-size: 14px !important;
-        padding: 9px 18px !important;
         box-shadow: 0 0 16px rgba(239, 68, 68, 0.6), 0 4px 12px rgba(220, 38, 38, 0.2) !important;
-        transition: all 0.25s ease-in-out !important;
     }
 
-    .urgent-btn-inactive button p,
-    .urgent-btn-inactive button span {
-        color: #ffffff !important;
-        font-weight: 800 !important;
-    }
-
-    .urgent-btn-inactive button:hover {
+    div:has(> button[key="urgent_pr_btn"]) button:hover,
+    button[key="urgent_pr_btn"]:hover {
         background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
         border-color: #fca5a5 !important;
         box-shadow: 0 0 24px rgba(248, 113, 113, 0.9) !important;
@@ -482,20 +498,8 @@ def inject_custom_css():
     /* URGENT PR BUTTON - ACTIVE (Vibrant Emerald Green Glowing Capsule) */
     .urgent-btn-active button {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-        color: #ffffff !important;
         border: 2.5px solid #34d399 !important;
-        border-radius: 30px !important;
-        font-weight: 800 !important;
-        font-size: 14px !important;
-        padding: 9px 18px !important;
         box-shadow: 0 0 20px rgba(16, 185, 129, 0.7), 0 4px 14px rgba(5, 150, 105, 0.25) !important;
-        transition: all 0.25s ease-in-out !important;
-    }
-
-    .urgent-btn-active button p,
-    .urgent-btn-active button span {
-        color: #ffffff !important;
-        font-weight: 800 !important;
     }
 
     .urgent-btn-active button:hover {
@@ -600,12 +604,12 @@ def inject_custom_css():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-# --- TOP BAR (TWIN 3D GLOWING CAPSULE BUTTONS IN PR INTELLIGENCE) ---
+# --- TOP BAR (PIXEL-PERFECT VERTICAL ALIGNMENT) ---
 def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     is_pr_active = st.session_state.get("smart_intelligence_mode", False)
     
     if is_pr_active:
-        c_left, c_mid, c_right = st.columns([4.4, 3.4, 2.2])
+        c_left, c_mid, c_right = st.columns([5.0, 3.2, 1.8], vertical_alignment="center")
         with c_left:
             st.markdown(f"""
                 <div class="header-pill">
@@ -614,19 +618,16 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
             """, unsafe_allow_html=True)
         with c_mid:
             is_active = st.session_state["urgent_pr_filter_state"]
-            btn_class = "urgent-btn-active" if is_active else "urgent-btn-inactive"
             btn_label = "✅ Showing Overdue PR" if is_active else "🚨 Show Overdue PR Only"
             
-            st.markdown(f'<div class="{btn_class}">', unsafe_allow_html=True)
             if st.button(btn_label, key="urgent_pr_btn", type="primary", use_container_width=True):
                 st.session_state["urgent_pr_filter_state"] = not is_active
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
         with c_right:
             if st.button("👥 Inventory Team", key="team_btn", type="primary", use_container_width=True):
                 show_team_modal()
     else:
-        c_left, c_right = st.columns([7.5, 2.5])
+        c_left, c_right = st.columns([8.0, 2.0], vertical_alignment="center")
         with c_left:
             st.markdown(f"""
                 <div class="header-pill">
@@ -874,7 +875,6 @@ elif st.session_state["smart_intelligence_mode"]:
         lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6)
         analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
 
-        # Get urgent filter state toggled via top bar
         only_urgent_pr = st.session_state.get("urgent_pr_filter_state", False)
 
         target_configs = AREA_CONFIGS if current_view == "Combined" else {current_view: AREA_CONFIGS[current_view]}
