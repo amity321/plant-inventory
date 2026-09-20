@@ -338,7 +338,7 @@ def safe_int(val):
     except ValueError:
         return 0
 
-# --- OPTIMIZED: Native Markdown Rendering (Zero IFrame Lag) ---
+# --- NATIVE STREAMLIT MARKDOWN RENDERING (NO IFRAMES) ---
 def render_row(row, mapping, current_area_name):
     name_key = mapping["name"]
     mat_key = mapping["material"]
@@ -553,14 +553,14 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
             show_team_modal()
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-# Cache increased to 5 mins for instant switching, manual button clears it immediately
+# Cache 5 minutes for instant view switching
 @st.cache_data(ttl=300)
 def fetch_data(url, timestamp):
     live_url = f"{url}&t={timestamp}"
     df = pd.read_csv(live_url, dtype=str)
     return df
 
-# --- OPTIMIZED: Pre-calculated log map (Instant O(1) Lookup instead of O(N) looping) ---
+# High-speed log analysis (hash-map lookup)
 @st.cache_data(ttl=300)
 def build_consumption_map(removal_url, timestamp, analysis_months=12):
     if not removal_url:
@@ -749,7 +749,6 @@ elif st.session_state["smart_intelligence_mode"]:
         st.sidebar.markdown('<div class="sidebar-section-title">⚙️ Analysis Parameters</div>', unsafe_allow_html=True)
         lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6)
         analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
-        pr_display_limit = st.sidebar.selectbox("Display Records Limit:", [25, 50, 100, 200, "All"], index=0)
 
         target_configs = AREA_CONFIGS if current_view == "Combined" else {current_view: AREA_CONFIGS[current_view]}
 
@@ -819,7 +818,7 @@ elif st.session_state["smart_intelligence_mode"]:
                     master_df["Specs"].str.contains(search_query, case=False, na=False)
                 ]
             else:
-                filtered_df = master_df.head(int(pr_display_limit)) if pr_display_limit != "All" else master_df
+                filtered_df = master_df  # Unlimited records display
 
             if not filtered_df.empty:
                 st.markdown(f"### 🔎 Analytics Results ({len(filtered_df)} items displayed)")
@@ -921,7 +920,6 @@ else:
     config = AREA_CONFIGS[current_area]
     manager_name = config.get("manager", "Er. Amit Jangra | P.No. 10372")
 
-    # Header Card rendered natively
     st.markdown(f"""
         <div style="background: #ffffff; padding: 22px 25px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-bottom: 20px;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 24px; font-weight: 700;">
