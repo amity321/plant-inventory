@@ -136,6 +136,9 @@ if "pr_selected_view" not in st.session_state:
 if "data_timestamp" not in st.session_state:
     st.session_state["data_timestamp"] = int(time.time())
 
+if "urgent_pr_filter_state" not in st.session_state:
+    st.session_state["urgent_pr_filter_state"] = False
+
 # --- INVENTORY TEAM HIERARCHY MODAL POPUP ---
 @st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
 def show_team_modal():
@@ -420,26 +423,15 @@ def inject_custom_css():
         box-shadow: 0 2px 5px rgba(0,0,0,0.03);
     }
 
-    /* Top Bar Urgent Checkbox Container */
-    .topbar-urgent-filter {
-        background: #ffffff;
-        border: 1.5px solid #fca5a5;
-        background-color: #fef2f2;
-        padding: 6px 14px;
-        border-radius: 24px;
-        display: inline-flex;
-        align-items: center;
-        box-shadow: 0 2px 6px rgba(220, 38, 38, 0.08);
-    }
-
+    /* DIRECT ROOT STYLING: HIGH-VISIBILITY BLUE TEAM BUTTON */
     button[data-testid="baseButton-primary"] {
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
         color: #ffffff !important;
         border: 2.5px solid #38bdf8 !important;
         border-radius: 30px !important;
         font-weight: 800 !important;
-        font-size: 14.5px !important;
-        padding: 10px 18px !important;
+        font-size: 14px !important;
+        padding: 9px 18px !important;
         box-shadow: 0 0 16px rgba(2, 132, 199, 0.6), 0 4px 12px rgba(15, 23, 42, 0.15) !important;
         transition: all 0.25s ease-in-out !important;
     }
@@ -454,6 +446,53 @@ def inject_custom_css():
         background: linear-gradient(135deg, #0369a1 0%, #0c4a6e 100%) !important;
         border-color: #7dd3fc !important;
         box-shadow: 0 0 24px rgba(56, 189, 248, 0.85) !important;
+        transform: translateY(-2px) scale(1.02) !important;
+    }
+
+    /* HIGH-VISIBILITY URGENT PR TOGGLE BUTTON */
+    .urgent-btn-inactive button {
+        background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+        color: #ffffff !important;
+        border: 2.5px solid #f87171 !important;
+        border-radius: 30px !important;
+        font-weight: 800 !important;
+        font-size: 14px !important;
+        padding: 9px 18px !important;
+        box-shadow: 0 0 16px rgba(239, 68, 68, 0.5), 0 4px 12px rgba(185, 28, 28, 0.2) !important;
+        transition: all 0.25s ease-in-out !important;
+    }
+    .urgent-btn-inactive button p,
+    .urgent-btn-inactive button span {
+        color: #ffffff !important;
+        font-weight: 800 !important;
+    }
+    .urgent-btn-inactive button:hover {
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
+        border-color: #fca5a5 !important;
+        box-shadow: 0 0 24px rgba(248, 113, 113, 0.85) !important;
+        transform: translateY(-2px) scale(1.02) !important;
+    }
+
+    .urgent-btn-active button {
+        background: linear-gradient(135deg, #10b981 0%, #047857 100%) !important;
+        color: #ffffff !important;
+        border: 2.5px solid #34d399 !important;
+        border-radius: 30px !important;
+        font-weight: 800 !important;
+        font-size: 14px !important;
+        padding: 9px 18px !important;
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.7), 0 4px 14px rgba(4, 120, 87, 0.25) !important;
+        transition: all 0.25s ease-in-out !important;
+    }
+    .urgent-btn-active button p,
+    .urgent-btn-active button span {
+        color: #ffffff !important;
+        font-weight: 800 !important;
+    }
+    .urgent-btn-active button:hover {
+        background: linear-gradient(135deg, #059669 0%, #065f46 100%) !important;
+        border-color: #6ee7b7 !important;
+        box-shadow: 0 0 26px rgba(52, 211, 153, 0.9) !important;
         transform: translateY(-2px) scale(1.02) !important;
     }
 
@@ -552,12 +591,12 @@ def inject_custom_css():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-# --- TOP BAR (WITH CONDITIONAL URGENT PR FILTER NEXT TO TEAM BUTTON) ---
+# --- TOP BAR (TWIN 3D GLOWING BUTTONS WHEN IN PR INTELLIGENCE) ---
 def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     is_pr_active = st.session_state.get("smart_intelligence_mode", False)
     
     if is_pr_active:
-        c_left, c_mid, c_right = st.columns([4.8, 3.2, 2.0])
+        c_left, c_mid, c_right = st.columns([4.4, 3.4, 2.2])
         with c_left:
             st.markdown(f"""
                 <div class="header-pill">
@@ -565,8 +604,15 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                 </div>
             """, unsafe_allow_html=True)
         with c_mid:
-            # Overdue PR Checkbox placed directly next to team button
-            st.checkbox("🚨 Overdue / Urgent PR Only", key="urgent_pr_top_filter", value=st.session_state.get("urgent_pr_top_filter", False))
+            is_active = st.session_state["urgent_pr_filter_state"]
+            btn_class = "urgent-btn-active" if is_active else "urgent-btn-inactive"
+            btn_label = "✅ Showing Overdue PR" if is_active else "🚨 Show Overdue PR Only"
+            
+            st.markdown(f'<div class="{btn_class}">', unsafe_allow_html=True)
+            if st.button(btn_label, key="urgent_pr_btn", use_container_width=True):
+                st.session_state["urgent_pr_filter_state"] = not is_active
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
         with c_right:
             if st.button("👥 Inventory Team", key="team_btn", type="primary", use_container_width=True):
                 show_team_modal()
@@ -819,8 +865,8 @@ elif st.session_state["smart_intelligence_mode"]:
         lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6)
         analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
 
-        # Get urgent filter status from top bar
-        only_urgent_pr = st.session_state.get("urgent_pr_top_filter", False)
+        # Get urgent filter state toggled via top bar
+        only_urgent_pr = st.session_state.get("urgent_pr_filter_state", False)
 
         target_configs = AREA_CONFIGS if current_view == "Combined" else {current_view: AREA_CONFIGS[current_view]}
 
