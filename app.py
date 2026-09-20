@@ -17,9 +17,10 @@ def hash_pass(pwd: str) -> str:
 
 DEFAULT_HASH = hash_pass("nalco123")
 
+@st.cache_data(ttl=300)
 def fetch_passwords_from_sheet():
     try:
-        res = requests.get(AUTH_API_URL, timeout=12)
+        res = requests.get(AUTH_API_URL, timeout=8)
         if res.status_code == 200:
             return res.json()
     except Exception:
@@ -39,14 +40,16 @@ def update_password_in_sheet(area_key, new_password_hash):
             headers={"Content-Type": "application/json"}
         )
         if res.status_code in [200, 302] and ("OK" in res.text or res.status_code == 200):
+            fetch_passwords_from_sheet.clear()
             return True, "Success"
         return False, f"API Response: {res.text}"
     except requests.exceptions.Timeout:
         time.sleep(2)
+        fetch_passwords_from_sheet.clear()
         verify_db = fetch_passwords_from_sheet()
         if verify_db.get(area_key) == new_password_hash:
             return True, "Success (Verified from Sheet)"
-        return False, "Request timed out. Google Apps Script took too long to respond. Please try once more."
+        return False, "Request timed out. Please try once more."
     except Exception as e:
         return False, str(e)
 
@@ -133,7 +136,6 @@ if "pr_selected_view" not in st.session_state:
 if "data_timestamp" not in st.session_state:
     st.session_state["data_timestamp"] = int(time.time())
 
-
 # --- INVENTORY TEAM HIERARCHY MODAL POPUP ---
 @st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
 def show_team_modal():
@@ -144,29 +146,22 @@ def show_team_modal():
           <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.08"/>
         </filter>
       </defs>
-
-      <!-- ROOT NODE: HOD (HEAD OF C&I INVENTORY & SPARES TEAM) -->
       <g transform="translate(365, 20)" filter="url(#shadow)">
         <rect width="370" height="75" rx="10" fill="#0f172a"/>
         <text x="185" y="32" fill="#38bdf8" font-size="12" font-weight="700" text-anchor="middle" letter-spacing="1">🏢 C&amp;I INVENTORY &amp; SPARES TEAM</text>
         <text x="185" y="55" fill="#ffffff" font-size="16" font-weight="700" text-anchor="middle">Er. S.K. Jain | <tspan fill="#38bdf8" font-weight="600">HOD (C&amp;I)</tspan></text>
       </g>
-
       <path d="M 550 95 L 550 140" stroke="#0284c7" stroke-width="2.5" fill="none"/>
       <path d="M 185 140 L 915 140" stroke="#0284c7" stroke-width="2.5" fill="none"/>
-
       <path d="M 185 140 L 185 165" stroke="#0284c7" stroke-width="2" fill="none"/>
       <rect x="65" y="165" width="240" height="34" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
       <text x="185" y="187" fill="#0369a1" font-size="13" font-weight="700" text-anchor="middle">⚙️ Refinery Process Areas</text>
-
       <path d="M 550 140 L 550 165" stroke="#0284c7" stroke-width="2" fill="none"/>
       <rect x="430" y="165" width="240" height="34" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
       <text x="550" y="187" fill="#b45309" font-size="13" font-weight="700" text-anchor="middle">⚡ Steam Power Plant (SPP)</text>
-
       <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2" fill="none"/>
       <rect x="795" y="165" width="240" height="34" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
       <text x="915" y="187" fill="#15803d" font-size="13" font-weight="700" text-anchor="middle">📦 Inventory Store</text>
-
       <path d="M 185 199 L 185 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
       <g transform="translate(65, 220)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
@@ -174,35 +169,30 @@ def show_team_modal():
         <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 02/03</text>
         <text x="18" y="42" fill="#475569" font-size="12">Er. Amit Jangra | <tspan fill="#0284c7" font-weight="600">P.No. 10372</tspan></text>
       </g>
-
       <g transform="translate(65, 290)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
         <rect width="6" height="58" rx="3" fill="#0284c7"/>
         <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 04/05</text>
         <text x="18" y="42" fill="#475569" font-size="12">Er D.C. Mishra | <tspan fill="#0284c7" font-weight="600">P.No. 09074</tspan></text>
       </g>
-
       <g transform="translate(65, 360)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
         <rect width="6" height="58" rx="3" fill="#0284c7"/>
         <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 06/07</text>
         <text x="18" y="42" fill="#475569" font-size="12">Er R. Swarup | <tspan fill="#0284c7" font-weight="600">P.No. 10565</tspan></text>
       </g>
-
       <g transform="translate(65, 430)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
         <rect width="6" height="58" rx="3" fill="#0284c7"/>
         <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 08</text>
         <text x="18" y="42" fill="#475569" font-size="12">Er P. Bagde | <tspan fill="#0284c7" font-weight="600">P.No. 09644</tspan></text>
       </g>
-
       <g transform="translate(65, 500)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
         <rect width="6" height="58" rx="3" fill="#0284c7"/>
         <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">📍 Area 09/10</text>
         <text x="18" y="42" fill="#475569" font-size="12">Er K. Kumar | <tspan fill="#0284c7" font-weight="600">P.No. 09643</tspan></text>
       </g>
-
       <path d="M 550 199 L 550 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
       <g transform="translate(430, 220)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
@@ -210,14 +200,12 @@ def show_team_modal():
         <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">⚡ SPP TG</text>
         <text x="18" y="42" fill="#475569" font-size="12">Er H.S. Mallick | <tspan fill="#d97706" font-weight="600">P.No. 10873</tspan></text>
       </g>
-
       <g transform="translate(430, 290)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
         <rect width="6" height="58" rx="3" fill="#d97706"/>
         <text x="18" y="22" fill="#0f172a" font-size="13" font-weight="700">🔥 SPP Boiler</text>
         <text x="18" y="42" fill="#475569" font-size="12">Er Sachin Ray | <tspan fill="#d97706" font-weight="600">P.No. 10913</tspan></text>
       </g>
-
       <path d="M 915 199 L 915 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
       <g transform="translate(795, 220)" filter="url(#shadow)">
         <rect width="240" height="58" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
@@ -229,7 +217,7 @@ def show_team_modal():
     """
     st.components.v1.html(svg_tree, height=600, scrolling=True)
 
-# --- MODAL: CHANGE PASSWORD (DIRECT TO GOOGLE SHEET) ---
+# --- MODAL: CHANGE PASSWORD ---
 @st.dialog("🔑 Change Area Password")
 def change_password_dialog(area_key):
     st.markdown(f"**Area:** `{area_key}`")
@@ -268,9 +256,7 @@ def change_password_dialog(area_key):
                 else:
                     st.error(f"❌ Failed to update password: {msg}")
 
-# --- LOGIN PROMPT SCREEN (Bypassed for HOD Portal) ---
 def check_authentication(area_key):
-    # Free access for HOD flow; password protected for direct area links (?area=...)
     if not is_area_direct_mode or st.session_state.get("auth_status", {}).get(area_key, False):
         return True
 
@@ -352,6 +338,7 @@ def safe_int(val):
     except ValueError:
         return 0
 
+# --- OPTIMIZED: Native Markdown Rendering (Zero IFrame Lag) ---
 def render_row(row, mapping, current_area_name):
     name_key = mapping["name"]
     mat_key = mapping["material"]
@@ -411,7 +398,7 @@ def render_row(row, mapping, current_area_name):
         </div>
     </div>
     """
-    st.components.v1.html(card_html, height=115, scrolling=False)
+    st.markdown(card_html, unsafe_allow_html=True)
 
 def inject_custom_css():
     css = """
@@ -433,7 +420,6 @@ def inject_custom_css():
         box-shadow: 0 2px 5px rgba(0,0,0,0.03);
     }
 
-    /* DIRECT ROOT STYLING: HIGH-VISIBILITY TEAM BUTTON */
     button[data-testid="baseButton-primary"] {
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
         color: #ffffff !important;
@@ -459,7 +445,6 @@ def inject_custom_css():
         transform: translateY(-2px) scale(1.02) !important;
     }
 
-    /* Sidebar Base Styling */
     section[data-testid="stSidebar"] {
         background-color: #f1f5f9 !important;
         border-right: 2px solid #cbd5e1 !important;
@@ -505,8 +490,8 @@ def inject_custom_css():
         padding: 14px 18px; 
         box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
         border: 1px solid #e2e8f0; 
-        margin-bottom: 15px; 
-        transition: all 0.2s ease-in-out;
+        margin-bottom: 12px; 
+        transition: all 0.15s ease-in-out;
     }
     .inventory-card:hover {
         border-color: #cbd5e1;
@@ -568,63 +553,55 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
             show_team_modal()
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-@st.cache_data(ttl=60)
+# Cache increased to 5 mins for instant switching, manual button clears it immediately
+@st.cache_data(ttl=300)
 def fetch_data(url, timestamp):
     live_url = f"{url}&t={timestamp}"
     df = pd.read_csv(live_url, dtype=str)
     return df
 
-def calculate_real_consumption_from_log(target_material_code, removal_df, analysis_months=12):
-    if removal_df is None or removal_df.empty:
-        return 0.0, 0.0, 0
+# --- OPTIMIZED: Pre-calculated log map (Instant O(1) Lookup instead of O(N) looping) ---
+@st.cache_data(ttl=300)
+def build_consumption_map(removal_url, timestamp, analysis_months=12):
+    if not removal_url:
+        return {}
     try:
-        df_log = removal_df.copy()
+        df_log = pd.read_csv(f"{removal_url}&t={timestamp}", dtype=str)
         df_log.columns = df_log.columns.str.strip()
-        
         mat_col = next((c for c in df_log.columns if "material" in c.lower() or "code" in c.lower()), None)
         type_col = next((c for c in df_log.columns if "transaction" in c.lower() or "type" in c.lower()), None)
         time_col = next((c for c in df_log.columns if "timestamp" in c.lower() or "date" in c.lower()), None)
-        
+
         if not mat_col or not time_col:
-            return 0.0, 0.0, 0
-            
+            return {}
+
         df_log["clean_mat"] = df_log[mat_col].apply(clean_material_code)
-        item_log = df_log[df_log["clean_mat"] == str(target_material_code)].copy()
-        
+
         if type_col:
             removal_keywords = ["remov", "issu", "withdraw", "consum"]
-            mask = item_log[type_col].astype(str).str.lower().apply(lambda x: any(k in x for k in removal_keywords))
-            item_log = item_log[mask]
-            
-        if item_log.empty:
-            return 0.0, 0.0, 0
-            
-        item_log["Parsed_Date"] = pd.to_datetime(item_log[time_col], errors='coerce')
-        item_log = item_log.dropna(subset=["Parsed_Date"])
-        
-        if item_log.empty:
-            return 0.0, 0.0, 0
-            
+            mask = df_log[type_col].astype(str).str.lower().apply(lambda x: any(k in x for k in removal_keywords))
+            df_log = df_log[mask]
+
+        df_log["Parsed_Date"] = pd.to_datetime(df_log[time_col], dayfirst=True, errors='coerce')
         cutoff_date = datetime.now() - timedelta(days=analysis_months * 30)
-        recent_log = item_log[item_log["Parsed_Date"] >= cutoff_date]
-        
-        total_removals = len(recent_log)
-        if total_removals == 0:
-            return 0.0, 0.0, 0
-            
-        monthly_consumption = round(float(total_removals) / float(analysis_months), 2)
-        replacement_cycle = round(1.0 / monthly_consumption, 1) if monthly_consumption > 0 else 0.0
-        
-        return monthly_consumption, replacement_cycle, total_removals
+        recent_log = df_log[df_log["Parsed_Date"] >= cutoff_date]
+
+        counts = recent_log["clean_mat"].value_counts().to_dict()
+        res = {}
+        for m_code, total_removals in counts.items():
+            m_cons = round(float(total_removals) / float(analysis_months), 2)
+            repl_cycle = round(1.0 / m_cons, 1) if m_cons > 0 else 0.0
+            res[m_code] = (m_cons, repl_cycle, total_removals)
+        return res
     except Exception:
-        return 0.0, 0.0, 0
+        return {}
 
 inject_custom_css()
 
 active_tag = f"📍 Active Area: {st.session_state['selected_area']}" if st.session_state["selected_area"] else "🏭 Master Control Room"
 render_top_bar(status_text=active_tag)
 
-# --- USER-FRIENDLY SIDEBAR DESIGN ---
+# --- SIDEBAR DESIGN ---
 st.sidebar.markdown("""
     <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 14px; border-radius: 10px; margin-bottom: 15px; text-align: center; border: 1px solid #334155;">
         <h4 style="margin:0; color:#38bdf8; font-size:15px; font-weight:800; letter-spacing:0.5px;">⚙️ CONTROL PANEL</h4>
@@ -749,7 +726,6 @@ elif st.session_state["smart_intelligence_mode"]:
                             st.query_params["pr_area"] = area_name
                             st.rerun()
     else:
-        # Check authentication if accessing area directly via URL
         if current_view != "Combined" and not check_authentication(current_view):
             st.stop()
 
@@ -784,12 +760,7 @@ elif st.session_state["smart_intelligence_mode"]:
                 df_area.columns = df_area.columns.str.strip()
                 mapping = resolve_columns(df_area)
                 
-                removal_df = None
-                if area_cfg.get("removal_url"):
-                    try:
-                        removal_df = fetch_data(area_cfg["removal_url"], st.session_state["data_timestamp"])
-                    except Exception:
-                        pass
+                consumption_map = build_consumption_map(area_cfg.get("removal_url"), st.session_state["data_timestamp"], analysis_months)
 
                 for _, r in df_area.iterrows():
                     mat_code = clean_material_code(r.get(mapping["material"], "N/A"))
@@ -797,9 +768,8 @@ elif st.session_state["smart_intelligence_mode"]:
                         continue
                     store_stock = safe_int(r.get(mapping["store"], 0))
                     field_count = safe_int(r.get(mapping["field"], 0))
-                    monthly_consumption, replacement_cycle, total_removals = calculate_real_consumption_from_log(
-                        mat_code, removal_df, analysis_months
-                    )
+                    monthly_consumption, replacement_cycle, total_removals = consumption_map.get(mat_code, (0.0, 0.0, 0))
+                    
                     master_records.append({
                         "Area": area_key,
                         "Material Code": mat_code,
@@ -899,13 +869,13 @@ elif st.session_state["smart_intelligence_mode"]:
                         </div>
                     </div>
                     """
-                    st.components.v1.html(card_html, height=140, scrolling=False)
+                    st.markdown(card_html, unsafe_allow_html=True)
             else:
                 st.info("No matching material codes or instruments found.")
         else:
             st.warning("No inventory records available for this area.")
 
-# --- LANDING PAGE (PORTAL SELECTION - FREE HOD NAVIGATION) ---
+# --- LANDING PAGE ---
 elif st.session_state["selected_area"] is None:
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 35px;">
@@ -935,11 +905,9 @@ elif st.session_state["selected_area"] is None:
 else:
     current_area = st.session_state["selected_area"]
 
-    # Authentication Gatekeeper (Only prompts if direct ?area= link was opened)
     if not check_authentication(current_area):
         st.stop()
 
-    # Password Management in Sidebar (Visible only for area in-charges with direct links)
     if is_area_direct_mode:
         st.sidebar.markdown(f"**Current Area:** `{current_area}`")
         if st.sidebar.button("🔑 Change Password", use_container_width=True):
@@ -953,8 +921,9 @@ else:
     config = AREA_CONFIGS[current_area]
     manager_name = config.get("manager", "Er. Amit Jangra | P.No. 10372")
 
-    st.components.v1.html(f"""
-        <div style="background: #ffffff; padding: 22px 25px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    # Header Card rendered natively
+    st.markdown(f"""
+        <div style="background: #ffffff; padding: 22px 25px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-bottom: 20px;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 24px; font-weight: 700;">
                 🏭 {config['title']}
             </h1>
@@ -962,9 +931,7 @@ else:
                 Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 700;">{manager_name} (Inventory Team, C&I, NALCO)</span>
             </p>
         </div>
-    """, height=100)
-    
-    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     try:
         df = fetch_data(config["sheet_url"], st.session_state["data_timestamp"])
@@ -989,7 +956,7 @@ else:
         unique_names_ordered = df[NAME_COL].unique()
         total_items = len(unique_names_ordered)
 
-        # --- PAGINATION LOGIC ---
+        # --- PAGINATION ---
         total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
 
         st.sidebar.markdown('<div class="sidebar-section-title">📄 Page Navigation</div>', unsafe_allow_html=True)
