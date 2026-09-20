@@ -559,7 +559,7 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url, dtype=str)
     return df
 
-# --- BULLETPROOF ENGINE ---
+# --- BULLETPROOF ENGINE (WITH STRICT ISSUE / REMOVAL FILTERING) ---
 @st.cache_data(ttl=60)
 def build_consumption_map(removal_url, timestamp, analysis_months=12):
     if not removal_url:
@@ -572,7 +572,7 @@ def build_consumption_map(removal_url, timestamp, analysis_months=12):
         if df_log.empty:
             return {}
 
-        # 1. Flexible Column Matcher
+        # 1. Flexible Material Code Column Matcher
         mat_col = None
         for c in df_log.columns:
             c_l = c.lower()
@@ -589,10 +589,38 @@ def build_consumption_map(removal_url, timestamp, analysis_months=12):
         if not mat_col:
             return {}
 
-        # Strip all formatting
+        # 2. Strict Filter: ONLY Count True "Removals / Issues"
+        # If transaction column exists, drop 'Added', 'Return', 'Deposit', etc.
+        action_col = None
+        for c in df_log.columns:
+            c_l = c.lower()
+            if any(k in c_l for k in ["action", "transaction", "type", "status", "movement", "nature"]):
+                action_col = c
+                break
+
+        if action_col:
+            removal_keywords = ["remov", "issu", "withdraw", "consum", "breakdown", "out", "use", "damaged", "taken"]
+            # Exclude rows that are additions or return to store
+            exclusion_keywords = ["add", "deposit", "receiv", "return to store", "stock in", "inward"]
+            
+            def is_valid_removal(val):
+                s = str(val).lower()
+                has_removal = any(rk in s for rk in removal_keywords)
+                has_exclusion = any(ek in s for ek in exclusion_keywords)
+                return has_removal and not has_exclusion
+
+            mask = df_log[action_col].astype(str).apply(is_valid_removal)
+            # Only apply filter if there are actually matching rows
+            if mask.sum() > 0:
+                df_log = df_log[mask]
+            else:
+                # If all rows were 'Added' or no removal was found, this area has 0 removals
+                return {}
+
+        # Strip all formatting from Material Codes
         df_log["clean_mat"] = df_log[mat_col].astype(str).str.replace(r'\.0$', '', regex=True).str.strip().str.lstrip('0')
 
-        # Check Quantity
+        # 3. Check Quantity
         qty_col = next((c for c in df_log.columns if any(k in c.lower() for k in ["qty", "quantity", "issued", "nos", "count"])), None)
         if qty_col:
             df_log["clean_qty"] = pd.to_numeric(df_log[qty_col].astype(str).str.extract(r'(\d+)', expand=False), errors='coerce').fillna(1)
@@ -605,11 +633,13 @@ def build_consumption_map(removal_url, timestamp, analysis_months=12):
         for m_code, total_removals in grouped.items():
             if m_code and m_code not in ["nan", "none", "n/a", ""]:
                 tot = float(total_removals)
-                m_cons = round(tot / float(analysis_months), 2)
-                if m_cons == 0.0 and tot > 0:
-                    m_cons = 0.08
-                repl_cycle = round(1.0 / m_cons, 1) if m_cons > 0 else 0.0
-                res[str(m_code)] = (m_cons, repl_cycle, int(tot))
+                # Only assign consumption if it was actually removed (> 0)
+                if tot > 0:
+                    m_cons = round(tot / float(analysis_months), 2)
+                    if m_cons == 0.0:
+                        m_cons = 0.08  # If very low consumption, ensure rate is non-zero
+                    repl_cycle = round(1.0 / m_cons, 1) if m_cons > 0 else 0.0
+                    res[str(m_code)] = (m_cons, repl_cycle, int(tot))
         return res
     except Exception as e:
         return {}
@@ -777,6 +807,7 @@ elif st.session_state["smart_intelligence_mode"]:
                 df_area.columns = df_area.columns.str.strip()
                 mapping = resolve_columns(df_area)
                 
+                # Fetch dictionary of actual removals only
                 consumption_map = build_consumption_map(area_cfg.get("removal_url"), st.session_state["data_timestamp"], analysis_months)
 
                 for _, r in df_area.iterrows():
@@ -787,6 +818,7 @@ elif st.session_state["smart_intelligence_mode"]:
                     store_stock = safe_int(r.get(mapping["store"], 0))
                     field_count = safe_int(r.get(mapping["field"], 0))
                     
+                    # Direct match: Only >0 if true issue exists
                     monthly_consumption, replacement_cycle, total_removals = consumption_map.get(str(mat_code), (0.0, 0.0, 0))
                     
                     master_records.append({
@@ -946,7 +978,7 @@ else:
             <h1 style="color: #0f172a !important; margin: 0; font-size: 24px; font-weight: 700;">
                 🏭 {config['title']}
             </h1>
-            <p style="color: #475569 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+            <p style="color: #475569 !important; margin-6px 0 0 0; font-size: 13px; font-weight: 500;">
                 Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 700;">{manager_name} (Inventory Team, C&I, NALCO)</span>
             </p>
         </div>
