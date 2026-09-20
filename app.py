@@ -159,7 +159,7 @@ def show_team_modal():
       <path d="M 550 140 L 550 165" stroke="#0284c7" stroke-width="2" fill="none"/>
       <rect x="430" y="165" width="240" height="34" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
       <text x="550" y="187" fill="#b45309" font-size="13" font-weight="700" text-anchor="middle">⚡ Steam Power Plant (SPP)</text>
-      <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2" fill="none"/>
+      <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2.5" fill="none"/>
       <rect x="795" y="165" width="240" height="34" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
       <text x="915" y="187" fill="#15803d" font-size="13" font-weight="700" text-anchor="middle">📦 Inventory Store</text>
       <path d="M 185 199 L 185 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
@@ -590,31 +590,22 @@ def build_consumption_map(removal_url, timestamp, analysis_months=12):
             return {}
 
         # 2. Strict Filter: ONLY Count True "Removals / Issues"
-        # If transaction column exists, drop 'Added', 'Return', 'Deposit', etc.
         action_col = None
         for c in df_log.columns:
             c_l = c.lower()
-            if any(k in c_l for k in ["action", "transaction", "type", "status", "movement", "nature"]):
+            if any(k in c_l for k in ["action", "transaction", "type", "status", "movement", "nature", "particular"]):
                 action_col = c
                 break
 
         if action_col:
-            removal_keywords = ["remov", "issu", "withdraw", "consum", "breakdown", "out", "use", "damaged", "taken"]
-            # Exclude rows that are additions or return to store
-            exclusion_keywords = ["add", "deposit", "receiv", "return to store", "stock in", "inward"]
-            
             def is_valid_removal(val):
-                s = str(val).lower()
-                has_removal = any(rk in s for rk in removal_keywords)
-                has_exclusion = any(ek in s for ek in exclusion_keywords)
-                return has_removal and not has_exclusion
+                s = str(val).lower().strip()
+                return ("remov" in s) and ("add" not in s)
 
             mask = df_log[action_col].astype(str).apply(is_valid_removal)
-            # Only apply filter if there are actually matching rows
             if mask.sum() > 0:
                 df_log = df_log[mask]
             else:
-                # If all rows were 'Added' or no removal was found, this area has 0 removals
                 return {}
 
         # Strip all formatting from Material Codes
@@ -633,11 +624,10 @@ def build_consumption_map(removal_url, timestamp, analysis_months=12):
         for m_code, total_removals in grouped.items():
             if m_code and m_code not in ["nan", "none", "n/a", ""]:
                 tot = float(total_removals)
-                # Only assign consumption if it was actually removed (> 0)
                 if tot > 0:
                     m_cons = round(tot / float(analysis_months), 2)
                     if m_cons == 0.0:
-                        m_cons = 0.08  # If very low consumption, ensure rate is non-zero
+                        m_cons = 0.08
                     repl_cycle = round(1.0 / m_cons, 1) if m_cons > 0 else 0.0
                     res[str(m_code)] = (m_cons, repl_cycle, int(tot))
         return res
@@ -798,16 +788,21 @@ elif st.session_state["smart_intelligence_mode"]:
         lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6)
         analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
 
+        # --- NEW: Overdue PR Filter Checkbox ---
+        st.sidebar.markdown('<div class="sidebar-section-title">🚨 PR Filters</div>', unsafe_allow_html=True)
+        only_urgent_pr = st.sidebar.checkbox("🚨 Show Overdue / Urgent PR Only", value=False, help="Filters items whose recommended PR trigger date has already passed or is due immediately.")
+
         target_configs = AREA_CONFIGS if current_view == "Combined" else {current_view: AREA_CONFIGS[current_view]}
 
         master_records = []
+        now_dt = datetime.now()
+
         for area_key, area_cfg in target_configs.items():
             try:
                 df_area = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
                 df_area.columns = df_area.columns.str.strip()
                 mapping = resolve_columns(df_area)
                 
-                # Fetch dictionary of actual removals only
                 consumption_map = build_consumption_map(area_cfg.get("removal_url"), st.session_state["data_timestamp"], analysis_months)
 
                 for _, r in df_area.iterrows():
@@ -818,7 +813,6 @@ elif st.session_state["smart_intelligence_mode"]:
                     store_stock = safe_int(r.get(mapping["store"], 0))
                     field_count = safe_int(r.get(mapping["field"], 0))
                     
-                    # Direct match: Only >0 if true issue exists
                     monthly_consumption, replacement_cycle, total_removals = consumption_map.get(str(mat_code), (0.0, 0.0, 0))
                     
                     master_records.append({
@@ -862,6 +856,36 @@ elif st.session_state["smart_intelligence_mode"]:
                     })
                 master_df = pd.DataFrame(grouped_records)
 
+            # Pre-calculate PR Dates & Urgency for filtering and sorting
+            pr_dates_str = []
+            is_urgents = []
+            
+            for _, row in master_df.iterrows():
+                m_cons = row["Monthly Consumption"]
+                s_stock = row["Store Stock"]
+                if m_cons > 0:
+                    days_remaining = int((s_stock / m_cons) * 30)
+                    exhaustion_date = now_dt + timedelta(days=days_remaining)
+                    lead_time_days = lead_time_months * 30
+                    pr_trigger_date = exhaustion_date - timedelta(days=lead_time_days)
+                    urgent = (pr_trigger_date <= now_dt)
+                    p_str = pr_trigger_date.strftime('%d %b %Y')
+                else:
+                    urgent = False
+                    p_str = "No History / Stable"
+                is_urgents.append(urgent)
+                pr_dates_str.append(p_str)
+
+            master_df["Is_Urgent"] = is_urgents
+            master_df["PR_Date_Str"] = pr_dates_str
+
+            # --- 1. ALPHABETICAL ORDER SORT BY INSTRUMENT NAME ---
+            master_df = master_df.sort_values(by="Instrument Name", key=lambda col: col.str.lower(), ascending=True).reset_index(drop=True)
+
+            # --- 2. FILTER BY OVERDUE / URGENT PR IF CHECKED ---
+            if only_urgent_pr:
+                master_df = master_df[master_df["Is_Urgent"] == True]
+
             search_query = st.text_input("🔍 Search (Enter Material Code or Instrument Description):", "").strip()
             if search_query:
                 filtered_df = master_df[
@@ -873,21 +897,13 @@ elif st.session_state["smart_intelligence_mode"]:
                 filtered_df = master_df
 
             if not filtered_df.empty:
-                st.markdown(f"### 🔎 Analytics Results ({len(filtered_df)} items displayed)")
+                status_text = f"🚨 Showing {len(filtered_df)} Overdue / Urgent PR Items" if only_urgent_pr else f"🔎 Analytics Results ({len(filtered_df)} items displayed - Alphabetical A-Z)"
+                st.markdown(f"### {status_text}")
+                
                 for _, item in filtered_df.iterrows():
-                    monthly_consumption = item["Monthly Consumption"]
+                    is_urgent = item["Is_Urgent"]
+                    pr_date_str = item["PR_Date_Str"]
                     store_stock = item["Store Stock"]
-                    
-                    if monthly_consumption > 0:
-                        days_remaining = int((store_stock / monthly_consumption) * 30)
-                        exhaustion_date = datetime.now() + timedelta(days=days_remaining)
-                        lead_time_days = lead_time_months * 30
-                        pr_trigger_date = exhaustion_date - timedelta(days=lead_time_days)
-                        is_urgent = pr_trigger_date <= datetime.now()
-                        pr_date_str = pr_trigger_date.strftime('%d %b %Y')
-                    else:
-                        pr_date_str = "No History / Stable"
-                        is_urgent = False
 
                     urgency_badge = '<span style="background-color: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">🚨 URGENT PR REQUIRED</span>' if is_urgent else '<span style="background-color: #dcfce7; color: #16a34a; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">✅ Stock Healthy</span>'
 
@@ -914,16 +930,19 @@ elif st.session_state["smart_intelligence_mode"]:
                                 <div style="font-size: 10px; color: #64748b; font-weight: bold;">REPLACEMENT CYCLE</div>
                                 <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Replacement Cycle']} mos</div>
                             </div>
-                            <div style="flex: 1.2; background: #eff6ff; padding: 6px; border-radius: 6px; text-align: center; border: 1px solid #bfdbfe;">
-                                <div style="font-size: 10px; color: #1e40af; font-weight: bold;">RECOMMENDED PR DATE</div>
-                                <div style="font-size: 14px; font-weight: 800; color: #1e3a8a;">{pr_date_str}</div>
+                            <div style="flex: 1.2; background: {'#fee2e2' if is_urgent else '#eff6ff'}; padding: 6px; border-radius: 6px; text-align: center; border: 1px solid {'#fca5a5' if is_urgent else '#bfdbfe'};">
+                                <div style="font-size: 10px; color: {'#b91c1c' if is_urgent else '#1e40af'}; font-weight: bold;">RECOMMENDED PR DATE</div>
+                                <div style="font-size: 14px; font-weight: 800; color: {'#991b1b' if is_urgent else '#1e3a8a'};">{pr_date_str}</div>
                             </div>
                         </div>
                     </div>
                     """
                     st.markdown(card_html, unsafe_allow_html=True)
             else:
-                st.info("No matching material codes or instruments found.")
+                if only_urgent_pr:
+                    st.success("🎉 Great news! No items have overdue PR dates in this view.")
+                else:
+                    st.info("No matching material codes or instruments found.")
         else:
             st.warning("No inventory records available for this area.")
 
@@ -978,7 +997,7 @@ else:
             <h1 style="color: #0f172a !important; margin: 0; font-size: 24px; font-weight: 700;">
                 🏭 {config['title']}
             </h1>
-            <p style="color: #475569 !important; margin-6px 0 0 0; font-size: 13px; font-weight: 500;">
+            <p style="color: #475569 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
                 Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 700;">{manager_name} (Inventory Team, C&I, NALCO)</span>
             </p>
         </div>
@@ -995,7 +1014,7 @@ else:
         df = df.dropna(subset=[NAME_COL])
         
         st.sidebar.markdown('<div class="sidebar-section-title">🔍 Filter &amp; Search</div>', unsafe_allow_html=True)
-        all_instruments = ["All System Data"] + list(df[NAME_COL].dropna().unique())
+        all_instruments = ["All System Data"] + sorted(list(df[NAME_COL].dropna().unique()), key=lambda x: str(x).lower())
         selected_instrument = st.sidebar.selectbox("Select Instrument Category:", all_instruments)
         
         items_per_page = st.sidebar.selectbox("Items Per Page:", [10, 20, 30, 40, 50, 100], index=3)
@@ -1004,7 +1023,8 @@ else:
         if selected_instrument != "All System Data":
             df = df[df[NAME_COL].str.strip() == selected_instrument]
 
-        unique_names_ordered = df[NAME_COL].unique()
+        # Alphabetical sorting for unique instruments
+        unique_names_ordered = sorted(df[NAME_COL].unique(), key=lambda x: str(x).lower())
         total_items = len(unique_names_ordered)
 
         # --- PAGINATION ---
