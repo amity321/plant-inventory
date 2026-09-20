@@ -162,7 +162,7 @@ def show_team_modal():
       <path d="M 550 140 L 550 165" stroke="#0284c7" stroke-width="2" fill="none"/>
       <rect x="430" y="165" width="240" height="34" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
       <text x="550" y="187" fill="#b45309" font-size="13" font-weight="700" text-anchor="middle">⚡ Steam Power Plant (SPP)</text>
-      <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2" fill="none"/>
+      <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2.5" fill="none"/>
       <rect x="795" y="165" width="240" height="34" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
       <text x="915" y="187" fill="#15803d" font-size="13" font-weight="700" text-anchor="middle">📦 Inventory Store</text>
       <path d="M 185 199 L 185 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
@@ -423,8 +423,9 @@ def inject_custom_css():
         box-shadow: 0 2px 5px rgba(0,0,0,0.03);
     }
 
-    /* DIRECT ROOT STYLING: HIGH-VISIBILITY BLUE TEAM BUTTON */
-    button[data-testid="baseButton-primary"] {
+    /* BASE PRIMARY BUTTON (Inventory Team - Vibrant Blue Capsule) */
+    div:has(> button[key="team_btn"]) button,
+    button[key="team_btn"] {
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
         color: #ffffff !important;
         border: 2.5px solid #38bdf8 !important;
@@ -436,63 +437,71 @@ def inject_custom_css():
         transition: all 0.25s ease-in-out !important;
     }
 
-    button[data-testid="baseButton-primary"] p,
-    button[data-testid="baseButton-primary"] span {
+    div:has(> button[key="team_btn"]) button p,
+    div:has(> button[key="team_btn"]) button span,
+    button[key="team_btn"] p,
+    button[key="team_btn"] span {
         color: #ffffff !important;
         font-weight: 800 !important;
     }
 
-    button[data-testid="baseButton-primary"]:hover {
+    div:has(> button[key="team_btn"]) button:hover,
+    button[key="team_btn"]:hover {
         background: linear-gradient(135deg, #0369a1 0%, #0c4a6e 100%) !important;
         border-color: #7dd3fc !important;
         box-shadow: 0 0 24px rgba(56, 189, 248, 0.85) !important;
         transform: translateY(-2px) scale(1.02) !important;
     }
 
-    /* HIGH-VISIBILITY URGENT PR TOGGLE BUTTON */
+    /* URGENT PR BUTTON - INACTIVE (Vibrant Crimson Red Glowing Capsule) */
     .urgent-btn-inactive button {
-        background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
         color: #ffffff !important;
         border: 2.5px solid #f87171 !important;
         border-radius: 30px !important;
         font-weight: 800 !important;
         font-size: 14px !important;
         padding: 9px 18px !important;
-        box-shadow: 0 0 16px rgba(239, 68, 68, 0.5), 0 4px 12px rgba(185, 28, 28, 0.2) !important;
+        box-shadow: 0 0 16px rgba(239, 68, 68, 0.6), 0 4px 12px rgba(220, 38, 38, 0.2) !important;
         transition: all 0.25s ease-in-out !important;
     }
+
     .urgent-btn-inactive button p,
     .urgent-btn-inactive button span {
         color: #ffffff !important;
         font-weight: 800 !important;
     }
+
     .urgent-btn-inactive button:hover {
         background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
         border-color: #fca5a5 !important;
-        box-shadow: 0 0 24px rgba(248, 113, 113, 0.85) !important;
+        box-shadow: 0 0 24px rgba(248, 113, 113, 0.9) !important;
         transform: translateY(-2px) scale(1.02) !important;
     }
 
+    /* URGENT PR BUTTON - ACTIVE (Vibrant Emerald Green Glowing Capsule) */
     .urgent-btn-active button {
-        background: linear-gradient(135deg, #10b981 0%, #047857 100%) !important;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
         color: #ffffff !important;
         border: 2.5px solid #34d399 !important;
         border-radius: 30px !important;
         font-weight: 800 !important;
         font-size: 14px !important;
         padding: 9px 18px !important;
-        box-shadow: 0 0 20px rgba(16, 185, 129, 0.7), 0 4px 14px rgba(4, 120, 87, 0.25) !important;
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.7), 0 4px 14px rgba(5, 150, 105, 0.25) !important;
         transition: all 0.25s ease-in-out !important;
     }
+
     .urgent-btn-active button p,
     .urgent-btn-active button span {
         color: #ffffff !important;
         font-weight: 800 !important;
     }
+
     .urgent-btn-active button:hover {
         background: linear-gradient(135deg, #059669 0%, #065f46 100%) !important;
         border-color: #6ee7b7 !important;
-        box-shadow: 0 0 26px rgba(52, 211, 153, 0.9) !important;
+        box-shadow: 0 0 26px rgba(52, 211, 153, 0.95) !important;
         transform: translateY(-2px) scale(1.02) !important;
     }
 
@@ -591,7 +600,7 @@ def inject_custom_css():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-# --- TOP BAR (TWIN 3D GLOWING BUTTONS WHEN IN PR INTELLIGENCE) ---
+# --- TOP BAR (TWIN 3D GLOWING CAPSULE BUTTONS IN PR INTELLIGENCE) ---
 def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     is_pr_active = st.session_state.get("smart_intelligence_mode", False)
     
@@ -609,7 +618,7 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
             btn_label = "✅ Showing Overdue PR" if is_active else "🚨 Show Overdue PR Only"
             
             st.markdown(f'<div class="{btn_class}">', unsafe_allow_html=True)
-            if st.button(btn_label, key="urgent_pr_btn", use_container_width=True):
+            if st.button(btn_label, key="urgent_pr_btn", type="primary", use_container_width=True):
                 st.session_state["urgent_pr_filter_state"] = not is_active
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
