@@ -53,53 +53,77 @@ def update_password_in_sheet(area_key, new_password_hash):
     except Exception as e:
         return False, str(e)
 
-# --- AREA CONFIGURATIONS ---
+# --- AREA CONFIGURATIONS & ZONE THEMES ---
 AREA_CONFIGS = {
     "Area 02/03": {
         "title": "Area 02/03 Instrumentation Inventory",
         "manager": "Er. Amit Jangra | P.No. 10372",
+        "zone_type": "Refinery Process Area",
+        "color": "#0284c7",
+        "gradient": "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=1345118798&single=true&output=csv"
     },
     "Area 04/05": {
         "title": "Area 04/05 Instrumentation Inventory",
         "manager": "Er D.C. Mishra | P.No. 09074",
+        "zone_type": "Refinery Process Area",
+        "color": "#0284c7",
+        "gradient": "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZopDMRgkBThhmBF8NAXoBERx24tj7Ae2y6HlvimEHUhahXEWY8tmXoNDSM_MNlkDB7TfGpHB9I2H_/pub?gid=1836901304&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZopDMRgkBThhmBF8NAXoBERx24tj7Ae2y6HlvimEHUhahXEWY8tmXoNDSM_MNlkDB7TfGpHB9I2H_/pub?gid=1951924870&single=true&output=csv"
     },
     "Area 06/07": {
         "title": "Area 06/07 Instrumentation Inventory",
         "manager": "Er R. Swarup | P.No. 10565",
+        "zone_type": "Refinery Process Area",
+        "color": "#0284c7",
+        "gradient": "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vStPdBa-nm7i9eHjSxpyrIOyyu5VJZo77E4KF3tk2R9ewp0hK58RDVYBKiW5UsRD2DxBTrafX-CfJry/pub?gid=175582315&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vStPdBa-nm7i9eHjSxpyrIOyyu5VJZo77E4KF3tk2R9ewp0hK58RDVYBKiW5UsRD2DxBTrafX-CfJry/pub?gid=1371227319&single=true&output=csv"
     },
     "Area 08": {
         "title": "Area 08 Instrumentation Inventory",
         "manager": "Er P. Bagde | P.No. 09644",
+        "zone_type": "Refinery Process Area",
+        "color": "#0284c7",
+        "gradient": "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMj_W_6-T0duFQ_XS8Yf9xTQPQvguuQP9P_aUwkKuiOZeT8BXSkAHeQspMlhXebcmz0ff-VZRdya-M/pub?gid=664188260&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMj_W_6-T0duFQ_XS8Yf9xTQPQvguuQP9P_aUwkKuiOZeT8BXSkAHeQspMlhXebcmz0ff-VZRdya-M/pub?gid=260669801&single=true&output=csv"
     },
     "Area 09/10": {
         "title": "Area 09/10 Instrumentation Inventory",
         "manager": "Er K. Kumar | P.No. 09643",
+        "zone_type": "Refinery Process Area",
+        "color": "#0284c7",
+        "gradient": "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7NvVXAcew2ZWcA_kSTmCQJk6OVq3RQfqGqCZ08jGKosNmTYWprvR4JUMC3-vXI28wF6HJ1B_Wk1uo/pub?gid=87821600&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7NvVXAcew2ZWcA_kSTmCQJk6OVq3RQfqGqCZ08jGKosNmTYWprvR4JUMC3-vXI28wF6HJ1B_Wk1uo/pub?gid=1187023151&single=true&output=csv"
     },
     "SPP TG": {
         "title": "SPP TG Instrumentation Inventory",
         "manager": "Er H.S. Mallick | P.No. 10873",
+        "zone_type": "Steam Power Plant (SPP)",
+        "color": "#d97706",
+        "gradient": "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPmgZl9jEQaGMQbxeOu0Xr_GtQ2P4_twAx2qNxUOjoYSvSW27vJsUgRtQB7XtIcU-bcCulPJLX3PLA/pub?gid=974689106&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPmgZl9jEQaGMQbxeOu0Xr_GtQ2P4_twAx2qNxUOjoYSvSW27vJsUgRtQB7XtIcU-bcCulPJLX3PLA/pub?gid=900388666&single=true&output=csv"
     },
     "SPP Boiler": {
         "title": "SPP Boiler Instrumentation Inventory",
         "manager": "Er Sachin Ray | P.No. 10913",
+        "zone_type": "Steam Power Plant (SPP)",
+        "color": "#d97706",
+        "gradient": "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVTH56rybWjsWYThgCiTWzafjabniWhqHUUuXoVdqexuWIjrmvh65AtimfDlFNB5V4StSi5G4BWuKf/pub?gid=1937643350&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVTH56rybWjsWYThgCiTWzafjabniWhqHUUuXoVdqexuWIjrmvh65AtimfDlFNB5V4StSi5G4BWuKf/pub?gid=223018013&single=true&output=csv"
     },
     "C&I Sub Store": {
         "title": "C&I Sub Store Instrumentation Inventory",
         "manager": "Er Astha Singh | P.No. 10567",
+        "zone_type": "Central Logistics & Sub-Store",
+        "color": "#16a34a",
+        "gradient": "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
         "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJUMrlU1bWLUsOt0tL-4xsBpsO2kt70Rq4am-OpMb7hsZZxe69JzLwBqT1EOLZtuU-PGkY-mx4EuZ/pub?gid=2014684236&single=true&output=csv",
         "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJUMrlU1bWLUsOt0tL-4xsBpsO2kt70Rq4am-OpMb7hsZZxe69JzLwBqT1EOLZtuU-PGkY-mx4EuZ/pub?gid=158170506&single=true&output=csv"
     }
@@ -162,7 +186,7 @@ def show_team_modal():
       <path d="M 550 140 L 550 165" stroke="#0284c7" stroke-width="2" fill="none"/>
       <rect x="430" y="165" width="240" height="34" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
       <text x="550" y="187" fill="#b45309" font-size="13" font-weight="700" text-anchor="middle">⚡ Steam Power Plant (SPP)</text>
-      <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2.5" fill="none"/>
+      <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2" fill="none"/>
       <rect x="795" y="165" width="240" height="34" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
       <text x="915" y="187" fill="#15803d" font-size="13" font-weight="700" text-anchor="middle">📦 Inventory Store</text>
       <path d="M 185 199 L 185 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
@@ -342,6 +366,7 @@ def safe_int(val):
     except ValueError:
         return 0
 
+# --- DYNAMIC THEMED ROW RENDERER ---
 def render_row(row, mapping, current_area_name):
     name_key = mapping["name"]
     mat_key = mapping["material"]
@@ -375,16 +400,20 @@ def render_row(row, mapping, current_area_name):
         status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
 
     show_name_flag = mapping.get("show_name", True)
+    
+    # Area theme colors
+    area_cfg = AREA_CONFIGS.get(current_area_name, {})
+    theme_accent = area_cfg.get("color", "#0284c7")
 
     card_html = f"""
     <div class="inventory-card">
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
             <div style="flex: 2; min-width: 180px;">
                 <h4 style="margin:0; color:#0f172a; font-size:16px; font-weight:700;">{inst_name if show_name_flag else ""}</h4>
-                <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">Mat. Code: {mat_code}</div>
+                <div style="font-size: 11px; color: {theme_accent}; font-weight: 700; margin-top: 2px;">Mat. Code: {mat_code}</div>
             </div>
             <div style="flex: 2.5; min-width: 200px;">
-                <div class="specs-box"><b>Specs:</b> {cleaned_spec}</div>
+                <div class="specs-box" style="border-left: 3px solid {theme_accent};"><b>Specs:</b> {cleaned_spec}</div>
             </div>
             <div style="flex: 1; min-width: 90px;" class="metric-box">
                 <div class="metric-lbl">On Field</div><div class="metric-val">{field_count}</div>
@@ -466,25 +495,19 @@ def inject_custom_css():
         margin: 0 !important;
     }
 
-    /* RED / GREEN OVERDUE PR TOGGLE BUTTON */
+    /* URGENT PR BUTTON - INACTIVE */
     div:has(> button[key="urgent_pr_btn"]) button,
     button[key="urgent_pr_btn"] {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
         color: #ffffff !important;
-        margin: 0 !important;
+        border: 2.5px solid #f87171 !important;
+        box-shadow: 0 0 16px rgba(239, 68, 68, 0.6), 0 4px 12px rgba(220, 38, 38, 0.2) !important;
     }
     div:has(> button[key="urgent_pr_btn"]) button p,
     button[key="urgent_pr_btn"] p {
         color: #ffffff !important;
         font-weight: 800 !important;
         margin: 0 !important;
-    }
-
-    /* URGENT PR BUTTON - INACTIVE */
-    div:has(> button[key="urgent_pr_btn"]) button,
-    button[key="urgent_pr_btn"] {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-        border: 2.5px solid #f87171 !important;
-        box-shadow: 0 0 16px rgba(239, 68, 68, 0.6), 0 4px 12px rgba(220, 38, 38, 0.2) !important;
     }
 
     div:has(> button[key="urgent_pr_btn"]) button:hover,
@@ -594,7 +617,6 @@ def inject_custom_css():
     .status-balanced { background-color: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
     .specs-box { 
         background-color: #f8fafc; 
-        border-left: 3px solid #0284c7; 
         padding: 6px 10px; 
         border-radius: 6px; 
         font-size: 11.5px; 
@@ -805,12 +827,20 @@ elif st.session_state["smart_intelligence_mode"]:
     current_view = url_area if is_area_direct_mode else st.session_state["pr_selected_view"]
 
     if current_view is None:
-        st.markdown("""
-            <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📈 Predictive PR Intelligence & Consumption Portal</h1>
-                <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Select a specific plant area or choose <b>Combined Areas</b> for centralized planning cell PR analysis.</p>
-            </div>
-        """, unsafe_allow_html=True)
+        hero_pr_html = """
+<div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 34px 28px; border-radius: 18px; border: 1.5px solid #334155; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25); text-align: center; margin-bottom: 25px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <div style="display: inline-block; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 4px 14px; border-radius: 20px; color: #fbbf24; font-size: 11.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">
+        📈 PREDICTIVE REQUISITION INTELLIGENCE
+    </div>
+    <h1 style="color: #ffffff !important; margin: 0; font-size: 30px; font-weight: 800;">
+        📈 Spares Consumption &amp; PR Schedulers
+    </h1>
+    <p style="color: #94a3b8 !important; margin-top: 8px; font-size: 14.5px;">
+        Select an individual area or open the centralized <b>Combined Planning Cell</b> view.
+    </p>
+</div>
+"""
+        st.html(hero_pr_html)
 
         st.markdown("""
             <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 20px; border-radius: 12px; border: 2px solid #3b82f6; margin-bottom: 25px; text-align: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);">
@@ -834,11 +864,13 @@ elif st.session_state["smart_intelligence_mode"]:
             for j in range(3):
                 if i + j < len(areas):
                     area_name = areas[i + j]
+                    cfg = AREA_CONFIGS[area_name]
+                    accent_col = cfg.get("color", "#0284c7")
                     with cols[j]:
                         st.markdown(f"""
-                            <div style="background: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 12px; text-align: center;">
-                                <h4 style="margin: 0 0 6px 0; color: #0f172a; font-size: 16px; font-weight: 700;">📍 {area_name}</h4>
-                                <p style="color: #64748b; font-size: 12px; margin: 0;">Area-specific stock & PR analyzer.</p>
+                            <div style="background: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; border-top: 3px solid {accent_col}; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 10px; text-align: center;">
+                                <h4 style="margin: 0 0 4px 0; color: #0f172a; font-size: 16px; font-weight: 700;">📍 {area_name}</h4>
+                                <span style="font-size: 11px; color: {accent_col}; font-weight: 700;">{cfg.get('zone_type', '')}</span>
                             </div>
                         """, unsafe_allow_html=True)
                         if st.button(f"Open {area_name}", use_container_width=True, key=f"pr_btn_{area_name}"):
@@ -1024,7 +1056,7 @@ elif st.session_state["smart_intelligence_mode"]:
         else:
             st.warning("No inventory records available for this area.")
 
-# --- LANDING PAGE (MODERN INDUSTRIAL COMMAND DECK - ZERO CODE LEAK) ---
+# --- LANDING PAGE (MODERN INDUSTRIAL COMMAND DECK) ---
 elif st.session_state["selected_area"] is None:
     hero_html = """
 <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 34px 28px; border-radius: 18px; border: 1.5px solid #334155; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25); text-align: center; margin-bottom: 25px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
@@ -1063,8 +1095,7 @@ elif st.session_state["selected_area"] is None:
                 area_name = areas[i + j]
                 cfg = AREA_CONFIGS[area_name]
                 mgr = cfg.get("manager", "Plant Engineer")
-                
-                accent_color = "#d97706" if "SPP" in area_name else ("#16a34a" if "Store" in area_name else "#0284c7")
+                accent_color = cfg.get("color", "#0284c7")
                 
                 with cols[j]:
                     card_html = f"""
@@ -1086,7 +1117,7 @@ elif st.session_state["selected_area"] is None:
                         st.rerun()
                     st.markdown("<div style='margin-bottom: 22px;'></div>", unsafe_allow_html=True)
 
-# --- ACTIVE AREA DASHBOARD VIEW ---
+# --- ACTIVE AREA DASHBOARD VIEW (DYNAMIC ZONE-THEMED) ---
 else:
     current_area = st.session_state["selected_area"]
 
@@ -1105,17 +1136,32 @@ else:
 
     config = AREA_CONFIGS[current_area]
     manager_name = config.get("manager", "Er. Amit Jangra | P.No. 10372")
+    zone_name = config.get("zone_type", "Refinery Process Area")
+    theme_accent = config.get("color", "#0284c7")
 
-    st.markdown(f"""
-        <div style="background: #ffffff; padding: 22px 25px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-bottom: 20px;">
-            <h1 style="color: #0f172a !important; margin: 0; font-size: 24px; font-weight: 700;">
-                🏭 {config['title']}
-            </h1>
-            <p style="color: #475569 !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
-                Live Spares Tracking Sheet &bull; Managed by <span style="color: #0284c7; font-weight: 700;">{manager_name} (Inventory Team, C&I, NALCO)</span>
-            </p>
+    # Dynamic Themed Hero Banner for Operating Area
+    area_header_html = f"""
+    <div style="background: #ffffff; padding: 22px 26px; border-radius: 14px; border: 1.5px solid #cbd5e1; border-top: 5px solid {theme_accent}; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <span style="background: {theme_accent}15; color: {theme_accent}; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+                    {zone_name}
+                </span>
+                <h1 style="color: #0f172a !important; margin: 4px 0 0 0; font-size: 24px; font-weight: 800;">
+                    🏭 {config['title']}
+                </h1>
+                <p style="color: #475569 !important; margin: 4px 0 0 0; font-size: 13px; font-weight: 500;">
+                    Live Spares Tracking Sheet &bull; Managed by <span style="color: {theme_accent}; font-weight: 700;">{manager_name} (Inventory Team, C&I, NALCO)</span>
+                </p>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 10px; text-align: right;">
+                <div style="font-size: 10.5px; color: #64748b; font-weight: 700; text-transform: uppercase;">ZONE STATUS</div>
+                <div style="font-size: 13.5px; font-weight: 800; color: #10b981;">● Active &amp; Synced</div>
+            </div>
         </div>
-    """, unsafe_allow_html=True)
+    </div>
+    """
+    st.markdown(area_header_html, unsafe_allow_html=True)
 
     try:
         df = fetch_data(config["sheet_url"], st.session_state["data_timestamp"])
@@ -1164,7 +1210,7 @@ else:
                 total_current_store = sum(safe_int(r[STORE_COL]) for _, r in sub_df.iterrows() if STORE_COL in r)
                 
                 st.markdown(f"""
-                <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 8px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-left: 4px solid {theme_accent}; padding: 12px 16px; border-radius: 8px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
                     <span style="font-size: 15px !important; font-weight: 700 !important; color: #0f172a !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                         📂 {current_name} — ({entry_count} Variants Grouped) | Combined Store Stock: {total_current_store}
                     </span>
