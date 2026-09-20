@@ -1030,31 +1030,70 @@ elif st.session_state["smart_intelligence_mode"]:
         else:
             st.warning("No inventory records available for this area.")
 
-# --- LANDING PAGE ---
+# --- LANDING PAGE (MODERN INDUSTRIAL COMMAND DECK) ---
 elif st.session_state["selected_area"] is None:
+    # 1. High-Tech Industrial Hero Header
     st.markdown("""
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 35px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 35px;">
-            <h1 style="color: #0f172a !important; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">🏭 Master Instrumentation Portal</h1>
-            <p style="color: #475569 !important; margin-top: 10px; font-size: 15px; font-weight: 500;">Direct access to operational area dashboards and spares analytics</p>
+        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 36px 30px; border-radius: 18px; border: 1.5px solid #334155; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25); text-align: center; margin-bottom: 25px; position: relative;">
+            <div style="display: inline-block; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 4px 14px; border-radius: 20px; color: #38bdf8; font-size: 11.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">
+                ⚙️ CENTRAL C&I INSTRUMENTATION SUITE
+            </div>
+            <h1 style="color: #ffffff !important; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">
+                🏭 Master Instrumentation Portal
+            </h1>
+            <p style="color: #94a3b8 !important; margin-top: 8px; font-size: 14.5px; font-weight: 500; max-width: 650px; margin-left: auto; margin-right: auto;">
+                Real-time spares monitoring, inter-area telemetry, and lead-time adjusted predictive requisition intelligence.
+            </p>
+            
+            <!-- Quick KPI Mini Strip -->
+            <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 22px;">
+                <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 10px;">
+                    <span style="color: #38bdf8; font-weight: 800; font-size: 16px;">8</span> 
+                    <span style="color: #cbd5e1; font-size: 12px; font-weight: 600;">Active Plant Zones</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 10px;">
+                    <span style="color: #10b981; font-weight: 800; font-size: 16px;">●</span> 
+                    <span style="color: #cbd5e1; font-size: 12px; font-weight: 600;">Live Telemetry Active</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 10px;">
+                    <span style="color: #f59e0b; font-weight: 800; font-size: 16px;">AI</span> 
+                    <span style="color: #cbd5e1; font-size: 12px; font-weight: 600;">Predictive PR Engine</span>
+                </div>
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
+    # 2. Modern 3D Area Cards
     areas = list(AREA_CONFIGS.keys())
     for i in range(0, len(areas), 3):
         cols = st.columns(3)
         for j in range(3):
             if i + j < len(areas):
                 area_name = areas[i + j]
+                cfg = AREA_CONFIGS[area_name]
+                mgr = cfg.get("manager", "Plant Engineer")
+                
+                # Zone-specific accents
+                accent_color = "#d97706" if "SPP" in area_name else ("#16a34a" if "Store" in area_name else "#0284c7")
+                
                 with cols[j]:
                     st.markdown(f"""
-                        <div style="background: #ffffff; padding: 22px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 15px; text-align: center;">
-                            <h3 style="margin-top: 0; margin-bottom: 8px; color: #0f172a; font-size: 18px; font-weight: 700;">🎛️ {area_name}</h3>
-                            <p style="color: #64748b; font-size: 13px; line-height: 1.4; margin: 0; min-height: 38px;">Live instrumentation spares and inventory status tracker.</p>
+                        <div style="background: #ffffff; padding: 20px 20px 14px 20px; border-radius: 14px 14px 0 0; border: 1.5px solid #cbd5e1; border-bottom: none; box-shadow: 0 4px 12px rgba(0,0,0,0.03); text-align: center; border-top: 4px solid {accent_color};">
+                            <h3 style="margin: 0 0 6px 0; color: #0f172a; font-size: 18px; font-weight: 800;">
+                                📍 {area_name}
+                            </h3>
+                            <div style="font-size: 11.5px; color: {accent_color}; font-weight: 700; margin-bottom: 8px;">
+                                {mgr}
+                            </div>
+                            <p style="color: #64748b; font-size: 12.5px; margin: 0; line-height: 1.4; min-height: 36px;">
+                                Live instrumentation spares & store telemetry matrix.
+                            </p>
                         </div>
                     """, unsafe_allow_html=True)
-                    if st.button(f"Open {area_name}", use_container_width=True, key=f"btn_{area_name}"):
+                    if st.button(f"Enter {area_name} ➔", use_container_width=True, key=f"btn_{area_name}"):
                         st.session_state["selected_area"] = area_name
                         st.rerun()
+                    st.markdown("<div style='margin-bottom: 22px;'></div>", unsafe_allow_html=True)
 
 # --- ACTIVE AREA DASHBOARD VIEW ---
 else:
