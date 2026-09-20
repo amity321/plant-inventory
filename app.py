@@ -479,7 +479,7 @@ def inject_custom_css():
         margin: 0 !important;
     }
 
-    /* URGENT PR BUTTON - INACTIVE (Vibrant Crimson Red Glowing Capsule) */
+    /* URGENT PR BUTTON - INACTIVE */
     div:has(> button[key="urgent_pr_btn"]) button,
     button[key="urgent_pr_btn"] {
         background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
@@ -495,7 +495,7 @@ def inject_custom_css():
         transform: translateY(-2px) scale(1.02) !important;
     }
 
-    /* URGENT PR BUTTON - ACTIVE (Vibrant Emerald Green Glowing Capsule) */
+    /* URGENT PR BUTTON - ACTIVE */
     .urgent-btn-active button {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
         border: 2.5px solid #34d399 !important;
@@ -659,7 +659,6 @@ def build_consumption_map(removal_url, timestamp, analysis_months=12):
         if df_log.empty:
             return {}
 
-        # 1. Flexible Material Code Column Matcher
         mat_col = None
         for c in df_log.columns:
             c_l = c.lower()
@@ -676,7 +675,6 @@ def build_consumption_map(removal_url, timestamp, analysis_months=12):
         if not mat_col:
             return {}
 
-        # 2. Strict Filter: ONLY Count True "Removals / Issues"
         action_col = None
         for c in df_log.columns:
             c_l = c.lower()
@@ -695,10 +693,8 @@ def build_consumption_map(removal_url, timestamp, analysis_months=12):
             else:
                 return {}
 
-        # Strip all formatting from Material Codes
         df_log["clean_mat"] = df_log[mat_col].astype(str).str.replace(r'\.0$', '', regex=True).str.strip().str.lstrip('0')
 
-        # 3. Check Quantity
         qty_col = next((c for c in df_log.columns if any(k in c.lower() for k in ["qty", "quantity", "issued", "nos", "count"])), None)
         if qty_col:
             df_log["clean_qty"] = pd.to_numeric(df_log[qty_col].astype(str).str.extract(r'(\d+)', expand=False), errors='coerce').fillna(1)
@@ -963,10 +959,8 @@ elif st.session_state["smart_intelligence_mode"]:
             master_df["Is_Urgent"] = is_urgents
             master_df["PR_Date_Str"] = pr_dates_str
 
-            # Alphabetical sort by instrument name
             master_df = master_df.sort_values(by="Instrument Name", key=lambda col: col.str.lower(), ascending=True).reset_index(drop=True)
 
-            # Apply top bar urgent filter
             if only_urgent_pr:
                 master_df = master_df[master_df["Is_Urgent"] == True]
 
@@ -981,7 +975,7 @@ elif st.session_state["smart_intelligence_mode"]:
                 filtered_df = master_df
 
             if not filtered_df.empty:
-                status_text = f"🚨 Showing {len(filtered_df)} Overdue / Urgent PR Items" if only_urgent_pr else f"🔎 Analytics Results"
+                status_text = f"🚨 Showing {len(filtered_df)} Overdue / Urgent PR Items" if only_urgent_pr else f"🔎 Analytics Results ({len(filtered_df)} items displayed - Alphabetical A-Z)"
                 st.markdown(f"### {status_text}")
                 
                 for _, item in filtered_df.iterrows():
@@ -1030,40 +1024,37 @@ elif st.session_state["smart_intelligence_mode"]:
         else:
             st.warning("No inventory records available for this area.")
 
-# --- LANDING PAGE (MODERN INDUSTRIAL COMMAND DECK) ---
+# --- LANDING PAGE (MODERN INDUSTRIAL COMMAND DECK - ZERO CODE LEAK) ---
 elif st.session_state["selected_area"] is None:
-    # 1. High-Tech Industrial Hero Header
-    st.markdown("""
-        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 36px 30px; border-radius: 18px; border: 1.5px solid #334155; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25); text-align: center; margin-bottom: 25px; position: relative;">
-            <div style="display: inline-block; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 4px 14px; border-radius: 20px; color: #38bdf8; font-size: 11.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">
-                ⚙️ CENTRAL C&I INSTRUMENTATION SUITE
-            </div>
-            <h1 style="color: #ffffff !important; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">
-                🏭 Master Instrumentation Portal
-            </h1>
-            <p style="color: #94a3b8 !important; margin-top: 8px; font-size: 14.5px; font-weight: 500; max-width: 650px; margin-left: auto; margin-right: auto;">
-                Real-time spares monitoring, inter-area telemetry, and lead-time adjusted predictive requisition intelligence.
-            </p>
-            
-            <!-- Quick KPI Mini Strip -->
-            <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 22px;">
-                <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 10px;">
-                    <span style="color: #38bdf8; font-weight: 800; font-size: 16px;">8</span> 
-                    <span style="color: #cbd5e1; font-size: 12px; font-weight: 600;">Active Plant Zones</span>
-                </div>
-                <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 10px;">
-                    <span style="color: #10b981; font-weight: 800; font-size: 16px;">●</span> 
-                    <span style="color: #cbd5e1; font-size: 12px; font-weight: 600;">Live Telemetry Active</span>
-                </div>
-                <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 10px;">
-                    <span style="color: #f59e0b; font-weight: 800; font-size: 16px;">AI</span> 
-                    <span style="color: #cbd5e1; font-size: 12px; font-weight: 600;">Predictive PR Engine</span>
-                </div>
-            </div>
+    hero_html = """
+<div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 34px 28px; border-radius: 18px; border: 1.5px solid #334155; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25); text-align: center; margin-bottom: 25px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <div style="display: inline-block; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 4px 14px; border-radius: 20px; color: #38bdf8; font-size: 11.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">
+        ⚙️ CENTRAL C&amp;I INSTRUMENTATION SUITE
+    </div>
+    <h1 style="color: #ffffff !important; margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.5px;">
+        🏭 Master Instrumentation Portal
+    </h1>
+    <p style="color: #94a3b8 !important; margin-top: 8px; font-size: 14.5px; font-weight: 500; max-width: 650px; margin-left: auto; margin-right: auto;">
+        Real-time spares monitoring, inter-area telemetry, and lead-time adjusted predictive requisition intelligence.
+    </p>
+    <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 22px;">
+        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 8px 18px; border-radius: 10px;">
+            <span style="color: #38bdf8; font-weight: 800; font-size: 16px;">8</span> 
+            <span style="color: #cbd5e1; font-size: 12.5px; font-weight: 600; margin-left: 4px;">Active Plant Zones</span>
         </div>
-    """, unsafe_allow_html=True)
+        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 8px 18px; border-radius: 10px;">
+            <span style="color: #10b981; font-weight: 800; font-size: 16px;">●</span> 
+            <span style="color: #cbd5e1; font-size: 12.5px; font-weight: 600; margin-left: 4px;">Live Telemetry Active</span>
+        </div>
+        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 8px 18px; border-radius: 10px;">
+            <span style="color: #f59e0b; font-weight: 800; font-size: 16px;">AI</span> 
+            <span style="color: #cbd5e1; font-size: 12.5px; font-weight: 600; margin-left: 4px;">Predictive PR Engine</span>
+        </div>
+    </div>
+</div>
+"""
+    st.html(hero_html)
 
-    # 2. Modern 3D Area Cards
     areas = list(AREA_CONFIGS.keys())
     for i in range(0, len(areas), 3):
         cols = st.columns(3)
@@ -1073,23 +1064,23 @@ elif st.session_state["selected_area"] is None:
                 cfg = AREA_CONFIGS[area_name]
                 mgr = cfg.get("manager", "Plant Engineer")
                 
-                # Zone-specific accents
                 accent_color = "#d97706" if "SPP" in area_name else ("#16a34a" if "Store" in area_name else "#0284c7")
                 
                 with cols[j]:
-                    st.markdown(f"""
-                        <div style="background: #ffffff; padding: 20px 20px 14px 20px; border-radius: 14px 14px 0 0; border: 1.5px solid #cbd5e1; border-bottom: none; box-shadow: 0 4px 12px rgba(0,0,0,0.03); text-align: center; border-top: 4px solid {accent_color};">
-                            <h3 style="margin: 0 0 6px 0; color: #0f172a; font-size: 18px; font-weight: 800;">
-                                📍 {area_name}
-                            </h3>
-                            <div style="font-size: 11.5px; color: {accent_color}; font-weight: 700; margin-bottom: 8px;">
-                                {mgr}
-                            </div>
-                            <p style="color: #64748b; font-size: 12.5px; margin: 0; line-height: 1.4; min-height: 36px;">
-                                Live instrumentation spares & store telemetry matrix.
-                            </p>
-                        </div>
-                    """, unsafe_allow_html=True)
+                    card_html = f"""
+<div style="background: #ffffff; padding: 20px 20px 14px 20px; border-radius: 14px 14px 0 0; border: 1.5px solid #cbd5e1; border-bottom: none; box-shadow: 0 4px 12px rgba(0,0,0,0.03); text-align: center; border-top: 4px solid {accent_color}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <h3 style="margin: 0 0 6px 0; color: #0f172a; font-size: 18px; font-weight: 800;">
+        📍 {area_name}
+    </h3>
+    <div style="font-size: 11.5px; color: {accent_color}; font-weight: 700; margin-bottom: 8px;">
+        {mgr}
+    </div>
+    <p style="color: #64748b; font-size: 12.5px; margin: 0; line-height: 1.4; min-height: 36px;">
+        Live instrumentation spares &amp; store telemetry matrix.
+    </p>
+</div>
+"""
+                    st.html(card_html)
                     if st.button(f"Enter {area_name} ➔", use_container_width=True, key=f"btn_{area_name}"):
                         st.session_state["selected_area"] = area_name
                         st.rerun()
