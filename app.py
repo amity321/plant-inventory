@@ -159,7 +159,7 @@ def show_team_modal():
       <path d="M 550 140 L 550 165" stroke="#0284c7" stroke-width="2" fill="none"/>
       <rect x="430" y="165" width="240" height="34" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
       <text x="550" y="187" fill="#b45309" font-size="13" font-weight="700" text-anchor="middle">⚡ Steam Power Plant (SPP)</text>
-      <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2.5" fill="none"/>
+      <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2" fill="none"/>
       <rect x="795" y="165" width="240" height="34" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
       <text x="915" y="187" fill="#15803d" font-size="13" font-weight="700" text-anchor="middle">📦 Inventory Store</text>
       <path d="M 185 199 L 185 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
@@ -420,6 +420,18 @@ def inject_custom_css():
         box-shadow: 0 2px 5px rgba(0,0,0,0.03);
     }
 
+    /* Top Bar Urgent Checkbox Container */
+    .topbar-urgent-filter {
+        background: #ffffff;
+        border: 1.5px solid #fca5a5;
+        background-color: #fef2f2;
+        padding: 6px 14px;
+        border-radius: 24px;
+        display: inline-flex;
+        align-items: center;
+        box-shadow: 0 2px 6px rgba(220, 38, 38, 0.08);
+    }
+
     button[data-testid="baseButton-primary"] {
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
         color: #ffffff !important;
@@ -540,17 +552,36 @@ def inject_custom_css():
     """
     st.markdown(css, unsafe_allow_html=True)
 
+# --- TOP BAR (WITH CONDITIONAL URGENT PR FILTER NEXT TO TEAM BUTTON) ---
 def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
-    c_left, c_right = st.columns([7.0, 3.0])
-    with c_left:
-        st.markdown(f"""
-            <div class="header-pill">
-                <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
-            </div>
-        """, unsafe_allow_html=True)
-    with c_right:
-        if st.button("👥 Inventory Team", key="team_btn", type="primary", use_container_width=True):
-            show_team_modal()
+    is_pr_active = st.session_state.get("smart_intelligence_mode", False)
+    
+    if is_pr_active:
+        c_left, c_mid, c_right = st.columns([4.8, 3.2, 2.0])
+        with c_left:
+            st.markdown(f"""
+                <div class="header-pill">
+                    <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
+                </div>
+            """, unsafe_allow_html=True)
+        with c_mid:
+            # Overdue PR Checkbox placed directly next to team button
+            st.checkbox("🚨 Overdue / Urgent PR Only", key="urgent_pr_top_filter", value=st.session_state.get("urgent_pr_top_filter", False))
+        with c_right:
+            if st.button("👥 Inventory Team", key="team_btn", type="primary", use_container_width=True):
+                show_team_modal()
+    else:
+        c_left, c_right = st.columns([7.5, 2.5])
+        with c_left:
+            st.markdown(f"""
+                <div class="header-pill">
+                    <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
+                </div>
+            """, unsafe_allow_html=True)
+        with c_right:
+            if st.button("👥 Inventory Team", key="team_btn", type="primary", use_container_width=True):
+                show_team_modal()
+                
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
 @st.cache_data(ttl=60)
@@ -788,9 +819,8 @@ elif st.session_state["smart_intelligence_mode"]:
         lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6)
         analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
 
-        # --- NEW: Overdue PR Filter Checkbox ---
-        st.sidebar.markdown('<div class="sidebar-section-title">🚨 PR Filters</div>', unsafe_allow_html=True)
-        only_urgent_pr = st.sidebar.checkbox("🚨 Show Overdue / Urgent PR Only", value=False, help="Filters items whose recommended PR trigger date has already passed or is due immediately.")
+        # Get urgent filter status from top bar
+        only_urgent_pr = st.session_state.get("urgent_pr_top_filter", False)
 
         target_configs = AREA_CONFIGS if current_view == "Combined" else {current_view: AREA_CONFIGS[current_view]}
 
@@ -856,7 +886,6 @@ elif st.session_state["smart_intelligence_mode"]:
                     })
                 master_df = pd.DataFrame(grouped_records)
 
-            # Pre-calculate PR Dates & Urgency for filtering and sorting
             pr_dates_str = []
             is_urgents = []
             
@@ -879,10 +908,10 @@ elif st.session_state["smart_intelligence_mode"]:
             master_df["Is_Urgent"] = is_urgents
             master_df["PR_Date_Str"] = pr_dates_str
 
-            # --- 1. ALPHABETICAL ORDER SORT BY INSTRUMENT NAME ---
+            # Alphabetical sort by instrument name
             master_df = master_df.sort_values(by="Instrument Name", key=lambda col: col.str.lower(), ascending=True).reset_index(drop=True)
 
-            # --- 2. FILTER BY OVERDUE / URGENT PR IF CHECKED ---
+            # Apply top bar urgent filter
             if only_urgent_pr:
                 master_df = master_df[master_df["Is_Urgent"] == True]
 
@@ -1023,7 +1052,6 @@ else:
         if selected_instrument != "All System Data":
             df = df[df[NAME_COL].str.strip() == selected_instrument]
 
-        # Alphabetical sorting for unique instruments
         unique_names_ordered = sorted(df[NAME_COL].unique(), key=lambda x: str(x).lower())
         total_items = len(unique_names_ordered)
 
