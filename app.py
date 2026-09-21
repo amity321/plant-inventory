@@ -24,12 +24,12 @@ MASTER_AUTHORIZED_USERS = {
         "pin": "9742900004",
         "role": "Lead Administrator"
     },
-    "skjain": {
+    "06505": {
         "name": "Er. S.K. Jain",
         "pin": "9437106841",
         "role": "HOD (C&I)"
     },
-    "skjain": {
+    "08165": {
         "name": "Er. H. S. Behera",
         "pin": "9437006963",
         "role": "Planning Cell Head"
