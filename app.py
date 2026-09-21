@@ -305,7 +305,7 @@ def change_password_dialog(area_key):
                 else:
                     st.error(f"❌ Failed to update password: {msg}")
 
-# --- AREA ACCESS CHECK (UNCHANGED) ---
+# --- AREA ACCESS CHECK ---
 def check_authentication(area_key):
     if not is_area_direct_mode or st.session_state.get("auth_status", {}).get(area_key, False):
         return True
@@ -391,7 +391,9 @@ def clean_material_code(val):
 
 def resolve_columns(df):
     cols = df.columns
-    mat_col, field_col, store_col, shop_col, total_col, specs_col, name_col = None, None, None, None, None, None, None
+    mat_col, field_col, store_col, shop_col, total_col, specs_col, name_col, area_belongs_col = (
+        None, None, None, None, None, None, None, None
+    )
     for col in cols:
         c_low = col.lower()
         if not mat_col and ("code" in c_low or "mat" in c_low):
@@ -408,6 +410,8 @@ def resolve_columns(df):
             specs_col = col
         elif not name_col and ("instrument" in c_low or "name" in c_low):
             name_col = col
+        elif not area_belongs_col and ("belong" in c_low or "area" in c_low or "location" in c_low or "section" in c_low):
+            area_belongs_col = col
 
     return {
         "name": name_col or "Instrument Name",
@@ -416,7 +420,8 @@ def resolve_columns(df):
         "field": field_col or "Existing Instrument on Field",
         "store": store_col or "Remaining Spares in Store-Room",
         "shop": shop_col or "Remaining Spares in Shop-Floor",
-        "total": total_col or "Total Spares"
+        "total": total_col or "Total Spares",
+        "area_belongs": area_belongs_col or "Belongs To Area"
     }
 
 def safe_int(val):
@@ -434,14 +439,53 @@ def render_row(row, mapping, current_area_name):
     specs_key = mapping["specs"]
     field_key = mapping["field"]
     store_key = mapping["store"]
+    area_belongs_key = mapping.get("area_belongs", "Belongs To Area")
 
     inst_name = str(row[name_key]).strip() if name_key in row and pd.notna(row[name_key]) else "No Name"
     mat_code = clean_material_code(row[mat_key]) if mat_key in row else "N/A"
     full_spec = str(row[specs_key]).strip() if specs_key in row and pd.notna(row[specs_key]) else "No Specs Added"
-    
-    field_count = safe_int(row[field_key]) if field_key in row else 0
     spares_store = safe_int(row[store_key]) if store_key in row else 0
-    
+    cleaned_spec = full_spec.replace('•', '').strip()
+    show_name_flag = mapping.get("show_name", True)
+
+    area_cfg = AREA_CONFIGS.get(current_area_name, {})
+    theme_accent = area_cfg.get("color", "#0284c7")
+
+    # ========================================================
+    # 🟢 SPECIAL VIEW: C&I SUB STORE ONLY
+    # ========================================================
+    if current_area_name == "C&I Sub Store":
+        belongs_val = str(row[area_belongs_key]).strip() if area_belongs_key in row and pd.notna(row[area_belongs_key]) else "Unassigned / General"
+
+        card_html = f"""
+        <div class="inventory-card">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <div style="flex: 2; min-width: 180px;">
+                    <h4 style="margin:0; color:#0f172a; font-size:16px; font-weight:700;">{inst_name if show_name_flag else ""}</h4>
+                    <div style="font-size: 11px; color: {theme_accent}; font-weight: 700; margin-top: 2px;">Mat. Code: {mat_code}</div>
+                </div>
+                <div style="flex: 2.5; min-width: 200px;">
+                    <div class="specs-box" style="border-left: 3px solid {theme_accent};"><b>Specs:</b> {cleaned_spec}</div>
+                </div>
+                <div style="flex: 1.5; min-width: 140px;" class="metric-box">
+                    <div class="metric-lbl">Belongs To Area</div>
+                    <div class="metric-val" style="font-size: 14px; font-weight: 700; color: #15803d;">📍 {belongs_val}</div>
+                </div>
+                <div style="flex: 1; min-width: 110px;" class="metric-box">
+                    <div class="metric-lbl">Store-Room Stock</div>
+                    <div class="metric-val" style="font-size: 17px; font-weight: 700; color: #0f172a;">{spares_store}</div>
+                </div>
+            </div>
+        </div>
+        """
+        st.markdown(card_html, unsafe_allow_html=True)
+        return
+
+    # ========================================================
+    # 🔵 STANDARD VIEW: ALL OTHER REFINERY / PLANT OPERATING AREAS
+    # ========================================================
+    field_count = safe_int(row[field_key]) if field_key in row else 0
+
     name_lower = inst_name.lower()
     if "transmitter" in name_lower or "converter" in name_lower:
         healthy_stock = max(2, int(field_count * 0.20))
@@ -449,9 +493,8 @@ def render_row(row, mapping, current_area_name):
         healthy_stock = max(3, int(field_count * 0.30))
     else:
         healthy_stock = max(2, int(field_count * 0.15))
-    
+
     shortfall_excess = spares_store - healthy_stock
-    cleaned_spec = full_spec.replace('•', '').strip()
 
     if shortfall_excess < 0:
         status_html = f'<div class="status-badge status-shortfall">🚨 Shortfall ({shortfall_excess})</div>'
@@ -459,12 +502,6 @@ def render_row(row, mapping, current_area_name):
         status_html = f'<div class="status-badge status-surplus">✅ Surplus (+{shortfall_excess})</div>'
     else:
         status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
-
-    show_name_flag = mapping.get("show_name", True)
-    
-    # Area theme colors
-    area_cfg = AREA_CONFIGS.get(current_area_name, {})
-    theme_accent = area_cfg.get("color", "#0284c7")
 
     card_html = f"""
     <div class="inventory-card">
@@ -513,14 +550,12 @@ def inject_custom_css():
         box-shadow: 0 2px 5px rgba(0,0,0,0.03);
     }
 
-    /* TOP BAR UNIFIED BUTTON CONTAINER ALIGNMENT */
     div[data-testid="column"] {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
     }
 
-    /* SHARED EXACT GEOMETRY FOR BOTH TOP BAR BUTTONS */
     div:has(> button[key="team_btn"]) button,
     button[key="team_btn"],
     div:has(> button[key="urgent_pr_btn"]) button,
@@ -541,7 +576,6 @@ def inject_custom_css():
         transition: all 0.2s ease-in-out !important;
     }
 
-    /* BLUE INVENTORY TEAM BUTTON */
     div:has(> button[key="team_btn"]) button,
     button[key="team_btn"] {
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
@@ -556,7 +590,6 @@ def inject_custom_css():
         margin: 0 !important;
     }
 
-    /* URGENT PR BUTTON - INACTIVE */
     div:has(> button[key="urgent_pr_btn"]) button,
     button[key="urgent_pr_btn"] {
         background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
@@ -579,7 +612,6 @@ def inject_custom_css():
         transform: translateY(-2px) scale(1.02) !important;
     }
 
-    /* URGENT PR BUTTON - ACTIVE */
     .urgent-btn-active button {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
         border: 2.5px solid #34d399 !important;
@@ -687,7 +719,7 @@ def inject_custom_css():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-# --- TOP BAR (PIXEL-PERFECT VERTICAL ALIGNMENT) ---
+# --- TOP BAR ---
 def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     is_pr_active = st.session_state.get("smart_intelligence_mode", False)
     
@@ -729,7 +761,7 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url, dtype=str)
     return df
 
-# --- BULLETPROOF ENGINE (WITH STRICT ISSUE / REMOVAL FILTERING) ---
+# --- BULLETPROOF CONSUMPTION ENGINE ---
 @st.cache_data(ttl=60)
 def build_consumption_map(removal_url, timestamp, analysis_months=12):
     if not removal_url:
@@ -797,7 +829,7 @@ def build_consumption_map(removal_url, timestamp, analysis_months=12):
                     repl_cycle = round(1.0 / m_cons, 1) if m_cons > 0 else 0.0
                     res[str(m_code)] = (m_cons, repl_cycle, int(tot))
         return res
-    except Exception as e:
+    except Exception:
         return {}
 
 inject_custom_css()
@@ -834,7 +866,6 @@ if is_area_direct_mode:
 
 # 2. HOD / MASTER PORTAL MODE
 else:
-    # Officer Session Card if logged into HOD Portal
     if st.session_state.get("hod_auth_user"):
         u_info = st.session_state["hod_auth_user"]
         st.sidebar.markdown(f"""
@@ -878,7 +909,6 @@ st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1
 
 # --- AREAWISE STOCK MATRIX VIEWER ---
 if st.session_state["stock_matrix_mode"] and not is_area_direct_mode:
-    # Protect with HOD authentication
     if not check_hod_authentication():
         st.stop()
 
@@ -907,7 +937,6 @@ elif st.session_state["smart_intelligence_mode"]:
     current_view = url_area if is_area_direct_mode else st.session_state["pr_selected_view"]
 
     if current_view is None:
-        # Central PR requires HOD Master authentication
         if not is_area_direct_mode and not check_hod_authentication():
             st.stop()
 
@@ -1142,7 +1171,6 @@ elif st.session_state["smart_intelligence_mode"]:
 
 # --- LANDING PAGE (PROTECTED BY HOD INDIVIDUAL PIN AUTHENTICATION) ---
 elif st.session_state["selected_area"] is None:
-    # Check HOD Master Authentication
     if not check_hod_authentication():
         st.stop()
 
@@ -1227,7 +1255,6 @@ else:
     zone_name = config.get("zone_type", "Refinery Process Area")
     theme_accent = config.get("color", "#0284c7")
 
-    # Dynamic Themed Hero Banner for Operating Area
     area_header_html = f"""
     <div style="background: #ffffff; padding: 22px 26px; border-radius: 14px; border: 1.5px solid #cbd5e1; border-top: 5px solid {theme_accent}; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-bottom: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
