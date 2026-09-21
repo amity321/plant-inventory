@@ -355,7 +355,7 @@ def check_hod_authentication():
 
     col1, col2, col3 = st.columns([1, 1.4, 1])
     with col2:
-        user_input_id = st.text_input("Personal No. (5-digit) / User ID", placeholder="e.g. 10372", key="hod_user_id_input").strip()
+        user_input_id = st.text_input("Personal No. / User ID", placeholder="e.g. 10372 (5-Digit)", key="hod_user_id_input").strip()
         user_input_pin = st.text_input("Personal PIN", type="password", placeholder="Enter your secret PIN", key="hod_pin_input").strip()
 
         if st.button("Unlock Master Portal 🔓", use_container_width=True, type="primary"):
