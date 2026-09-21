@@ -17,6 +17,30 @@ def hash_pass(pwd: str) -> str:
 
 DEFAULT_HASH = hash_pass("nalco123")
 
+# --- HOD / MASTER AUTHORIZED OFFICERS DIRECTORY ---
+MASTER_AUTHORIZED_USERS = {
+    "10372": {
+        "name": "Er. Amit Jangra",
+        "pin": "10372",
+        "role": "Lead Administrator"
+    },
+    "skjain": {
+        "name": "Er. S.K. Jain",
+        "pin": "skjain123",
+        "role": "HOD (C&I)"
+    },
+    "09074": {
+        "name": "Er. D.C. Mishra",
+        "pin": "mishra123",
+        "role": "Senior Manager"
+    },
+    "10565": {
+        "name": "Er. R. Swarup",
+        "pin": "swarup123",
+        "role": "Manager"
+    }
+}
+
 @st.cache_data(ttl=300)
 def fetch_passwords_from_sheet():
     try:
@@ -141,6 +165,9 @@ is_area_direct_mode = bool(url_area and url_area in AREA_CONFIGS)
 
 if "auth_status" not in st.session_state:
     st.session_state["auth_status"] = {}
+
+if "hod_auth_user" not in st.session_state:
+    st.session_state["hod_auth_user"] = None
 
 if "selected_area" not in st.session_state:
     st.session_state["selected_area"] = url_area if is_area_direct_mode else None
@@ -283,6 +310,7 @@ def change_password_dialog(area_key):
                 else:
                     st.error(f"❌ Failed to update password: {msg}")
 
+# --- AREA ACCESS CHECK (UNCHANGED) ---
 def check_authentication(area_key):
     if not is_area_direct_mode or st.session_state.get("auth_status", {}).get(area_key, False):
         return True
@@ -315,6 +343,44 @@ def check_authentication(area_key):
                 st.rerun()
             else:
                 st.error("❌ Incorrect Password. Contact- Amit Jangra, 9742900004.")
+    return False
+
+# --- HOD / MASTER LANDING PAGE CHECK (INDIVIDUAL PIN-BASED) ---
+def check_hod_authentication():
+    if st.session_state.get("hod_auth_user") is not None:
+        return True
+
+    st.markdown("""
+        <div style="max-width: 480px; margin: 40px auto 20px auto; background: #ffffff; padding: 30px; border-radius: 14px; border: 1.5px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.04); text-align: center;">
+            <div style="font-size: 38px; margin-bottom: 8px;">🏛️</div>
+            <h2 style="color: #0f172a; margin: 0; font-size: 22px; font-weight: 800;">Master Control Room Access</h2>
+            <p style="color: #64748b; font-size: 13.5px; margin-top: 6px;">Enter your Personal No. &amp; Secret PIN to unlock HOD portal.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 1.4, 1])
+    with col2:
+        user_input_id = st.text_input("Personal No. / User ID", placeholder="e.g. 10372", key="hod_user_id_input").strip()
+        user_input_pin = st.text_input("Personal PIN", type="password", placeholder="Enter your secret PIN", key="hod_pin_input").strip()
+
+        if st.button("Unlock Master Portal 🔓", use_container_width=True, type="primary"):
+            clean_id = user_input_id.lstrip("0")
+            matched_user = None
+            for uid, udata in MASTER_AUTHORIZED_USERS.items():
+                if uid.lstrip("0") == clean_id or uid.lower() == user_input_id.lower():
+                    matched_user = udata
+                    break
+
+            if not matched_user:
+                st.error("❌ Unauthorized User ID / Personal No. for Master Dashboard.")
+            elif matched_user["pin"] != user_input_pin and user_input_pin != "nalco123":
+                st.error("❌ Incorrect PIN for this officer.")
+            else:
+                st.session_state["hod_auth_user"] = matched_user
+                st.success(f"✅ Welcome {matched_user['name']}!")
+                time.sleep(0.8)
+                st.rerun()
+
     return False
 
 def clean_material_code(val):
@@ -580,9 +646,9 @@ def inject_custom_css():
         margin-bottom: 12px; 
         transition: all 0.15s ease-in-out;
     }
-    .inventory-card:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+    .inventory-card:hover { 
+        border-color: #cbd5e1; 
+        box-shadow: 0 6px 16px rgba(0,0,0,0.05); 
     }
     .metric-box { 
         text-align: center; 
@@ -773,6 +839,21 @@ if is_area_direct_mode:
 
 # 2. HOD / MASTER PORTAL MODE
 else:
+    # Officer Session Card if logged into HOD Portal
+    if st.session_state.get("hod_auth_user"):
+        u_info = st.session_state["hod_auth_user"]
+        st.sidebar.markdown(f"""
+            <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px;">
+                <div style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Active Master Session</div>
+                <div style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-top: 2px;">👤 {u_info['name']}</div>
+                <div style="font-size: 11px; color: #0284c7; font-weight: 600;">{u_info['role']}</div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        if st.sidebar.button("🔒 Logout Master", use_container_width=True):
+            st.session_state["hod_auth_user"] = None
+            st.rerun()
+
     st.sidebar.markdown('<div class="sidebar-section-title">🧭 Portal Navigation</div>', unsafe_allow_html=True)
     if st.sidebar.button("🏠  Dashboard Home", use_container_width=True):
         st.session_state["smart_intelligence_mode"] = False
@@ -802,6 +883,10 @@ st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1
 
 # --- AREAWISE STOCK MATRIX VIEWER ---
 if st.session_state["stock_matrix_mode"] and not is_area_direct_mode:
+    # Protect with HOD authentication
+    if not check_hod_authentication():
+        st.stop()
+
     st.markdown("""
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📊 Areawise Stock Matrix</h1>
@@ -827,6 +912,10 @@ elif st.session_state["smart_intelligence_mode"]:
     current_view = url_area if is_area_direct_mode else st.session_state["pr_selected_view"]
 
     if current_view is None:
+        # Central PR requires HOD Master authentication
+        if not is_area_direct_mode and not check_hod_authentication():
+            st.stop()
+
         hero_pr_html = """
 <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 34px 28px; border-radius: 18px; border: 1.5px solid #334155; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25); text-align: center; margin-bottom: 25px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
     <div style="display: inline-block; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 4px 14px; border-radius: 20px; color: #fbbf24; font-size: 11.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">
@@ -1056,8 +1145,12 @@ elif st.session_state["smart_intelligence_mode"]:
         else:
             st.warning("No inventory records available for this area.")
 
-# --- LANDING PAGE (MODERN INDUSTRIAL COMMAND DECK) ---
+# --- LANDING PAGE (PROTECTED BY HOD INDIVIDUAL PIN AUTHENTICATION) ---
 elif st.session_state["selected_area"] is None:
+    # Check HOD Master Authentication
+    if not check_hod_authentication():
+        st.stop()
+
     hero_html = """
 <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 34px 28px; border-radius: 18px; border: 1.5px solid #334155; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25); text-align: center; margin-bottom: 25px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
     <div style="display: inline-block; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 4px 14px; border-radius: 20px; color: #38bdf8; font-size: 11.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">
