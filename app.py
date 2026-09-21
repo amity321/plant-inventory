@@ -349,13 +349,13 @@ def check_hod_authentication():
         <div style="max-width: 480px; margin: 40px auto 20px auto; background: #ffffff; padding: 30px; border-radius: 14px; border: 1.5px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.04); text-align: center;">
             <div style="font-size: 38px; margin-bottom: 8px;">🏛️</div>
             <h2 style="color: #0f172a; margin: 0; font-size: 22px; font-weight: 800;">Master Control Room Access</h2>
-            <p style="color: #64748b; font-size: 13.5px; margin-top: 6px;">Enter your Personal No. &amp; Secret PIN to unlock HOD portal.</p>
+            <p style="color: #64748b; font-size: 13.5px; margin-top: 6px;">Enter your Personal No. &amp; Secret PIN to unlock Master portal.</p>
         </div>
     """, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1, 1.4, 1])
     with col2:
-        user_input_id = st.text_input("Personal No. / User ID", placeholder="e.g. 10372", key="hod_user_id_input").strip()
+        user_input_id = st.text_input("Personal No. (5-digit) / User ID", placeholder="e.g. 10372", key="hod_user_id_input").strip()
         user_input_pin = st.text_input("Personal PIN", type="password", placeholder="Enter your secret PIN", key="hod_pin_input").strip()
 
         if st.button("Unlock Master Portal 🔓", use_container_width=True, type="primary"):
