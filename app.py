@@ -21,13 +21,18 @@ DEFAULT_HASH = hash_pass("nalco123")
 MASTER_AUTHORIZED_USERS = {
     "10372": {
         "name": "Er. Amit Jangra",
-        "pin": "10372",
+        "pin": "9742900004",
         "role": "Lead Administrator"
     },
     "skjain": {
         "name": "Er. S.K. Jain",
-        "pin": "06505",
+        "pin": "9437106841",
         "role": "HOD (C&I)"
+    },
+    "skjain": {
+        "name": "Er. H. S. Behera",
+        "pin": "9437006963",
+        "role": "Planning Cell Head"
     },
 }
 
