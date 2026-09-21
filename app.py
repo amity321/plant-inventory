@@ -26,19 +26,9 @@ MASTER_AUTHORIZED_USERS = {
     },
     "skjain": {
         "name": "Er. S.K. Jain",
-        "pin": "skjain123",
+        "pin": "06505",
         "role": "HOD (C&I)"
     },
-    "09074": {
-        "name": "Er. D.C. Mishra",
-        "pin": "mishra123",
-        "role": "Senior Manager"
-    },
-    "10565": {
-        "name": "Er. R. Swarup",
-        "pin": "swarup123",
-        "role": "Manager"
-    }
 }
 
 @st.cache_data(ttl=300)
