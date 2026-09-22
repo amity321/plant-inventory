@@ -444,6 +444,7 @@ def fetch_data(url, timestamp):
     return df
 
 # --- INTER-AREA TRANSFER MODAL (WITH MULTI-VARIANT & COMPLETE ROW COPY) ---
+# --- INTER-AREA TRANSFER MODAL (WITH TEXT SEARCH: CODE + NAME + MULTI-VARIANT) ---
 @st.dialog("🔄 Inter-Area Spares Transfer", width="large")
 def show_inter_area_transfer_dialog(current_area_name):
     cfg = AREA_CONFIGS.get(current_area_name)
@@ -466,12 +467,51 @@ def show_inter_area_transfer_dialog(current_area_name):
     specs_col = mapping["specs"]
 
     df_current["Clean_Mat"] = df_current[mat_col].apply(clean_material_code)
-    valid_df = df_current[df_current["Clean_Mat"] != "N/A"]
+    valid_df = df_current[df_current["Clean_Mat"] != "N/A"].copy()
 
-    all_mat_codes = sorted(list(valid_df["Clean_Mat"].unique()))
-    selected_mat = st.selectbox("Select Material Code:", ["-- Choose Material Code --"] + all_mat_codes, key="transfer_mat_select")
+    # 1. TEXT-BASED SEARCH INPUT (Filters by Code, Name, or Specs)
+    search_term = st.text_input(
+        "🔍 Search Instrument or Material Code:", 
+        placeholder="Type Material Code (e.g. 104231) or Name (e.g. Rosemount, DP Transmitter)...",
+        key="transfer_search_box"
+    ).strip()
 
-    if selected_mat != "-- Choose Material Code --":
+    # Create formatted labels: "104231 — Differential Pressure Transmitter"
+    code_summary = (
+        valid_df.groupby("Clean_Mat")
+        .apply(lambda g: f"{g['Clean_Mat'].iloc[0]} — {str(g[name_col].iloc[0]).strip()}")
+        .to_dict()
+    )
+
+    # Filter available options based on user text query
+    if search_term:
+        filtered_matches = valid_df[
+            valid_df["Clean_Mat"].str.contains(search_term, case=False, na=False) |
+            valid_df[name_col].astype(str).str.contains(search_term, case=False, na=False) |
+            valid_df[specs_col].astype(str).str.contains(search_term, case=False, na=False)
+        ]
+        available_codes = sorted(list(filtered_matches["Clean_Mat"].unique()))
+    else:
+        available_codes = sorted(list(valid_df["Clean_Mat"].unique()))
+
+    if not available_codes:
+        st.warning(f"❌ No instruments found matching '{search_term}'. Try another keyword.")
+        return
+
+    # Dropdown with clear formatting
+    options_display = ["-- Select Material / Instrument --"] + [
+        code_summary.get(c, f"Code: {c}") for c in available_codes
+    ]
+
+    selected_option = st.selectbox(
+        f"Select Matched Instrument ({len(available_codes)} Available):",
+        options_display,
+        key="transfer_mat_select"
+    )
+
+    if selected_option != "-- Select Matched Instrument --":
+        # Extract the pure material code (part before the separator)
+        selected_mat = selected_option.split(" — ")[0].strip()
         matching_rows = valid_df[valid_df["Clean_Mat"] == selected_mat].copy()
         count_variants = len(matching_rows)
 
@@ -533,10 +573,10 @@ def show_inter_area_transfer_dialog(current_area_name):
                     "status": "PENDING"
                 }
 
-                # Push to local state (works without internet/firewall issues)
+                # Push to local session state
                 st.session_state["inter_area_transfers"].append(transfer_record)
 
-                # Try sending to Google Apps Script if accessible
+                # Push to Google Apps Script if reachable
                 try:
                     requests.post(
                         AUTH_API_URL, 
@@ -549,7 +589,6 @@ def show_inter_area_transfer_dialog(current_area_name):
                 st.success(f"✅ Transfer request sent to {target_area}! Waiting for confirmation.")
                 time.sleep(1.2)
                 st.rerun()
-
 # --- NOTIFICATIONS MODAL (ACCEPT / REJECT WITH COMPLETE ROW COPY-PASTE) ---
 @st.dialog("🔔 Notifications & Incoming Transfers", width="large")
 def show_notifications_dialog(current_area_name):
