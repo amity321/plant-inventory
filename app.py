@@ -186,9 +186,12 @@ if "data_timestamp" not in st.session_state:
 if "urgent_pr_filter_state" not in st.session_state:
     st.session_state["urgent_pr_filter_state"] = False
 
-# Active session queue for transfers (reliable fallback for firewalled office networks)
-if "inter_area_transfers" not in st.session_state:
-    st.session_state["inter_area_transfers"] = []
+# --- SERVER-LEVEL SHARED PERSISTENT MEMORY (Cross-Session & Refresh Safe) ---
+@st.cache_resource
+def get_global_transfers():
+    return []
+
+GLOBAL_TRANSFERS = get_global_transfers()
 
 # --- INVENTORY TEAM HIERARCHY MODAL POPUP ---
 @st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
@@ -443,8 +446,7 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url, dtype=str)
     return df
 
-
-# --- INTER-AREA TRANSFER MODAL (TEXT-TRIGGERED SEARCH & HIDDEN STORE STOCK) ---
+# --- INTER-AREA TRANSFER MODAL (TEXT-TRIGGERED & HIDDEN STOCK FOR PRIVACY) ---
 @st.dialog("🔄 Inter-Area Spares Transfer", width="large")
 def show_inter_area_transfer_dialog(current_area_name):
     cfg = AREA_CONFIGS.get(current_area_name)
@@ -469,19 +471,17 @@ def show_inter_area_transfer_dialog(current_area_name):
     df_current["Clean_Mat"] = df_current[mat_col].apply(clean_material_code)
     valid_df = df_current[df_current["Clean_Mat"] != "N/A"].copy()
 
-    # 1. Search Box: Type to reveal matched dropdown
+    # Text Search Input: Only reveals dropdown when typed
     search_term = st.text_input(
         "🔍 Search Instrument or Material Code:", 
         placeholder="Type Material Code or Name (e.g. 104231, Rosemount, RTD)...",
         key="transfer_search_box"
     ).strip()
 
-    # Agar user ne abhi tak type nahi kiya, toh dropdown nahi dikhayenge
     if not search_term:
         st.info("💡 Start typing a Material Code or Instrument Name above to find items.")
         return
 
-    # Filter strictly based on search keyword
     filtered_matches = valid_df[
         valid_df["Clean_Mat"].str.contains(search_term, case=False, na=False) |
         valid_df[name_col].astype(str).str.contains(search_term, case=False, na=False) |
@@ -493,7 +493,7 @@ def show_inter_area_transfer_dialog(current_area_name):
         st.warning(f"❌ No instruments found matching '{search_term}'. Try another keyword.")
         return
 
-    # Safe label mapping (Pandas 2.2+ compatible)
+    # Safe mapping without relying on DataFrameGroupBy.apply
     code_summary = {}
     for mat_code, group in filtered_matches.groupby("Clean_Mat"):
         names = group[name_col].dropna()
@@ -533,7 +533,7 @@ def show_inter_area_transfer_dialog(current_area_name):
             with c1:
                 is_selected = st.checkbox("", value=select_all_variants, key=f"var_chk_{idx}") if count_variants > 1 else True
             with c2:
-                # Store stock count completely removed for confidentiality
+                # Privacy maintained: Stock count completely hidden
                 st.markdown(f"""
                     <div style="font-size: 13.5px; font-weight: 700; color: #0f172a;">{item_name}</div>
                     <div style="font-size: 11.5px; color: #64748b;"><b>Specs:</b> {item_specs}</div>
@@ -554,7 +554,7 @@ def show_inter_area_transfer_dialog(current_area_name):
 
             st.markdown("<div style='margin: 6px 0; border-bottom: 1px dashed #e2e8f0;'></div>", unsafe_allow_html=True)
 
-        transfer_remarks = st.text_input("Remarks / Work Order Ref (Optional):", placeholder="e.g. Urgent maintenance requirement...")
+        transfer_remarks = st.text_input("Remarks / Work Order Ref (Optional):", placeholder="e.g. Urgent plant maintenance requirement...")
 
         if st.button("🚀 Send Transfer Request", type="primary", use_container_width=True):
             if not selected_transfer_items:
@@ -571,7 +571,8 @@ def show_inter_area_transfer_dialog(current_area_name):
                     "status": "PENDING"
                 }
 
-                st.session_state["inter_area_transfers"].append(transfer_record)
+                # Push to persistent shared memory across all tabs/reloads
+                GLOBAL_TRANSFERS.append(transfer_record)
 
                 try:
                     requests.post(
@@ -585,11 +586,13 @@ def show_inter_area_transfer_dialog(current_area_name):
                 st.success(f"✅ Transfer request sent to {target_area}! Waiting for recipient confirmation.")
                 time.sleep(1.2)
                 st.rerun()
-# --- NOTIFICATIONS MODAL (ACCEPT / REJECT WITH COMPLETE ROW REPLICATION) ---
+
+# --- NOTIFICATIONS MODAL (ACCEPT / REJECT WORKFLOW) ---
 @st.dialog("🔔 Notifications & Incoming Transfers", width="large")
 def show_notifications_dialog(current_area_name):
+    # Fetch directly from shared global cache
     pending = [
-        t for t in st.session_state["inter_area_transfers"] 
+        t for t in GLOBAL_TRANSFERS 
         if t["to_area"] == current_area_name and t["status"] == "PENDING"
     ]
 
@@ -692,7 +695,6 @@ def render_row(row, mapping, current_area_name):
     area_cfg = AREA_CONFIGS.get(current_area_name, {})
     theme_accent = area_cfg.get("color", "#0284c7")
 
-    # Special view for C&I Sub Store
     if current_area_name == "C&I Sub Store":
         belongs_val = str(row[area_belongs_key]).strip() if area_belongs_key in row and pd.notna(row[area_belongs_key]) else "Unassigned / General"
 
@@ -720,7 +722,6 @@ def render_row(row, mapping, current_area_name):
         st.markdown(card_html, unsafe_allow_html=True)
         return
 
-    # Standard View
     field_count = safe_int(row[field_key]) if field_key in row else 0
 
     name_lower = inst_name.lower()
@@ -914,14 +915,14 @@ def inject_custom_css():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-# --- TOP BAR (WITH INTER-AREA & NOTIFICATIONS TABS) ---
+# --- TOP BAR ---
 def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     is_pr_active = st.session_state.get("smart_intelligence_mode", False)
     current_area = st.session_state.get("selected_area") or url_area
 
-    # Count pending notifications for current area
+    # Real-time counter from global shared queue
     pending_count = sum(
-        1 for t in st.session_state.get("inter_area_transfers", [])
+        1 for t in GLOBAL_TRANSFERS
         if current_area and t["to_area"] == current_area and t["status"] == "PENDING"
     )
     notify_label = f"🔔 Notifications ({pending_count})" if pending_count > 0 else "🔔 Notifications"
