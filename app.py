@@ -444,7 +444,7 @@ def fetch_data(url, timestamp):
     return df
 
 
-# --- INTER-AREA TRANSFER MODAL (PROPER INDENTATION & BULLETPROOF MAPPING) ---
+# --- INTER-AREA TRANSFER MODAL (TEXT-TRIGGERED SEARCH & HIDDEN STORE STOCK) ---
 @st.dialog("🔄 Inter-Area Spares Transfer", width="large")
 def show_inter_area_transfer_dialog(current_area_name):
     cfg = AREA_CONFIGS.get(current_area_name)
@@ -469,53 +469,57 @@ def show_inter_area_transfer_dialog(current_area_name):
     df_current["Clean_Mat"] = df_current[mat_col].apply(clean_material_code)
     valid_df = df_current[df_current["Clean_Mat"] != "N/A"].copy()
 
-    # Text search box: accepts material code, instrument name, or specifications
+    # 1. Search Box: Type to reveal matched dropdown
     search_term = st.text_input(
         "🔍 Search Instrument or Material Code:", 
-        placeholder="Type Material Code (e.g. 104231) or Name (e.g. Rosemount, DP Transmitter)...",
+        placeholder="Type Material Code or Name (e.g. 104231, Rosemount, RTD)...",
         key="transfer_search_box"
     ).strip()
 
-    # Safe mapping without relying on DataFrameGroupBy.apply
-    code_summary = {}
-    for mat_code, group in valid_df.groupby("Clean_Mat"):
-        names = group[name_col].dropna()
-        first_name = str(names.iloc[0]).strip() if not names.empty else "No Name"
-        code_summary[mat_code] = f"{mat_code} — {first_name}"
+    # Agar user ne abhi tak type nahi kiya, toh dropdown nahi dikhayenge
+    if not search_term:
+        st.info("💡 Start typing a Material Code or Instrument Name above to find items.")
+        return
 
-    if search_term:
-        filtered_matches = valid_df[
-            valid_df["Clean_Mat"].str.contains(search_term, case=False, na=False) |
-            valid_df[name_col].astype(str).str.contains(search_term, case=False, na=False) |
-            valid_df[specs_col].astype(str).str.contains(search_term, case=False, na=False)
-        ]
-        available_codes = sorted(list(filtered_matches["Clean_Mat"].unique()))
-    else:
-        available_codes = sorted(list(valid_df["Clean_Mat"].unique()))
+    # Filter strictly based on search keyword
+    filtered_matches = valid_df[
+        valid_df["Clean_Mat"].str.contains(search_term, case=False, na=False) |
+        valid_df[name_col].astype(str).str.contains(search_term, case=False, na=False) |
+        valid_df[specs_col].astype(str).str.contains(search_term, case=False, na=False)
+    ]
+    available_codes = sorted(list(filtered_matches["Clean_Mat"].unique()))
 
     if not available_codes:
         st.warning(f"❌ No instruments found matching '{search_term}'. Try another keyword.")
-        st.stop()
+        return
 
-    options_display = ["-- Select Material / Instrument --"] + [
+    # Safe label mapping (Pandas 2.2+ compatible)
+    code_summary = {}
+    for mat_code, group in filtered_matches.groupby("Clean_Mat"):
+        names = group[name_col].dropna()
+        first_name = str(names.iloc[0]).strip() if not names.empty else "Instrument"
+        code_summary[mat_code] = f"{mat_code} — {first_name}"
+
+    options_display = ["-- Select Matched Instrument --"] + [
         code_summary.get(c, f"{c} — Item") for c in available_codes
     ]
 
     selected_option = st.selectbox(
-        f"Select Matched Instrument ({len(available_codes)} Available):",
+        "Select Instrument:",
         options_display,
         key="transfer_mat_select"
     )
 
-    if selected_option != "-- Select Material / Instrument --":
+    if selected_option != "-- Select Matched Instrument --":
         selected_mat = selected_option.split(" — ")[0].strip()
         matching_rows = valid_df[valid_df["Clean_Mat"] == selected_mat].copy()
         count_variants = len(matching_rows)
 
-        st.markdown(f"**Items Found with Mat Code `{selected_mat}`:** `{count_variants} Line Item(s) / Variant(s)`")
-
-        # Select all checkbox toggle
-        select_all_variants = st.checkbox("✅ Select All Variants / Complete Set", value=True, key="chk_select_all_var")
+        if count_variants > 1:
+            st.markdown(f"**Found `{count_variants}` Sub-Parts / Line Items:**")
+            select_all_variants = st.checkbox("✅ Select All (Complete Set)", value=True, key="chk_select_all_var")
+        else:
+            select_all_variants = True
 
         selected_transfer_items = []
 
@@ -524,40 +528,37 @@ def show_inter_area_transfer_dialog(current_area_name):
         for idx, row in matching_rows.iterrows():
             item_name = str(row[name_col]).strip() if name_col in row and pd.notna(row[name_col]) else "Unknown Item"
             item_specs = str(row[specs_col]).strip() if specs_col in row and pd.notna(row[specs_col]) else "No Specs"
-            curr_stock = safe_int(row[store_col]) if store_col in row else 0
 
-            c1, c2, c3 = st.columns([0.8, 4.2, 2.0], vertical_alignment="center")
+            c1, c2, c3 = st.columns([0.8, 4.4, 1.8], vertical_alignment="center")
             with c1:
-                is_selected = st.checkbox("", value=select_all_variants, key=f"var_chk_{idx}")
+                is_selected = st.checkbox("", value=select_all_variants, key=f"var_chk_{idx}") if count_variants > 1 else True
             with c2:
+                # Store stock count completely removed for confidentiality
                 st.markdown(f"""
                     <div style="font-size: 13.5px; font-weight: 700; color: #0f172a;">{item_name}</div>
                     <div style="font-size: 11.5px; color: #64748b;"><b>Specs:</b> {item_specs}</div>
-                    <div style="font-size: 11px; color: #0284c7; font-weight: 600;">Current Store Stock: <b>{curr_stock} Nos</b></div>
                 """, unsafe_allow_html=True)
             with c3:
                 qty_to_send = st.number_input(
                     "Transfer Qty:", 
-                    min_value=1 if curr_stock > 0 else 0, 
-                    max_value=max(1, curr_stock), 
-                    value=1 if curr_stock > 0 else 0, 
+                    min_value=1, 
+                    value=1, 
                     step=1, 
-                    key=f"var_qty_{idx}",
-                    disabled=(curr_stock == 0)
+                    key=f"var_qty_{idx}"
                 )
 
-            if is_selected and curr_stock > 0:
+            if is_selected:
                 row_dict = row.to_dict()
                 row_dict["Transfer_Quantity"] = qty_to_send
                 selected_transfer_items.append(row_dict)
 
             st.markdown("<div style='margin: 6px 0; border-bottom: 1px dashed #e2e8f0;'></div>", unsafe_allow_html=True)
 
-        transfer_remarks = st.text_input("Remarks / Work Order Ref (Optional):", placeholder="e.g. Urgent plant replacement job...")
+        transfer_remarks = st.text_input("Remarks / Work Order Ref (Optional):", placeholder="e.g. Urgent maintenance requirement...")
 
         if st.button("🚀 Send Transfer Request", type="primary", use_container_width=True):
             if not selected_transfer_items:
-                st.error("❌ Please select at least one item with stock > 0 to transfer.")
+                st.error("❌ Please select at least one item to transfer.")
             else:
                 transfer_record = {
                     "transfer_id": f"TR-{int(time.time())}",
@@ -570,10 +571,8 @@ def show_inter_area_transfer_dialog(current_area_name):
                     "status": "PENDING"
                 }
 
-                # Push to active local queue
                 st.session_state["inter_area_transfers"].append(transfer_record)
 
-                # Attempt webhook dispatch
                 try:
                     requests.post(
                         AUTH_API_URL, 
@@ -583,11 +582,9 @@ def show_inter_area_transfer_dialog(current_area_name):
                 except Exception:
                     pass
 
-                st.success(f"✅ Transfer request sent to {target_area}! Waiting for confirmation.")
+                st.success(f"✅ Transfer request sent to {target_area}! Waiting for recipient confirmation.")
                 time.sleep(1.2)
                 st.rerun()
-
-
 # --- NOTIFICATIONS MODAL (ACCEPT / REJECT WITH COMPLETE ROW REPLICATION) ---
 @st.dialog("🔔 Notifications & Incoming Transfers", width="large")
 def show_notifications_dialog(current_area_name):
