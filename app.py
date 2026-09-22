@@ -475,12 +475,11 @@ def show_inter_area_transfer_dialog(current_area_name):
         key="transfer_search_box"
     ).strip()
 
-    # Formatted display dictionary for dropdown options
-    code_summary = (
-        valid_df.groupby("Clean_Mat")
-        .apply(lambda g: f"{g['Clean_Mat'].iloc[0]} — {str(g[name_col].iloc[0]).strip()}")
-        .to_dict()
-    )
+   # ✅ Bulletproof fix (No Pandas version conflict)
+code_summary = {}
+for mat_code, group in valid_df.groupby("Clean_Mat", as_index=False):
+    first_name = str(group[name_col].dropna().iloc[0]).strip() if not group[name_col].dropna().empty else "Instrument"
+    code_summary[mat_code] = f"{mat_code} — {first_name}"
 
     if search_term:
         filtered_matches = valid_df[
