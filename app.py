@@ -443,7 +443,8 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url, dtype=str)
     return df
 
-# --- INTER-AREA TRANSFER MODAL (TEXT SEARCH: CODE + NAME + MULTI-VARIANT) ---
+
+# --- INTER-AREA TRANSFER MODAL (PROPER INDENTATION & BULLETPROOF MAPPING) ---
 @st.dialog("🔄 Inter-Area Spares Transfer", width="large")
 def show_inter_area_transfer_dialog(current_area_name):
     cfg = AREA_CONFIGS.get(current_area_name)
@@ -475,11 +476,12 @@ def show_inter_area_transfer_dialog(current_area_name):
         key="transfer_search_box"
     ).strip()
 
-   # ✅ Bulletproof fix (No Pandas version conflict)
-code_summary = {}
-for mat_code, group in valid_df.groupby("Clean_Mat", as_index=False):
-    first_name = str(group[name_col].dropna().iloc[0]).strip() if not group[name_col].dropna().empty else "Instrument"
-    code_summary[mat_code] = f"{mat_code} — {first_name}"
+    # Safe mapping without relying on DataFrameGroupBy.apply
+    code_summary = {}
+    for mat_code, group in valid_df.groupby("Clean_Mat"):
+        names = group[name_col].dropna()
+        first_name = str(names.iloc[0]).strip() if not names.empty else "No Name"
+        code_summary[mat_code] = f"{mat_code} — {first_name}"
 
     if search_term:
         filtered_matches = valid_df[
@@ -493,10 +495,10 @@ for mat_code, group in valid_df.groupby("Clean_Mat", as_index=False):
 
     if not available_codes:
         st.warning(f"❌ No instruments found matching '{search_term}'. Try another keyword.")
-        return
+        st.stop()
 
     options_display = ["-- Select Material / Instrument --"] + [
-        code_summary.get(c, f"Code: {c}") for c in available_codes
+        code_summary.get(c, f"{c} — Item") for c in available_codes
     ]
 
     selected_option = st.selectbox(
@@ -584,6 +586,7 @@ for mat_code, group in valid_df.groupby("Clean_Mat", as_index=False):
                 st.success(f"✅ Transfer request sent to {target_area}! Waiting for confirmation.")
                 time.sleep(1.2)
                 st.rerun()
+
 
 # --- NOTIFICATIONS MODAL (ACCEPT / REJECT WITH COMPLETE ROW REPLICATION) ---
 @st.dialog("🔔 Notifications & Incoming Transfers", width="large")
