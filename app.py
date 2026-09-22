@@ -186,7 +186,7 @@ if "data_timestamp" not in st.session_state:
 if "urgent_pr_filter_state" not in st.session_state:
     st.session_state["urgent_pr_filter_state"] = False
 
-# Local cache for transfers (works in office even if Google Apps Script is firewalled)
+# Active session queue for transfers (reliable fallback for firewalled office networks)
 if "inter_area_transfers" not in st.session_state:
     st.session_state["inter_area_transfers"] = []
 
@@ -443,8 +443,7 @@ def fetch_data(url, timestamp):
     df = pd.read_csv(live_url, dtype=str)
     return df
 
-# --- INTER-AREA TRANSFER MODAL (WITH MULTI-VARIANT & COMPLETE ROW COPY) ---
-# --- INTER-AREA TRANSFER MODAL (WITH TEXT SEARCH: CODE + NAME + MULTI-VARIANT) ---
+# --- INTER-AREA TRANSFER MODAL (TEXT SEARCH: CODE + NAME + MULTI-VARIANT) ---
 @st.dialog("🔄 Inter-Area Spares Transfer", width="large")
 def show_inter_area_transfer_dialog(current_area_name):
     cfg = AREA_CONFIGS.get(current_area_name)
@@ -469,21 +468,20 @@ def show_inter_area_transfer_dialog(current_area_name):
     df_current["Clean_Mat"] = df_current[mat_col].apply(clean_material_code)
     valid_df = df_current[df_current["Clean_Mat"] != "N/A"].copy()
 
-    # 1. TEXT-BASED SEARCH INPUT (Filters by Code, Name, or Specs)
+    # Text search box: accepts material code, instrument name, or specifications
     search_term = st.text_input(
         "🔍 Search Instrument or Material Code:", 
         placeholder="Type Material Code (e.g. 104231) or Name (e.g. Rosemount, DP Transmitter)...",
         key="transfer_search_box"
     ).strip()
 
-    # Create formatted labels: "104231 — Differential Pressure Transmitter"
+    # Formatted display dictionary for dropdown options
     code_summary = (
         valid_df.groupby("Clean_Mat")
         .apply(lambda g: f"{g['Clean_Mat'].iloc[0]} — {str(g[name_col].iloc[0]).strip()}")
         .to_dict()
     )
 
-    # Filter available options based on user text query
     if search_term:
         filtered_matches = valid_df[
             valid_df["Clean_Mat"].str.contains(search_term, case=False, na=False) |
@@ -498,7 +496,6 @@ def show_inter_area_transfer_dialog(current_area_name):
         st.warning(f"❌ No instruments found matching '{search_term}'. Try another keyword.")
         return
 
-    # Dropdown with clear formatting
     options_display = ["-- Select Material / Instrument --"] + [
         code_summary.get(c, f"Code: {c}") for c in available_codes
     ]
@@ -509,15 +506,14 @@ def show_inter_area_transfer_dialog(current_area_name):
         key="transfer_mat_select"
     )
 
-    if selected_option != "-- Select Matched Instrument --":
-        # Extract the pure material code (part before the separator)
+    if selected_option != "-- Select Material / Instrument --":
         selected_mat = selected_option.split(" — ")[0].strip()
         matching_rows = valid_df[valid_df["Clean_Mat"] == selected_mat].copy()
         count_variants = len(matching_rows)
 
         st.markdown(f"**Items Found with Mat Code `{selected_mat}`:** `{count_variants} Line Item(s) / Variant(s)`")
 
-        # Complete Set Select All Toggle
+        # Select all checkbox toggle
         select_all_variants = st.checkbox("✅ Select All Variants / Complete Set", value=True, key="chk_select_all_var")
 
         selected_transfer_items = []
@@ -573,10 +569,10 @@ def show_inter_area_transfer_dialog(current_area_name):
                     "status": "PENDING"
                 }
 
-                # Push to local session state
+                # Push to active local queue
                 st.session_state["inter_area_transfers"].append(transfer_record)
 
-                # Push to Google Apps Script if reachable
+                # Attempt webhook dispatch
                 try:
                     requests.post(
                         AUTH_API_URL, 
@@ -589,10 +585,10 @@ def show_inter_area_transfer_dialog(current_area_name):
                 st.success(f"✅ Transfer request sent to {target_area}! Waiting for confirmation.")
                 time.sleep(1.2)
                 st.rerun()
-# --- NOTIFICATIONS MODAL (ACCEPT / REJECT WITH COMPLETE ROW COPY-PASTE) ---
+
+# --- NOTIFICATIONS MODAL (ACCEPT / REJECT WITH COMPLETE ROW REPLICATION) ---
 @st.dialog("🔔 Notifications & Incoming Transfers", width="large")
 def show_notifications_dialog(current_area_name):
-    # Filter pending requests for current area
     pending = [
         t for t in st.session_state["inter_area_transfers"] 
         if t["to_area"] == current_area_name and t["status"] == "PENDING"
@@ -622,7 +618,6 @@ def show_notifications_dialog(current_area_name):
                 </div>
             """, unsafe_allow_html=True)
 
-            # Preview Items in this transfer
             summary_data = []
             for itm in items:
                 summary_data.append({
@@ -638,7 +633,6 @@ def show_notifications_dialog(current_area_name):
                     t["status"] = "ACCEPTED"
                     t["resolved_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
 
-                    # Attempt Google Apps Script double-entry execution
                     try:
                         requests.post(
                             AUTH_API_URL, 
@@ -951,7 +945,6 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
             if st.button("👥 Inventory Team", key="team_btn", type="primary", use_container_width=True):
                 show_team_modal()
     else:
-        # If in an active area, show Transfer and Notifications
         if current_area and current_area in AREA_CONFIGS:
             c_left, c_tr, c_not, c_team = st.columns([3.5, 2.3, 2.2, 2.0], vertical_alignment="center")
             with c_left:
@@ -1391,7 +1384,7 @@ elif st.session_state["smart_intelligence_mode"]:
         else:
             st.warning("No inventory records available for this area.")
 
-# --- LANDING PAGE (PROTECTED BY HOD INDIVIDUAL PIN AUTHENTICATION) ---
+# --- LANDING PAGE (HOD INDIVIDUAL PIN AUTHENTICATION) ---
 elif st.session_state["selected_area"] is None:
     if not check_hod_authentication():
         st.stop()
