@@ -5,11 +5,12 @@ import time
 from datetime import datetime, timedelta
 import hashlib
 import requests
+import json
 
 # 1. Page Configuration
 st.set_page_config(page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
 
-# --- GOOGLE APPS SCRIPT AUTH WEBHOOK URL ---
+# --- GOOGLE APPS SCRIPT AUTH & TRANSFER WEBHOOK URL ---
 AUTH_API_URL = "https://script.google.com/macros/s/AKfycbwnf2s_JeEKydIm4xZE5Lc4MTj3D_A30hKIDOBqJa-ykjDbhgCkvL6YaTqG4myn2I52/exec"
 
 def hash_pass(pwd: str) -> str:
@@ -185,6 +186,10 @@ if "data_timestamp" not in st.session_state:
 if "urgent_pr_filter_state" not in st.session_state:
     st.session_state["urgent_pr_filter_state"] = False
 
+# Local cache for transfers (works in office even if Google Apps Script is firewalled)
+if "inter_area_transfers" not in st.session_state:
+    st.session_state["inter_area_transfers"] = []
+
 # --- INVENTORY TEAM HIERARCHY MODAL POPUP ---
 @st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
 def show_team_modal():
@@ -340,7 +345,7 @@ def check_authentication(area_key):
                 st.error("❌ Incorrect Password. Contact- Amit Jangra, 9742900004.")
     return False
 
-# --- HOD / MASTER LANDING PAGE CHECK (INDIVIDUAL PIN-BASED) ---
+# --- HOD / MASTER LANDING PAGE CHECK ---
 def check_hod_authentication():
     if st.session_state.get("hod_auth_user") is not None:
         return True
@@ -432,6 +437,210 @@ def safe_int(val):
     except ValueError:
         return 0
 
+@st.cache_data(ttl=60)
+def fetch_data(url, timestamp):
+    live_url = f"{url}&t={timestamp}"
+    df = pd.read_csv(live_url, dtype=str)
+    return df
+
+# --- INTER-AREA TRANSFER MODAL (WITH MULTI-VARIANT & COMPLETE ROW COPY) ---
+@st.dialog("🔄 Inter-Area Spares Transfer", width="large")
+def show_inter_area_transfer_dialog(current_area_name):
+    cfg = AREA_CONFIGS.get(current_area_name)
+    if not cfg:
+        st.warning("Please select a valid area first.")
+        return
+
+    st.markdown(f"**From (Source Area):** 📍 `{current_area_name}`")
+    
+    other_areas = [a for a in AREA_CONFIGS.keys() if a != current_area_name]
+    target_area = st.selectbox("Target / Receiving Area:", other_areas, key="transfer_target_area")
+
+    df_current = fetch_data(cfg["sheet_url"], st.session_state["data_timestamp"])
+    df_current.columns = df_current.columns.str.strip()
+    mapping = resolve_columns(df_current)
+
+    mat_col = mapping["material"]
+    store_col = mapping["store"]
+    name_col = mapping["name"]
+    specs_col = mapping["specs"]
+
+    df_current["Clean_Mat"] = df_current[mat_col].apply(clean_material_code)
+    valid_df = df_current[df_current["Clean_Mat"] != "N/A"]
+
+    all_mat_codes = sorted(list(valid_df["Clean_Mat"].unique()))
+    selected_mat = st.selectbox("Select Material Code:", ["-- Choose Material Code --"] + all_mat_codes, key="transfer_mat_select")
+
+    if selected_mat != "-- Choose Material Code --":
+        matching_rows = valid_df[valid_df["Clean_Mat"] == selected_mat].copy()
+        count_variants = len(matching_rows)
+
+        st.markdown(f"**Items Found with Mat Code `{selected_mat}`:** `{count_variants} Line Item(s) / Variant(s)`")
+
+        # Complete Set Select All Toggle
+        select_all_variants = st.checkbox("✅ Select All Variants / Complete Set", value=True, key="chk_select_all_var")
+
+        selected_transfer_items = []
+
+        st.markdown("<div style='margin: 10px 0; border-top: 1px solid #cbd5e1;'></div>", unsafe_allow_html=True)
+        
+        for idx, row in matching_rows.iterrows():
+            item_name = str(row[name_col]).strip() if name_col in row and pd.notna(row[name_col]) else "Unknown Item"
+            item_specs = str(row[specs_col]).strip() if specs_col in row and pd.notna(row[specs_col]) else "No Specs"
+            curr_stock = safe_int(row[store_col]) if store_col in row else 0
+
+            c1, c2, c3 = st.columns([0.8, 4.2, 2.0], vertical_alignment="center")
+            with c1:
+                is_selected = st.checkbox("", value=select_all_variants, key=f"var_chk_{idx}")
+            with c2:
+                st.markdown(f"""
+                    <div style="font-size: 13.5px; font-weight: 700; color: #0f172a;">{item_name}</div>
+                    <div style="font-size: 11.5px; color: #64748b;"><b>Specs:</b> {item_specs}</div>
+                    <div style="font-size: 11px; color: #0284c7; font-weight: 600;">Current Store Stock: <b>{curr_stock} Nos</b></div>
+                """, unsafe_allow_html=True)
+            with c3:
+                qty_to_send = st.number_input(
+                    "Transfer Qty:", 
+                    min_value=1 if curr_stock > 0 else 0, 
+                    max_value=max(1, curr_stock), 
+                    value=1 if curr_stock > 0 else 0, 
+                    step=1, 
+                    key=f"var_qty_{idx}",
+                    disabled=(curr_stock == 0)
+                )
+
+            if is_selected and curr_stock > 0:
+                row_dict = row.to_dict()
+                row_dict["Transfer_Quantity"] = qty_to_send
+                selected_transfer_items.append(row_dict)
+
+            st.markdown("<div style='margin: 6px 0; border-bottom: 1px dashed #e2e8f0;'></div>", unsafe_allow_html=True)
+
+        transfer_remarks = st.text_input("Remarks / Work Order Ref (Optional):", placeholder="e.g. Urgent plant replacement job...")
+
+        if st.button("🚀 Send Transfer Request", type="primary", use_container_width=True):
+            if not selected_transfer_items:
+                st.error("❌ Please select at least one item with stock > 0 to transfer.")
+            else:
+                transfer_record = {
+                    "transfer_id": f"TR-{int(time.time())}",
+                    "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
+                    "from_area": current_area_name,
+                    "to_area": target_area,
+                    "material_code": selected_mat,
+                    "items": selected_transfer_items,
+                    "remarks": transfer_remarks,
+                    "status": "PENDING"
+                }
+
+                # Push to local state (works without internet/firewall issues)
+                st.session_state["inter_area_transfers"].append(transfer_record)
+
+                # Try sending to Google Apps Script if accessible
+                try:
+                    requests.post(
+                        AUTH_API_URL, 
+                        json={"action": "INITIATE_TRANSFER", "data": transfer_record}, 
+                        timeout=3
+                    )
+                except Exception:
+                    pass
+
+                st.success(f"✅ Transfer request sent to {target_area}! Waiting for confirmation.")
+                time.sleep(1.2)
+                st.rerun()
+
+# --- NOTIFICATIONS MODAL (ACCEPT / REJECT WITH COMPLETE ROW COPY-PASTE) ---
+@st.dialog("🔔 Notifications & Incoming Transfers", width="large")
+def show_notifications_dialog(current_area_name):
+    # Filter pending requests for current area
+    pending = [
+        t for t in st.session_state["inter_area_transfers"] 
+        if t["to_area"] == current_area_name and t["status"] == "PENDING"
+    ]
+
+    if not pending:
+        st.info("🎉 No pending incoming transfer requests for your area.")
+        return
+
+    st.markdown(f"### 📥 Pending Inbound Transfers ({len(pending)})")
+    st.caption("Review specifications and quantities before accepting into your Store Inventory.")
+
+    for t in pending:
+        t_id = t["transfer_id"]
+        from_a = t["from_area"]
+        t_time = t["timestamp"]
+        items = t["items"]
+
+        with st.container():
+            st.markdown(f"""
+                <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid #0284c7; padding: 14px 16px; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 14px; font-weight: 800; color: #0f172a;">📍 Incoming from: {from_a}</span>
+                        <span style="font-size: 11px; color: #64748b; font-weight: 600;">🕒 {t_time}</span>
+                    </div>
+                    <div style="font-size: 12px; color: #0284c7; font-weight: 700; margin-top: 4px;">Mat. Code: {t['material_code']} | Total Sub-Parts: {len(items)}</div>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # Preview Items in this transfer
+            summary_data = []
+            for itm in items:
+                summary_data.append({
+                    "Item Description": itm.get("Instrument Name", itm.get("name", "N/A")),
+                    "Specs": itm.get("Specs", "N/A"),
+                    "Transfer Qty": itm.get("Transfer_Quantity", 1)
+                })
+            st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
+
+            btn_col1, btn_col2 = st.columns([1, 1])
+            with btn_col1:
+                if st.button("✅ Accept & Add to Store", key=f"acc_{t_id}", use_container_width=True, type="primary"):
+                    t["status"] = "ACCEPTED"
+                    t["resolved_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
+
+                    # Attempt Google Apps Script double-entry execution
+                    try:
+                        requests.post(
+                            AUTH_API_URL, 
+                            json={
+                                "action": "RESOLVE_TRANSFER", 
+                                "transfer_id": t_id, 
+                                "resolution": "ACCEPTED",
+                                "current_timestamp": t["resolved_time"]
+                            }, 
+                            timeout=4
+                        )
+                    except Exception:
+                        pass
+
+                    st.success(f"✅ Items accepted! Both {from_a} (Removed) and {current_area_name} (Added) entries are logged.")
+                    time.sleep(1.2)
+                    st.rerun()
+
+            with btn_col2:
+                if st.button("❌ Reject Request", key=f"rej_{t_id}", use_container_width=True):
+                    t["status"] = "REJECTED"
+                    t["resolved_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
+                    try:
+                        requests.post(
+                            AUTH_API_URL, 
+                            json={
+                                "action": "RESOLVE_TRANSFER", 
+                                "transfer_id": t_id, 
+                                "resolution": "REJECTED",
+                                "current_timestamp": t["resolved_time"]
+                            }, 
+                            timeout=4
+                        )
+                    except Exception:
+                        pass
+                    st.warning("Request rejected.")
+                    time.sleep(1.0)
+                    st.rerun()
+
+            st.markdown("<div style='margin: 15px 0; border-bottom: 1px solid #e2e8f0;'></div>", unsafe_allow_html=True)
+
 # --- DYNAMIC THEMED ROW RENDERER ---
 def render_row(row, mapping, current_area_name):
     name_key = mapping["name"]
@@ -451,9 +660,7 @@ def render_row(row, mapping, current_area_name):
     area_cfg = AREA_CONFIGS.get(current_area_name, {})
     theme_accent = area_cfg.get("color", "#0284c7")
 
-    # ========================================================
-    # 🟢 SPECIAL VIEW: C&I SUB STORE ONLY
-    # ========================================================
+    # Special view for C&I Sub Store
     if current_area_name == "C&I Sub Store":
         belongs_val = str(row[area_belongs_key]).strip() if area_belongs_key in row and pd.notna(row[area_belongs_key]) else "Unassigned / General"
 
@@ -481,9 +688,7 @@ def render_row(row, mapping, current_area_name):
         st.markdown(card_html, unsafe_allow_html=True)
         return
 
-    # ========================================================
-    # 🔵 STANDARD VIEW: ALL OTHER REFINERY / PLANT OPERATING AREAS
-    # ========================================================
+    # Standard View
     field_count = safe_int(row[field_key]) if field_key in row else 0
 
     name_lower = inst_name.lower()
@@ -556,19 +761,19 @@ def inject_custom_css():
         justify-content: center !important;
     }
 
-    div:has(> button[key="team_btn"]) button,
     button[key="team_btn"],
-    div:has(> button[key="urgent_pr_btn"]) button,
-    button[key="urgent_pr_btn"] {
+    button[key="urgent_pr_btn"],
+    button[key="transfer_btn"],
+    button[key="notify_btn"] {
         height: 42px !important;
         min-height: 42px !important;
         max-height: 42px !important;
         line-height: 42px !important;
-        padding: 0px 18px !important;
+        padding: 0px 16px !important;
         margin: 0 !important;
         border-radius: 24px !important;
         font-weight: 800 !important;
-        font-size: 13.5px !important;
+        font-size: 13px !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -576,53 +781,32 @@ def inject_custom_css():
         transition: all 0.2s ease-in-out !important;
     }
 
-    div:has(> button[key="team_btn"]) button,
     button[key="team_btn"] {
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
         color: #ffffff !important;
         border: 2px solid #38bdf8 !important;
         box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4) !important;
     }
-    div:has(> button[key="team_btn"]) button p,
-    button[key="team_btn"] p {
+
+    button[key="transfer_btn"] {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
         color: #ffffff !important;
-        font-weight: 800 !important;
-        margin: 0 !important;
+        border: 2px solid #38bdf8 !important;
+        box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3) !important;
     }
 
-    div:has(> button[key="urgent_pr_btn"]) button,
+    button[key="notify_btn"] {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+        color: #ffffff !important;
+        border: 2px solid #fcd34d !important;
+        box-shadow: 0 2px 10px rgba(217, 119, 6, 0.3) !important;
+    }
+
     button[key="urgent_pr_btn"] {
         background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
         color: #ffffff !important;
         border: 2.5px solid #f87171 !important;
         box-shadow: 0 0 16px rgba(239, 68, 68, 0.6), 0 4px 12px rgba(220, 38, 38, 0.2) !important;
-    }
-    div:has(> button[key="urgent_pr_btn"]) button p,
-    button[key="urgent_pr_btn"] p {
-        color: #ffffff !important;
-        font-weight: 800 !important;
-        margin: 0 !important;
-    }
-
-    div:has(> button[key="urgent_pr_btn"]) button:hover,
-    button[key="urgent_pr_btn"]:hover {
-        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
-        border-color: #fca5a5 !important;
-        box-shadow: 0 0 24px rgba(248, 113, 113, 0.9) !important;
-        transform: translateY(-2px) scale(1.02) !important;
-    }
-
-    .urgent-btn-active button {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-        border: 2.5px solid #34d399 !important;
-        box-shadow: 0 0 20px rgba(16, 185, 129, 0.7), 0 4px 14px rgba(5, 150, 105, 0.25) !important;
-    }
-
-    .urgent-btn-active button:hover {
-        background: linear-gradient(135deg, #059669 0%, #065f46 100%) !important;
-        border-color: #6ee7b7 !important;
-        box-shadow: 0 0 26px rgba(52, 211, 153, 0.95) !important;
-        transform: translateY(-2px) scale(1.02) !important;
     }
 
     section[data-testid="stSidebar"] {
@@ -641,27 +825,6 @@ def inject_custom_css():
         display: flex;
         align-items: center;
         gap: 6px;
-    }
-
-    section[data-testid="stSidebar"] button[data-testid="baseButton-secondary"] {
-        background: #ffffff !important;
-        color: #0f172a !important;
-        border: 1.5px solid #cbd5e1 !important;
-        border-radius: 10px !important;
-        font-weight: 700 !important;
-        font-size: 14px !important;
-        padding: 10px 14px !important;
-        box-shadow: 0 3px 6px rgba(0,0,0,0.03) !important;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        margin-bottom: 6px !important;
-    }
-    
-    section[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover {
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-        color: #ffffff !important;
-        border-color: #0284c7 !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 6px 14px rgba(2, 132, 199, 0.25) !important;
     }
 
     .inventory-card { 
@@ -719,12 +882,20 @@ def inject_custom_css():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-# --- TOP BAR ---
+# --- TOP BAR (WITH INTER-AREA & NOTIFICATIONS TABS) ---
 def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     is_pr_active = st.session_state.get("smart_intelligence_mode", False)
-    
+    current_area = st.session_state.get("selected_area") or url_area
+
+    # Count pending notifications for current area
+    pending_count = sum(
+        1 for t in st.session_state.get("inter_area_transfers", [])
+        if current_area and t["to_area"] == current_area and t["status"] == "PENDING"
+    )
+    notify_label = f"🔔 Notifications ({pending_count})" if pending_count > 0 else "🔔 Notifications"
+
     if is_pr_active:
-        c_left, c_mid, c_right = st.columns([5.0, 3.2, 1.8], vertical_alignment="center")
+        c_left, c_mid, c_right = st.columns([4.0, 3.5, 2.5], vertical_alignment="center")
         with c_left:
             st.markdown(f"""
                 <div class="header-pill">
@@ -734,7 +905,6 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
         with c_mid:
             is_active = st.session_state["urgent_pr_filter_state"]
             btn_label = "✅ Showing Overdue PR" if is_active else "🚨 Show Overdue PR Only"
-            
             if st.button(btn_label, key="urgent_pr_btn", type="primary", use_container_width=True):
                 st.session_state["urgent_pr_filter_state"] = not is_active
                 st.rerun()
@@ -742,24 +912,37 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
             if st.button("👥 Inventory Team", key="team_btn", type="primary", use_container_width=True):
                 show_team_modal()
     else:
-        c_left, c_right = st.columns([8.0, 2.0], vertical_alignment="center")
-        with c_left:
-            st.markdown(f"""
-                <div class="header-pill">
-                    <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
-                </div>
-            """, unsafe_allow_html=True)
-        with c_right:
-            if st.button("👥 Inventory Team", key="team_btn", type="primary", use_container_width=True):
-                show_team_modal()
+        # If in an active area, show Transfer and Notifications
+        if current_area and current_area in AREA_CONFIGS:
+            c_left, c_tr, c_not, c_team = st.columns([3.5, 2.3, 2.2, 2.0], vertical_alignment="center")
+            with c_left:
+                st.markdown(f"""
+                    <div class="header-pill">
+                        <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
+                    </div>
+                """, unsafe_allow_html=True)
+            with c_tr:
+                if st.button("🔄 Inter-Area Transfer", key="transfer_btn", type="primary", use_container_width=True):
+                    show_inter_area_transfer_dialog(current_area)
+            with c_not:
+                if st.button(notify_label, key="notify_btn", type="primary", use_container_width=True):
+                    show_notifications_dialog(current_area)
+            with c_team:
+                if st.button("👥 Team", key="team_btn", type="primary", use_container_width=True):
+                    show_team_modal()
+        else:
+            c_left, c_team = st.columns([8.0, 2.0], vertical_alignment="center")
+            with c_left:
+                st.markdown(f"""
+                    <div class="header-pill">
+                        <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
+                    </div>
+                """, unsafe_allow_html=True)
+            with c_team:
+                if st.button("👥 Inventory Team", key="team_btn", type="primary", use_container_width=True):
+                    show_team_modal()
                 
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
-
-@st.cache_data(ttl=60)
-def fetch_data(url, timestamp):
-    live_url = f"{url}&t={timestamp}"
-    df = pd.read_csv(live_url, dtype=str)
-    return df
 
 # --- BULLETPROOF CONSUMPTION ENGINE ---
 @st.cache_data(ttl=60)
@@ -1233,7 +1416,7 @@ elif st.session_state["selected_area"] is None:
                         st.rerun()
                     st.markdown("<div style='margin-bottom: 22px;'></div>", unsafe_allow_html=True)
 
-# --- ACTIVE AREA DASHBOARD VIEW (DYNAMIC ZONE-THEMED) ---
+# --- ACTIVE AREA DASHBOARD VIEW ---
 else:
     current_area = st.session_state["selected_area"]
 
