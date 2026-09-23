@@ -826,6 +826,7 @@ def show_substore_items_dialog(current_area_name):
 
 
 # --- SENDER MODAL: STREAMLINED BROADCAST & MATERIAL REQUEST ---
+
 @st.dialog("📢 Inter-Area Dispatch & Material Request", width="large")
 def show_broadcast_message_dialog(current_area_name):
     st.markdown(f"**Originating Area:** 📍 `{current_area_name}`")
@@ -861,6 +862,7 @@ def show_broadcast_message_dialog(current_area_name):
     )
 
     selected_material_payload = None
+    msg_body = ""
 
     # --- BLOCK A: MATERIAL REQUEST ---
     if msg_category == "📦 Material Spare Request":
@@ -918,16 +920,14 @@ def show_broadcast_message_dialog(current_area_name):
                     f"⚠️ No catalog item found for '{search_kw}'. Try another keyword."
                 )
 
-    msg_body = st.text_area(
-        "Remarks / Note for Receiver:",
-        placeholder=(
-            "Add details regarding requirement..."
-            if msg_category == "📦 Material Spare Request"
-            else "Write plant broadcast or notification..."
-        ),
-        height=75,
-        key="bc_body_text",
-    )
+    # --- BLOCK B: GENERAL MESSAGE ---
+    else:
+        msg_body = st.text_area(
+            "Message Content:",
+            placeholder="Type plant broadcast, shutdown update, or inter-area query...",
+            height=100,
+            key="bc_body_text",
+        ).strip()
 
     if st.button("🚀 Dispatch Request", type="primary", use_container_width=True):
         if (
@@ -939,8 +939,8 @@ def show_broadcast_message_dialog(current_area_name):
             )
             return
 
-        if msg_category == "📢 General Message / Announcement" and not msg_body.strip():
-            st.error("❌ Message text cannot be empty!")
+        if msg_category == "📢 General Message / Announcement" and not msg_body:
+            st.error("❌ Message cannot be empty!")
             return
 
         is_urgent = "Urgent" in priority_level
@@ -960,7 +960,7 @@ def show_broadcast_message_dialog(current_area_name):
             "to_area": target_area,
             "sender_officer": sender_label,
             "priority": "URGENT" if is_urgent else "NORMAL",
-            "message": msg_body.strip(),
+            "message": msg_body,
             "material_details": selected_material_payload,
             "seen_by": [],
         }
@@ -978,7 +978,6 @@ def show_broadcast_message_dialog(current_area_name):
         st.success(f"✅ Dispatched successfully to `{target_area}`!")
         time.sleep(1.0)
         st.rerun()
-
 
 # --- NOTIFICATIONS & INCOMING ALERTS MODAL ---
 @st.dialog("🔔 Notifications & Incoming Alerts", width="large")
