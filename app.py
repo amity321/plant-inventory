@@ -825,7 +825,7 @@ def show_substore_items_dialog(current_area_name):
     st.dataframe(df_display, use_container_width=True, hide_index=True)
 
 
-# --- PRIVACY-PRESERVED SEND MESSAGE / MATERIAL REQUEST MODAL ---
+# --- SENDER MODAL: STREAMLINED BROADCAST & MATERIAL REQUEST ---
 @st.dialog("📢 Inter-Area Dispatch & Material Request", width="large")
 def show_broadcast_message_dialog(current_area_name):
     st.markdown(f"**Originating Area:** 📍 `{current_area_name}`")
@@ -837,13 +837,14 @@ def show_broadcast_message_dialog(current_area_name):
     )
 
     other_areas = [a for a in AREA_CONFIGS.keys() if a != current_area_name]
+    target_options = ["📢 ALL AREAS (Plant-wide Broadcast)"] + other_areas
 
     c_top1, c_top2 = st.columns([1.5, 1])
     with c_top1:
-        sender_name = st.text_input(
-            "Officer Name / Designation:",
-            placeholder="e.g. Er. Amit Jangra | 10372",
-            key="bc_sender_name",
+        selected_target_opt = st.selectbox(
+            "Send Request / Message To:",
+            target_options,
+            key="bc_unified_target_select",
         )
     with c_top2:
         priority_level = st.radio(
@@ -853,21 +854,16 @@ def show_broadcast_message_dialog(current_area_name):
             key="bc_priority_radio",
         )
 
+    target_area = (
+        "ALL"
+        if "ALL AREAS" in selected_target_opt
+        else selected_target_opt.replace("📍 ", "").strip()
+    )
+
     selected_material_payload = None
-    target_area = None
 
     # --- BLOCK A: MATERIAL REQUEST ---
     if msg_category == "📦 Material Spare Request":
-        st.markdown(
-            """
-            <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; border-radius: 8px; padding: 10px 14px; margin: 10px 0;">
-                <div style="font-weight: 700; color: #0f172a; font-size: 13px;">🔍 Master Catalog Lookup</div>
-                <div style="font-size: 11.5px; color: #64748b;">Search the standardized instrument description or material code from the central database.</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
         search_kw = st.text_input(
             "Type Material Code or Instrument Name:",
             placeholder="e.g. 5040012 or RTD or Pressure Transmitter...",
@@ -899,55 +895,33 @@ def show_broadcast_message_dialog(current_area_name):
                     unsafe_allow_html=True,
                 )
 
-                c_tgt, c_qty = st.columns([1.6, 1])
-                with c_tgt:
-                    target_area = st.selectbox(
-                        "Send Spare Request To (Target Area / Store):",
-                        other_areas,
-                        key="target_area_mat_req",
-                    )
+                c_qty, c_purp = st.columns([1, 2.5])
                 with c_qty:
                     req_qty = st.number_input(
                         "Required Quantity (Nos):", min_value=1, max_value=50, value=1
                     )
-
-                req_purpose = st.text_input(
-                    "Tag No. / Plant Location / Purpose:",
-                    placeholder="e.g. Breakdown replacement at Ball Mill #2",
-                )
-
-                target_stock_val = extract_area_stock_from_row(
-                    selected_item.get("_raw_row", {}), target_area
-                )
+                with c_purp:
+                    req_purpose = st.text_input(
+                        "Tag No. / Plant Location / Purpose:",
+                        placeholder="e.g. Breakdown replacement at Ball Mill #2",
+                    )
 
                 selected_material_payload = {
                     "material_code": selected_item["mat_code"],
                     "instrument_name": selected_item["description"],
                     "requested_qty": int(req_qty),
-                    "target_area_stock": target_stock_val,
                     "purpose": req_purpose.strip(),
+                    "_raw_row": selected_item.get("_raw_row", {}),
                 }
             else:
                 st.warning(
-                    f"⚠️ No catalog item found for '{search_kw}'. Try a different keyword."
+                    f"⚠️ No catalog item found for '{search_kw}'. Try another keyword."
                 )
-
-    # --- BLOCK B: GENERAL MESSAGE ---
-    else:
-        target_options = ["📢 ALL AREAS (Plant-wide Broadcast)"] + other_areas
-        selected_target_opt = st.selectbox(
-            "Send Message To:", target_options, key="bc_general_target_select"
-        )
-        target_area = (
-            "ALL"
-            if "ALL AREAS" in selected_target_opt
-            else selected_target_opt.replace("📍 ", "").strip()
-        )
 
     msg_body = st.text_area(
         "Remarks / Note for Receiver:",
         placeholder=(
-            "Add details regarding the requirement or urgency..."
+            "Add details regarding requirement..."
             if msg_category == "📦 Material Spare Request"
             else "Write plant broadcast or notification..."
         ),
@@ -970,6 +944,9 @@ def show_broadcast_message_dialog(current_area_name):
             return
 
         is_urgent = "Urgent" in priority_level
+        sender_label = AREA_CONFIGS.get(current_area_name, {}).get(
+            "manager", f"{current_area_name} Incharge"
+        )
 
         broadcast_record = {
             "msg_id": f"MSG-{int(time.time())}",
@@ -981,7 +958,7 @@ def show_broadcast_message_dialog(current_area_name):
             "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
             "from_area": current_area_name,
             "to_area": target_area,
-            "sender_officer": sender_name.strip() if sender_name else "Area Incharge",
+            "sender_officer": sender_label,
             "priority": "URGENT" if is_urgent else "NORMAL",
             "message": msg_body.strip(),
             "material_details": selected_material_payload,
@@ -989,7 +966,6 @@ def show_broadcast_message_dialog(current_area_name):
         }
 
         GLOBAL_MESSAGES.append(broadcast_record)
-
         try:
             requests.post(
                 AUTH_API_URL,
@@ -999,7 +975,7 @@ def show_broadcast_message_dialog(current_area_name):
         except Exception:
             pass
 
-        st.success(f"✅ Request dispatched successfully to `{target_area}`!")
+        st.success(f"✅ Dispatched successfully to `{target_area}`!")
         time.sleep(1.0)
         st.rerun()
 
@@ -1052,9 +1028,14 @@ def show_notifications_dialog(current_area_name):
 
         mat_block_html = ""
         if is_mat_req and mat_info:
-            area_stock = mat_info.get("target_area_stock", 0)
-            stock_badge_col = "#15803d" if area_stock > 0 else "#dc2626"
+            raw_row_data = mat_info.get("_raw_row", {})
+            area_stock = (
+                extract_area_stock_from_row(raw_row_data, current_area_name)
+                if raw_row_data
+                else mat_info.get("target_area_stock", 0)
+            )
 
+            stock_badge_col = "#15803d" if area_stock > 0 else "#dc2626"
             mat_block_html = f"""
             <div style="background: #ffffff; border: 1.5px solid #86efac; border-radius: 8px; padding: 12px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 6px; margin-bottom: 6px;">
@@ -2205,7 +2186,7 @@ else:
                 <h1 style="color: #0f172a !important; margin: 4px 0 0 0; font-size: 24px; font-weight: 800;">
                     🏭 {config['title']}
                 </h1>
-                <p style="color: #475569 !important; margin: 4px 0 0 0; font-size: 13px; font-weight: 500;">
+                <p style="color: #475569 !important; margin-top: 4px; font-size: 13px; font-weight: 500;">
                     Live Spares Tracking Sheet &bull; Managed by <span style="color: {theme_accent}; font-weight: 700;">{manager_name} (Inventory Team, C&I)</span>
                 </p>
             </div>
