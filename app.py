@@ -980,6 +980,7 @@ def show_broadcast_message_dialog(current_area_name):
 
 
 # --- NOTIFICATIONS & INCOMING ALERTS MODAL ---
+# --- NOTIFICATIONS & INCOMING ALERTS MODAL ---
 @st.dialog("🔔 Notifications & Incoming Alerts", width="large")
 def show_notifications_dialog(current_area_name):
     active_messages = []
@@ -1052,8 +1053,7 @@ def show_notifications_dialog(current_area_name):
                     </div>
                 </div>
                 <div style="font-size: 12px; color: #475569; line-height: 1.6;">
-                    <b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{mat_info.get('material_code', 'N/A')}</span>
-                    {purpose_line}
+                    <b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{mat_info.get('material_code', 'N/A')}</span>{purpose_line}
                 </div>
             </div>
             """
@@ -1192,8 +1192,6 @@ def show_notifications_dialog(current_area_name):
             "<div style='margin: 8px 0; border-bottom: 1px dashed #cbd5e1;'></div>",
             unsafe_allow_html=True,
         )
-
-
 # --- DYNAMIC THEMED ROW RENDERER ---
 def render_row(row, mapping, current_area_name):
     name_key = mapping["name"]
