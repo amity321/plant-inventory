@@ -808,39 +808,53 @@ def show_broadcast_message_dialog(current_area_name):
     st.rerun()
 
 
-# --- NOTIFICATIONS MODAL (INCLUDES SEEN/DISMISS LOGIC) ---
+# --- NOTIFICATIONS MODAL (WITH DIRECT INLINE REPLY & SEEN WORKFLOW) ---
 @st.dialog("🔔 Notifications & Incoming Alerts", width="large")
 def show_notifications_dialog(current_area_name):
-  # Unread / Pending alerts (Direct messages + Broadcasts + Spares transfers)
-  pending = [
+  # Session state initialization for replying to a message
+  if "replying_to_msg_id" not in st.session_state:
+    st.session_state["replying_to_msg_id"] = None
+
+  # Filter active unread messages
+  active_messages = [
       t
       for t in GLOBAL_TRANSFERS
-      if (t["to_area"] == current_area_name or t["to_area"] == "ALL")
-      and t["status"] == "PENDING"
+      if t.get("type") == "MESSAGE"
+      and (t["to_area"] == current_area_name or t["to_area"] == "ALL")
+      and t.get("status") == "PENDING"
       and t.get("from_area") != current_area_name
   ]
 
-  if not pending:
+  # Filter incoming hardware spares transfers
+  pending_transfers = [
+      t
+      for t in GLOBAL_TRANSFERS
+      if t.get("type") != "MESSAGE"
+      and t["to_area"] == current_area_name
+      and t["status"] == "PENDING"
+  ]
+
+  if not active_messages and not pending_transfers:
     st.info("🎉 No pending transfer requests or unread messages for your area.")
     return
 
-  messages = [t for t in pending if t.get("type") == "MESSAGE"]
-  transfers = [t for t in pending if t.get("type") != "MESSAGE"]
+  # =========================================================
+  # 1. MESSAGES & ALERTS WITH QUICK REPLY OPTION
+  # =========================================================
+  if active_messages:
+    st.markdown(f"### 💬 New Area Messages & Alerts ({len(active_messages)})")
 
-  # --- 1. MESSAGES & BROADCAST FEED ---
-  if messages:
-    st.markdown(f"### 💬 New Area Messages & Alerts ({len(messages)})")
-    for m in messages:
+    for m in active_messages:
       m_id = m["transfer_id"]
       from_a = m["from_area"]
       m_time = m["timestamp"]
       is_urg = m.get("priority") == "URGENT"
+
       target_tag = (
           "📢 [Plant-wide Broadcast]"
           if m["to_area"] == "ALL"
-          else "📍 [Private Direct Message]"
+          else "📍 [Private Message to You]"
       )
-
       border_col = "#ef4444" if is_urg else "#0284c7"
       badge_bg = "#fee2e2" if is_urg else "#e0f2fe"
       badge_color = "#b91c1c" if is_urg else "#0369a1"
@@ -849,10 +863,15 @@ def show_notifications_dialog(current_area_name):
           f"""
                 <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid {border_col}; padding: 12px 16px; border-radius: 10px; margin-bottom: 8px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 13.5px; font-weight: 800; color: #0f172a;">📍 From: {from_a} <span style="font-size: 11px; font-weight: 600; color: {badge_color}; background: {badge_bg}; padding: 2px 8px; border-radius: 12px; margin-left: 6px;">{target_tag}</span></span>
+                        <span style="font-size: 13.5px; font-weight: 800; color: #0f172a;">
+                            📍 From: {from_a} 
+                            <span style="font-size: 11px; font-weight: 600; color: {badge_color}; background: {badge_bg}; padding: 2px 8px; border-radius: 12px; margin-left: 6px;">
+                                {target_tag}
+                            </span>
+                        </span>
                         <span style="font-size: 11px; color: #64748b; font-weight: 600;">🕒 {m_time}</span>
                     </div>
-                    <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;"><b>Sent by:</b> {m.get('sender_officer', 'Area Desk')}</div>
+                    <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;"><b>Sent by:</b> {m.get('sender_officer', 'Area Incharge')}</div>
                     <div style="font-size: 13px; color: #1e293b; margin-top: 8px; background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 3px solid #94a3b8; line-height: 1.4;">
                         {m['message']}
                     </div>
@@ -861,10 +880,25 @@ def show_notifications_dialog(current_area_name):
           unsafe_allow_html=True,
       )
 
-      c_seen1, c_seen2 = st.columns([3.5, 1.5])
-      with c_seen2:
+      # --- ACTION BUTTONS: SEEN & REPLY ---
+      btn_c1, btn_c2, btn_c3 = st.columns([2.5, 1.2, 1.2])
+
+      with btn_c2:
         if st.button(
-            "👁️ Mark as Seen",
+            "↩️ Reply",
+            key=f"reply_toggle_{m_id}",
+            use_container_width=True,
+            type="secondary",
+        ):
+          if st.session_state["replying_to_msg_id"] == m_id:
+            st.session_state["replying_to_msg_id"] = None
+          else:
+            st.session_state["replying_to_msg_id"] = m_id
+          st.rerun()
+
+      with btn_c3:
+        if st.button(
+            "👁️ Seen",
             key=f"seen_{m_id}",
             use_container_width=True,
             type="primary",
@@ -873,6 +907,7 @@ def show_notifications_dialog(current_area_name):
           m["seen_by"] = current_area_name
           m["seen_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
 
+          # Webhook call for backend persistence
           try:
             requests.post(
                 AUTH_API_URL,
@@ -886,22 +921,106 @@ def show_notifications_dialog(current_area_name):
           except Exception:
             pass
 
+          if st.session_state["replying_to_msg_id"] == m_id:
+            st.session_state["replying_to_msg_id"] = None
           st.rerun()
 
+      # --- EXPANDABLE INLINE REPLY FORM ---
+      if st.session_state.get("replying_to_msg_id") == m_id:
+        with st.container():
+          st.markdown(
+              f"<div style='margin-left: 15px; padding: 12px; background: #f1f5f9; border-left: 3px solid #0284c7; border-radius: 8px; margin-bottom: 12px;'>"
+              f"<b style='font-size: 12px; color: #0284c7;'>Replying to {from_a}:</b>",
+              unsafe_allow_html=True,
+          )
+
+          reply_text = st.text_area(
+              "Your Reply:",
+              placeholder=f"Type reply back to {from_a}...",
+              key=f"rep_text_{m_id}",
+              height=80,
+          )
+
+          col_r1, col_r2 = st.columns([1, 4])
+          with col_r1:
+            if st.button(
+                "🚀 Send Reply",
+                key=f"send_reply_btn_{m_id}",
+                type="primary",
+                use_container_width=True,
+            ):
+              clean_reply = reply_text.strip()
+              if not clean_reply:
+                st.error("Reply text cannot be empty!")
+              else:
+                # 1. Naya Reply message record
+                reply_record = {
+                    "transfer_id": f"MSG-{int(time.time())}",
+                    "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
+                    "from_area": current_area_name,
+                    "to_area": from_a,  # Direct return reply to original sender
+                    "type": "MESSAGE",
+                    "sender_officer": "Area Reply",
+                    "priority": "NORMAL",
+                    "message": (
+                        f"↩️ Re: [{m['message'][:40]}...] -> {clean_reply}"
+                    ),
+                    "status": "PENDING",
+                }
+                GLOBAL_TRANSFERS.append(reply_record)
+
+                # 2. Original message ko auto-mark as SEEN taaki pending se hat jaye
+                m["status"] = "SEEN"
+                m["seen_by"] = current_area_name
+                m["seen_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
+
+                # Webhook sync
+                try:
+                  requests.post(
+                      AUTH_API_URL,
+                      json={
+                          "action": "INTERAREA_BROADCAST",
+                          "data": reply_record,
+                      },
+                      timeout=3,
+                  )
+                  requests.post(
+                      AUTH_API_URL,
+                      json={
+                          "action": "RESOLVE_MESSAGE",
+                          "transfer_id": m_id,
+                          "seen_by": current_area_name,
+                      },
+                      timeout=3,
+                  )
+                except Exception:
+                  pass
+
+                st.session_state["replying_to_msg_id"] = None
+                st.success(f"✅ Reply sent to {from_a}!")
+                time.sleep(1.0)
+                st.rerun()
+
+          st.markdown("</div>", unsafe_allow_html=True)
+
+      st.markdown(
+          "<div style='margin: 10px 0; border-bottom: 1px dashed #cbd5e1;'></div>",
+          unsafe_allow_html=True,
+      )
+
     st.markdown(
-        "<div style='margin: 15px 0; border-top: 2px dashed #cbd5e1;'></div>",
+        "<div style='margin: 18px 0; border-top: 2px dashed #cbd5e1;'></div>",
         unsafe_allow_html=True,
     )
 
-  # --- 2. HARDWARE SPARES TRANSFERS ---
-  if transfers:
-    st.markdown(f"### 📥 Pending Inbound Spares Transfers ({len(transfers)})")
-    st.caption(
-        "Review specifications and quantities before accepting into your Store"
-        " Inventory."
+  # =========================================================
+  # 2. HARDWARE SPARES TRANSFERS (EXISTING WORKFLOW)
+  # =========================================================
+  if pending_transfers:
+    st.markdown(
+        f"### 📥 Pending Inbound Spares Transfers ({len(pending_transfers)})"
     )
-
-    for t in transfers:
+    for t in pending_transfers:
       t_id = t["transfer_id"]
       from_a = t["from_area"]
       t_time = t["timestamp"]
@@ -910,7 +1029,7 @@ def show_notifications_dialog(current_area_name):
       with st.container():
         st.markdown(
             f"""
-                    <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid #0284c7; padding: 14px 16px; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                    <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid #0284c7; padding: 14px 16px; border-radius: 10px; margin-bottom: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-size: 14px; font-weight: 800; color: #0f172a;">📍 Incoming from: {from_a}</span>
                             <span style="font-size: 11px; color: #64748b; font-weight: 600;">🕒 {t_time}</span>
@@ -946,7 +1065,6 @@ def show_notifications_dialog(current_area_name):
           ):
             t["status"] = "ACCEPTED"
             t["resolved_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
-
             try:
               requests.post(
                   AUTH_API_URL,
@@ -960,7 +1078,6 @@ def show_notifications_dialog(current_area_name):
               )
             except Exception:
               pass
-
             st.success(
                 f"✅ Items accepted! Both {from_a} (Removed) and"
                 f" {current_area_name} (Added) entries are logged."
@@ -996,7 +1113,6 @@ def show_notifications_dialog(current_area_name):
             " #e2e8f0;'></div>",
             unsafe_allow_html=True,
         )
-
 
 # --- DYNAMIC THEMED ROW RENDERER ---
 def render_row(row, mapping, current_area_name):
