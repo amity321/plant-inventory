@@ -812,15 +812,23 @@ def show_broadcast_message_dialog(current_area_name):
 # --- NOTIFICATIONS MODAL (INDEPENDENT SEEN + ZERO-LAG INLINE REPLY) ---
 @st.dialog("🔔 Notifications & Incoming Alerts", width="large")
 def show_notifications_dialog(current_area_name):
-  # Messages filter: current area ke seen_by list me nahi hona chahiye
-  active_messages = [
-      t
-      for t in GLOBAL_TRANSFERS
-      if t.get("type") == "MESSAGE"
-      and (t["to_area"] == current_area_name or t["to_area"] == "ALL")
-      and current_area_name not in t.get("seen_by", [])
-      and t.get("from_area") != current_area_name
-  ]
+  # Messages filter: safe check agar seen_by list na ho
+  active_messages = []
+  for t in GLOBAL_TRANSFERS:
+    if t.get("type") == "MESSAGE":
+      is_target = t["to_area"] == current_area_name or t["to_area"] == "ALL"
+      not_self = t.get("from_area") != current_area_name
+
+      # Safe seen_by checking
+      seen_list = (
+          t.get("seen_by")
+          if isinstance(t.get("seen_by"), list)
+          else ([t.get("seen_by")] if t.get("seen_by") else [])
+      )
+      is_not_seen = current_area_name not in seen_list
+
+      if is_target and not_self and is_not_seen:
+        active_messages.append(t)
 
   # Spares transfers filter
   pending_transfers = [
@@ -885,8 +893,11 @@ def show_notifications_dialog(current_area_name):
             use_container_width=True,
             type="primary",
         ):
-          if "seen_by" not in m:
-            m["seen_by"] = []
+          # Safe ensure list
+          if not isinstance(m.get("seen_by"), list):
+            old_val = m.get("seen_by")
+            m["seen_by"] = [old_val] if old_val else []
+
           if current_area_name not in m["seen_by"]:
             m["seen_by"].append(current_area_name)
 
@@ -924,7 +935,7 @@ def show_notifications_dialog(current_area_name):
                   "transfer_id": f"MSG-{int(time.time())}",
                   "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
                   "from_area": current_area_name,
-                  "to_area": from_a,  # Direct return reply to original sender
+                  "to_area": from_a,
                   "type": "MESSAGE",
                   "sender_officer": "Area Reply",
                   "priority": "NORMAL",
@@ -936,9 +947,11 @@ def show_notifications_dialog(current_area_name):
               }
               GLOBAL_TRANSFERS.append(reply_record)
 
-              # Auto-mark as seen for this receiver
-              if "seen_by" not in m:
-                m["seen_by"] = []
+              # Safe ensure list for auto-seen
+              if not isinstance(m.get("seen_by"), list):
+                old_val = m.get("seen_by")
+                m["seen_by"] = [old_val] if old_val else []
+
               if current_area_name not in m["seen_by"]:
                 m["seen_by"].append(current_area_name)
 
@@ -1075,7 +1088,6 @@ def show_notifications_dialog(current_area_name):
             " #e2e8f0;'></div>",
             unsafe_allow_html=True,
         )
-
 
 # --- DYNAMIC THEMED ROW RENDERER ---
 def render_row(row, mapping, current_area_name):
