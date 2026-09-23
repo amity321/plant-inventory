@@ -186,6 +186,17 @@ AREA_CONFIGS = {
 
 STOCK_MATRIX_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=868142398&single=true&output=csv"
 
+# --- SUB-STORE STRICT AREA KEYWORD MAPPING (EXCLUDES COMMON) ---
+SUBSTORE_AREA_KEYWORD_MAP = {
+    "Area 02/03": ["02/03"],
+    "Area 04/05": ["04/05"],
+    "Area 06/07": ["06/07"],
+    "Area 08": ["08"],
+    "Area 09/10": ["09/10"],
+    "SPP TG": ["SPP TG", "TG"],
+    "SPP Boiler": ["SPP Boiler", "Boiler"],
+}
+
 # --- URL QUERY PARAMETERS & ROUTING ---
 query_params = st.query_params
 url_area = query_params.get("area", None)
@@ -541,6 +552,80 @@ def fetch_data(url, timestamp):
   return df
 
 
+# --- SUB-STORE ITEMS MODAL (STRICT AREA MATCH - EXCLUDES COMMON) ---
+@st.dialog("📦 Area Spares in C&I Sub Store", width="large")
+def show_substore_items_dialog(current_area_name):
+  substore_cfg = AREA_CONFIGS.get("C&I Sub Store")
+  if not substore_cfg:
+    st.error("❌ C&I Sub Store configuration missing.")
+    return
+
+  target_tags = SUBSTORE_AREA_KEYWORD_MAP.get(
+      current_area_name, [current_area_name]
+  )
+
+  with st.spinner("Fetching Sub-Store inventory..."):
+    df_sub = fetch_data(
+        substore_cfg["sheet_url"], st.session_state["data_timestamp"]
+    )
+    df_sub.columns = df_sub.columns.str.strip()
+    mapping = resolve_columns(df_sub)
+
+    name_col = mapping["name"]
+    mat_col = mapping["material"]
+    specs_col = mapping["specs"]
+    store_col = mapping["store"]
+    belongs_col = mapping.get("area_belongs", "Belongs To Area")
+
+    # Strict Area Match Filter (Common is completely ignored)
+    def is_strict_area_match(val):
+      if pd.isna(val):
+        return False
+      val_clean = str(val).strip()
+      return any(tag.lower() in val_clean.lower() for tag in target_tags)
+
+    filtered_sub = df_sub[
+        df_sub[belongs_col].apply(is_strict_area_match)
+    ].copy()
+
+  st.markdown(f"#### 📍 Dedicated Spares Tagged for: `{current_area_name}`")
+  st.caption(
+      f"Filtering Sub-Store column '{belongs_col}' for tags:"
+      f" {', '.join([f'`{t}`' for t in target_tags])}"
+  )
+
+  if filtered_sub.empty:
+    st.info(
+        f"ℹ️ No items specifically tagged for {current_area_name} found in C&I"
+        " Sub Store."
+    )
+    return
+
+  q = st.text_input(
+      "🔍 Filter by Name, Specs, or Material Code:", "", key="sub_search_box"
+  ).strip()
+  if q:
+    filtered_sub = filtered_sub[
+        filtered_sub.astype(str)
+        .apply(lambda x: x.str.contains(q, case=False, na=False))
+        .any(axis=1)
+    ]
+
+  display_data = []
+  for _, r in filtered_sub.iterrows():
+    display_data.append({
+        "Material Code": clean_material_code(r.get(mat_col, "N/A")),
+        "Instrument Name": str(r.get(name_col, "N/A")).strip(),
+        "Specifications": str(r.get(specs_col, "N/A")).strip(),
+        "Sub-Store Stock": safe_int(r.get(store_col, 0)),
+        "Belongs To Area": str(r.get(belongs_col, "N/A")).strip(),
+    })
+
+  df_display = pd.DataFrame(display_data)
+  st.markdown(f"**Found `{len(df_display)}` exclusive items in Sub Store:**")
+  st.dataframe(df_display, use_container_width=True, hide_index=True)
+
+
 # --- BROADCAST & SINGLE AREA MESSAGE MODAL ---
 @st.dialog("📢 Send Inter-Area Message / Broadcast", width="large")
 def show_broadcast_message_dialog(current_area_name):
@@ -625,16 +710,14 @@ def show_broadcast_message_dialog(current_area_name):
     st.rerun()
 
 
-# --- NOTIFICATIONS MODAL (INDEPENDENT SEEN + INLINE REPLY) ---
-@st.dialog("🔔 Notifications & Inbound Messages", width="large")
+# --- NOTIFICATIONS MODAL (INDEPENDENT SEEN + ZERO-LAG INLINE REPLY) ---
+@st.dialog("🔔 Notifications & Incoming Alerts", width="large")
 def show_notifications_dialog(current_area_name):
-  # Filter unread messages for current area
   active_messages = []
   for m in GLOBAL_MESSAGES:
     is_target = m["to_area"] == current_area_name or m["to_area"] == "ALL"
     not_self = m.get("from_area") != current_area_name
 
-    # Safe seen_by list verification
     seen_list = (
         m.get("seen_by")
         if isinstance(m.get("seen_by"), list)
@@ -738,7 +821,7 @@ def show_notifications_dialog(current_area_name):
                 "msg_id": f"MSG-{int(time.time())}",
                 "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
                 "from_area": current_area_name,
-                "to_area": from_a,  # Direct return reply to original sender
+                "to_area": from_a,  # Direct reply back to sender
                 "sender_officer": "Area Reply",
                 "priority": "NORMAL",
                 "message": f"↩️ Re: [{m['message'][:35]}...] -> {clean_reply}",
@@ -746,7 +829,7 @@ def show_notifications_dialog(current_area_name):
             }
             GLOBAL_MESSAGES.append(reply_record)
 
-            # Auto-mark as seen for this receiver
+            # Auto-mark seen for this receiver
             if not isinstance(m.get("seen_by"), list):
               old_val = m.get("seen_by")
               m["seen_by"] = [old_val] if old_val else []
@@ -928,17 +1011,18 @@ def inject_custom_css():
 
     button[key="team_btn"],
     button[key="urgent_pr_btn"],
+    button[key="substore_items_btn"],
     button[key="broadcast_btn"],
     button[key="notify_btn"] {
         height: 42px !important;
         min-height: 42px !important;
         max-height: 42px !important;
         line-height: 42px !important;
-        padding: 0px 16px !important;
+        padding: 0px 14px !important;
         margin: 0 !important;
         border-radius: 24px !important;
         font-weight: 800 !important;
-        font-size: 13px !important;
+        font-size: 12.5px !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -951,6 +1035,13 @@ def inject_custom_css():
         color: #ffffff !important;
         border: 2px solid #38bdf8 !important;
         box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4) !important;
+    }
+
+    button[key="substore_items_btn"] {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+        color: #ffffff !important;
+        border: 2px solid #34d399 !important;
+        box-shadow: 0 2px 10px rgba(5, 150, 105, 0.3) !important;
     }
 
     button[key="broadcast_btn"] {
@@ -1053,7 +1144,6 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
   is_pr_active = st.session_state.get("smart_intelligence_mode", False)
   current_area = st.session_state.get("selected_area") or url_area
 
-  # Real-time counter: current area unread messages
   pending_count = 0
   for m in GLOBAL_MESSAGES:
     if not current_area or m.get("from_area") == current_area:
@@ -1110,42 +1200,88 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
         show_team_modal()
   else:
     if current_area and current_area in AREA_CONFIGS:
-      c_left, c_bc, c_not, c_team = st.columns(
-          [4.0, 2.0, 2.0, 2.0], vertical_alignment="center"
-      )
-      with c_left:
-        st.markdown(
-            f"""
-                    <div class="header-pill">
-                        <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
-                    </div>
-                """,
-            unsafe_allow_html=True,
+      if current_area != "C&I Sub Store":
+        c_left, c_sub, c_bc, c_not, c_team = st.columns(
+            [3.2, 2.0, 1.8, 1.8, 1.6], vertical_alignment="center"
         )
-      with c_bc:
-        if st.button(
-            "📢 Message",
-            key="broadcast_btn",
-            type="primary",
-            use_container_width=True,
-        ):
-          show_broadcast_message_dialog(current_area)
-      with c_not:
-        if st.button(
-            notify_label,
-            key="notify_btn",
-            type="primary",
-            use_container_width=True,
-        ):
-          show_notifications_dialog(current_area)
-      with c_team:
-        if st.button(
-            "👥 Team",
-            key="team_btn",
-            type="primary",
-            use_container_width=True,
-        ):
-          show_team_modal()
+        with c_left:
+          st.markdown(
+              f"""
+                        <div class="header-pill">
+                            <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
+                        </div>
+                    """,
+              unsafe_allow_html=True,
+          )
+        with c_sub:
+          if st.button(
+              "📦 In Sub-Store",
+              key="substore_items_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_substore_items_dialog(current_area)
+        with c_bc:
+          if st.button(
+              "📢 Message",
+              key="broadcast_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_broadcast_message_dialog(current_area)
+        with c_not:
+          if st.button(
+              notify_label,
+              key="notify_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_notifications_dialog(current_area)
+        with c_team:
+          if st.button(
+              "👥 Team",
+              key="team_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_team_modal()
+      else:
+        c_left, c_bc, c_not, c_team = st.columns(
+            [4.5, 2.0, 2.0, 1.5], vertical_alignment="center"
+        )
+        with c_left:
+          st.markdown(
+              f"""
+                        <div class="header-pill">
+                            <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
+                        </div>
+                    """,
+              unsafe_allow_html=True,
+          )
+        with c_bc:
+          if st.button(
+              "📢 Message",
+              key="broadcast_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_broadcast_message_dialog(current_area)
+        with c_not:
+          if st.button(
+              notify_label,
+              key="notify_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_notifications_dialog(current_area)
+        with c_team:
+          if st.button(
+              "👥 Team",
+              key="team_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_team_modal()
     else:
       c_left, c_team = st.columns([8.0, 2.0], vertical_alignment="center")
       with c_left:
