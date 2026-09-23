@@ -723,7 +723,7 @@ def show_inter_area_transfer_dialog(current_area_name):
         st.rerun()
 
 
-# --- NAYA MODAL: BROADCAST & SINGLE AREA MESSAGE ---
+# --- BROADCAST & SINGLE AREA MESSAGE MODAL ---
 @st.dialog("📢 Send Inter-Area Broadcast / Message", width="large")
 def show_broadcast_message_dialog(current_area_name):
   st.markdown(f"**From Area:** 📍 `{current_area_name}`")
@@ -789,6 +789,7 @@ def show_broadcast_message_dialog(current_area_name):
         ),
         "priority": "URGENT" if is_urgent else "NORMAL",
         "message": clean_msg,
+        "seen_by": [],  # Har area ka Seen status individually track hoga
         "status": "PENDING",
     }
 
@@ -808,21 +809,20 @@ def show_broadcast_message_dialog(current_area_name):
     st.rerun()
 
 
-# --- NOTIFICATIONS MODAL (NO POPUP CLOSE ON REPLY) ---
+# --- NOTIFICATIONS MODAL (INDEPENDENT SEEN + ZERO-LAG INLINE REPLY) ---
 @st.dialog("🔔 Notifications & Incoming Alerts", width="large")
 def show_notifications_dialog(current_area_name):
-  if "replying_to_msg_id" not in st.session_state:
-    st.session_state["replying_to_msg_id"] = None
-
+  # Messages filter: current area ke seen_by list me nahi hona chahiye
   active_messages = [
       t
       for t in GLOBAL_TRANSFERS
       if t.get("type") == "MESSAGE"
       and (t["to_area"] == current_area_name or t["to_area"] == "ALL")
-      and t.get("status") == "PENDING"
+      and current_area_name not in t.get("seen_by", [])
       and t.get("from_area") != current_area_name
   ]
 
+  # Spares transfers filter
   pending_transfers = [
       t
       for t in GLOBAL_TRANSFERS
@@ -875,23 +875,20 @@ def show_notifications_dialog(current_area_name):
           unsafe_allow_html=True,
       )
 
-      # Action Buttons: Seen & Reply
-      btn_c1, btn_c2, btn_c3 = st.columns([2.5, 1.2, 1.2])
+      # Action Bar: Quick Reply Expander + Direct Seen Button
+      c_reply, c_seen = st.columns([3.6, 1.4], vertical_alignment="center")
 
-      with btn_c2:
-        # Toggle button bina st.rerun() ke state switch karega
-        if st.button("↩️ Reply", key=f"reply_toggle_{m_id}", use_container_width=True):
-          if st.session_state["replying_to_msg_id"] == m_id:
-            st.session_state["replying_to_msg_id"] = None
-          else:
-            st.session_state["replying_to_msg_id"] = m_id
-          # Yahan se st.rerun() hata diya hai - modal open rahega
-
-      with btn_c3:
-        if st.button("👁️ Seen", key=f"seen_{m_id}", use_container_width=True, type="primary"):
-          m["status"] = "SEEN"
-          m["seen_by"] = current_area_name
-          m["seen_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
+      with c_seen:
+        if st.button(
+            "👁️ Seen",
+            key=f"seen_{m_id}",
+            use_container_width=True,
+            type="primary",
+        ):
+          if "seen_by" not in m:
+            m["seen_by"] = []
+          if current_area_name not in m["seen_by"]:
+            m["seen_by"].append(current_area_name)
 
           try:
             requests.post(
@@ -906,54 +903,52 @@ def show_notifications_dialog(current_area_name):
           except Exception:
             pass
 
-          if st.session_state["replying_to_msg_id"] == m_id:
-            st.session_state["replying_to_msg_id"] = None
           st.rerun()
 
-      # Inline Reply Box
-      if st.session_state.get("replying_to_msg_id") == m_id:
-        st.markdown(
-            f"<div style='margin-left: 10px; padding: 10px; background: #f1f5f9; border-left: 3px solid #0284c7; border-radius: 6px; margin-top: 6px;'>"
-            f"<span style='font-size: 12px; font-weight: 700; color: #0284c7;'>Replying to {from_a}:</span>",
-            unsafe_allow_html=True,
-        )
-
-        reply_text = st.text_input(
-            "Reply Message:",
-            placeholder=f"Type message for {from_a} and press Send...",
-            key=f"rep_text_{m_id}",
-            label_visibility="collapsed",
-        )
-
-        c_send1, c_send2 = st.columns([1, 4])
-        with c_send1:
-          if st.button("🚀 Send", key=f"send_reply_btn_{m_id}", type="primary", use_container_width=True):
+      with c_reply:
+        with st.expander(f"↩️ Reply to {from_a}"):
+          reply_text = st.text_input(
+              "Reply Text:",
+              placeholder=f"Type reply back to {from_a}...",
+              key=f"rep_{m_id}",
+              label_visibility="collapsed",
+          )
+          if st.button(
+              "🚀 Send Reply", key=f"send_{m_id}", use_container_width=True
+          ):
             clean_reply = reply_text.strip()
             if not clean_reply:
-              st.error("Reply empty nahi ho sakta!")
+              st.error("Reply text cannot be empty!")
             else:
               reply_record = {
                   "transfer_id": f"MSG-{int(time.time())}",
                   "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
                   "from_area": current_area_name,
-                  "to_area": from_a,
+                  "to_area": from_a,  # Direct return reply to original sender
                   "type": "MESSAGE",
                   "sender_officer": "Area Reply",
                   "priority": "NORMAL",
-                  "message": f"↩️ Re: [{m['message'][:35]}...] -> {clean_reply}",
+                  "message": (
+                      f"↩️ Re: [{m['message'][:35]}...] -> {clean_reply}"
+                  ),
+                  "seen_by": [],
                   "status": "PENDING",
               }
               GLOBAL_TRANSFERS.append(reply_record)
 
-              # Auto-mark as seen
-              m["status"] = "SEEN"
-              m["seen_by"] = current_area_name
-              m["seen_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
+              # Auto-mark as seen for this receiver
+              if "seen_by" not in m:
+                m["seen_by"] = []
+              if current_area_name not in m["seen_by"]:
+                m["seen_by"].append(current_area_name)
 
               try:
                 requests.post(
                     AUTH_API_URL,
-                    json={"action": "INTERAREA_BROADCAST", "data": reply_record},
+                    json={
+                        "action": "INTERAREA_BROADCAST",
+                        "data": reply_record,
+                    },
                     timeout=3,
                 )
                 requests.post(
@@ -968,26 +963,25 @@ def show_notifications_dialog(current_area_name):
               except Exception:
                 pass
 
-              st.session_state["replying_to_msg_id"] = None
               st.success(f"✅ Reply sent to {from_a}!")
               time.sleep(0.8)
               st.rerun()
 
-        st.markdown("</div>", unsafe_allow_html=True)
-
       st.markdown(
-          "<div style='margin: 10px 0; border-bottom: 1px dashed #cbd5e1;'></div>",
+          "<div style='margin: 8px 0; border-bottom: 1px dashed #cbd5e1;'></div>",
           unsafe_allow_html=True,
       )
 
     st.markdown(
-        "<div style='margin: 18px 0; border-top: 2px dashed #cbd5e1;'></div>",
+        "<div style='margin: 15px 0; border-top: 2px dashed #cbd5e1;'></div>",
         unsafe_allow_html=True,
     )
 
-  # 2. HARDWARE TRANSFERS SECTION (Unchanged)
+  # 2. HARDWARE SPARES TRANSFERS SECTION
   if pending_transfers:
-    st.markdown(f"### 📥 Pending Inbound Spares Transfers ({len(pending_transfers)})")
+    st.markdown(
+        f"### 📥 Pending Inbound Spares Transfers ({len(pending_transfers)})"
+    )
     for t in pending_transfers:
       t_id = t["transfer_id"]
       from_a = t["from_area"]
@@ -1011,15 +1005,26 @@ def show_notifications_dialog(current_area_name):
         summary_data = []
         for itm in items:
           summary_data.append({
-              "Item Description": itm.get("Instrument Name", itm.get("name", "N/A")),
+              "Item Description": itm.get(
+                  "Instrument Name", itm.get("name", "N/A")
+              ),
               "Specs": itm.get("Specs", "N/A"),
               "Transfer Qty": itm.get("Transfer_Quantity", 1),
           })
-        st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
+        st.dataframe(
+            pd.DataFrame(summary_data),
+            use_container_width=True,
+            hide_index=True,
+        )
 
         btn_col1, btn_col2 = st.columns([1, 1])
         with btn_col1:
-          if st.button("✅ Accept & Add to Store", key=f"acc_{t_id}", use_container_width=True, type="primary"):
+          if st.button(
+              "✅ Accept & Add to Store",
+              key=f"acc_{t_id}",
+              use_container_width=True,
+              type="primary",
+          ):
             t["status"] = "ACCEPTED"
             t["resolved_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
             try:
@@ -1035,12 +1040,17 @@ def show_notifications_dialog(current_area_name):
               )
             except Exception:
               pass
-            st.success(f"✅ Items accepted! Both {from_a} (Removed) and {current_area_name} (Added) entries are logged.")
+            st.success(
+                f"✅ Items accepted! Both {from_a} (Removed) and"
+                f" {current_area_name} (Added) entries are logged."
+            )
             time.sleep(1.2)
             st.rerun()
 
         with btn_col2:
-          if st.button("❌ Reject Request", key=f"rej_{t_id}", use_container_width=True):
+          if st.button(
+              "❌ Reject Request", key=f"rej_{t_id}", use_container_width=True
+          ):
             t["status"] = "REJECTED"
             t["resolved_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
             try:
@@ -1060,7 +1070,12 @@ def show_notifications_dialog(current_area_name):
             time.sleep(1.0)
             st.rerun()
 
-        st.markdown("<div style='margin: 15px 0; border-bottom: 1px solid #e2e8f0;'></div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div style='margin: 15px 0; border-bottom: 1px solid"
+            " #e2e8f0;'></div>",
+            unsafe_allow_html=True,
+        )
+
 
 # --- DYNAMIC THEMED ROW RENDERER ---
 def render_row(row, mapping, current_area_name):
@@ -1339,14 +1354,21 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
   current_area = st.session_state.get("selected_area") or url_area
 
   # Real-time counter from global shared queue (Transfers + Messages)
-  pending_count = sum(
-      1
-      for t in GLOBAL_TRANSFERS
-      if current_area
-      and (t["to_area"] == current_area or t["to_area"] == "ALL")
-      and t["status"] == "PENDING"
-      and t.get("from_area") != current_area
-  )
+  # Messages sirf tabhi count honge jab current_area ne unhe SEEN na kiya ho
+  pending_count = 0
+  for t in GLOBAL_TRANSFERS:
+    if not current_area or t.get("from_area") == current_area:
+      continue
+
+    if t.get("type") == "MESSAGE":
+      is_target = t["to_area"] == current_area or t["to_area"] == "ALL"
+      is_not_seen = current_area not in t.get("seen_by", [])
+      if is_target and is_not_seen:
+        pending_count += 1
+    else:
+      if t["to_area"] == current_area and t["status"] == "PENDING":
+        pending_count += 1
+
   notify_label = (
       f"🔔 Alerts ({pending_count})"
       if pending_count > 0
