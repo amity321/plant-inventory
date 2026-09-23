@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭"
 )
 
-# --- GOOGLE APPS SCRIPT AUTH & TRANSFER WEBHOOK URL ---
+# --- GOOGLE APPS SCRIPT AUTH & WEBHOOK URL ---
 AUTH_API_URL = "https://script.google.com/macros/s/AKfycbwnf2s_JeEKydIm4xZE5Lc4MTj3D_A30hKIDOBqJa-ykjDbhgCkvL6YaTqG4myn2I52/exec"
 
 
@@ -222,13 +222,13 @@ if "urgent_pr_filter_state" not in st.session_state:
   st.session_state["urgent_pr_filter_state"] = False
 
 
-# --- SERVER-LEVEL SHARED PERSISTENT MEMORY ---
+# --- SERVER-LEVEL SHARED PERSISTENT MEMORY FOR MESSAGES ---
 @st.cache_resource
-def get_global_transfers():
+def get_global_messages():
   return []
 
 
-GLOBAL_TRANSFERS = get_global_transfers()
+GLOBAL_MESSAGES = get_global_messages()
 
 
 # --- INVENTORY TEAM HIERARCHY MODAL POPUP ---
@@ -541,190 +541,8 @@ def fetch_data(url, timestamp):
   return df
 
 
-# --- INTER-AREA TRANSFER MODAL ---
-@st.dialog("🔄 Inter-Area Spares Transfer", width="large")
-def show_inter_area_transfer_dialog(current_area_name):
-  cfg = AREA_CONFIGS.get(current_area_name)
-  if not cfg:
-    st.warning("Please select a valid area first.")
-    return
-
-  st.markdown(f"**From (Source Area):** 📍 `{current_area_name}`")
-
-  other_areas = [a for a in AREA_CONFIGS.keys() if a != current_area_name]
-  target_area = st.selectbox(
-      "Target / Receiving Area:", other_areas, key="transfer_target_area"
-  )
-
-  df_current = fetch_data(
-      cfg["sheet_url"], st.session_state["data_timestamp"]
-  )
-  df_current.columns = df_current.columns.str.strip()
-  mapping = resolve_columns(df_current)
-
-  mat_col = mapping["material"]
-  store_col = mapping["store"]
-  name_col = mapping["name"]
-  specs_col = mapping["specs"]
-
-  df_current["Clean_Mat"] = df_current[mat_col].apply(clean_material_code)
-  valid_df = df_current[df_current["Clean_Mat"] != "N/A"].copy()
-
-  search_term = st.text_input(
-      "🔍 Search Instrument or Material Code:",
-      placeholder=(
-          "Type Material Code or Name (e.g. 104231, Rosemount, RTD)..."
-      ),
-      key="transfer_search_box",
-  ).strip()
-
-  if not search_term:
-    st.info(
-        "💡 Start typing a Material Code or Instrument Name above to find items."
-    )
-    return
-
-  filtered_matches = valid_df[
-      valid_df["Clean_Mat"].str.contains(search_term, case=False, na=False)
-      | valid_df[name_col]
-          .astype(str)
-          .str.contains(search_term, case=False, na=False)
-      | valid_df[specs_col]
-          .astype(str)
-          .str.contains(search_term, case=False, na=False)
-  ]
-  available_codes = sorted(list(filtered_matches["Clean_Mat"].unique()))
-
-  if not available_codes:
-    st.warning(
-        f"❌ No instruments found matching '{search_term}'. Try another"
-        " keyword."
-    )
-    return
-
-  code_summary = {}
-  for mat_code, group in filtered_matches.groupby("Clean_Mat"):
-    names = group[name_col].dropna()
-    first_name = str(names.iloc[0]).strip() if not names.empty else "Instrument"
-    code_summary[mat_code] = f"{mat_code} — {first_name}"
-
-  options_display = ["-- Select Matched Instrument --"] + [
-      code_summary.get(c, f"{c} — Item") for c in available_codes
-  ]
-
-  selected_option = st.selectbox(
-      "Select Instrument:", options_display, key="transfer_mat_select"
-  )
-
-  if selected_option != "-- Select Matched Instrument --":
-    selected_mat = selected_option.split(" — ")[0].strip()
-    matching_rows = valid_df[valid_df["Clean_Mat"] == selected_mat].copy()
-    count_variants = len(matching_rows)
-
-    if count_variants > 1:
-      st.markdown(f"**Found `{count_variants}` Sub-Parts / Line Items:**")
-      select_all_variants = st.checkbox(
-          "✅ Select All (Complete Set)", value=True, key="chk_select_all_var"
-      )
-    else:
-      select_all_variants = True
-
-    selected_transfer_items = []
-    st.markdown(
-        "<div style='margin: 10px 0; border-top: 1px solid #cbd5e1;'></div>",
-        unsafe_allow_html=True,
-    )
-
-    for idx, row in matching_rows.iterrows():
-      item_name = (
-          str(row[name_col]).strip()
-          if name_col in row and pd.notna(row[name_col])
-          else "Unknown Item"
-      )
-      item_specs = (
-          str(row[specs_col]).strip()
-          if specs_col in row and pd.notna(row[specs_col])
-          else "No Specs"
-      )
-
-      c1, c2, c3 = st.columns([0.8, 4.4, 1.8], vertical_alignment="center")
-      with c1:
-        is_selected = (
-            st.checkbox("", value=select_all_variants, key=f"var_chk_{idx}")
-            if count_variants > 1
-            else True
-        )
-      with c2:
-        st.markdown(
-            f"""
-                <div style="font-size: 13.5px; font-weight: 700; color: #0f172a;">{item_name}</div>
-                <div style="font-size: 11.5px; color: #64748b;"><b>Specs:</b> {item_specs}</div>
-            """,
-            unsafe_allow_html=True,
-        )
-      with c3:
-        qty_to_send = st.number_input(
-            "Transfer Qty:",
-            min_value=1,
-            value=1,
-            step=1,
-            key=f"var_qty_{idx}",
-        )
-
-      if is_selected:
-        row_dict = row.to_dict()
-        row_dict["Transfer_Quantity"] = qty_to_send
-        selected_transfer_items.append(row_dict)
-
-      st.markdown(
-          "<div style='margin: 6px 0; border-bottom: 1px dashed #e2e8f0;'></div>",
-          unsafe_allow_html=True,
-      )
-
-    transfer_remarks = st.text_input(
-        "Remarks / Work Order Ref (Optional):",
-        placeholder="e.g. Urgent plant maintenance requirement...",
-    )
-
-    if st.button(
-        "🚀 Send Transfer Request", type="primary", use_container_width=True
-    ):
-      if not selected_transfer_items:
-        st.error("❌ Please select at least one item to transfer.")
-      else:
-        transfer_record = {
-            "transfer_id": f"TR-{int(time.time())}",
-            "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
-            "from_area": current_area_name,
-            "to_area": target_area,
-            "type": "TRANSFER",
-            "material_code": selected_mat,
-            "items": selected_transfer_items,
-            "remarks": transfer_remarks,
-            "status": "PENDING",
-        }
-
-        GLOBAL_TRANSFERS.append(transfer_record)
-
-        try:
-          requests.post(
-              AUTH_API_URL,
-              json={"action": "INITIATE_TRANSFER", "data": transfer_record},
-              timeout=3,
-          )
-        except Exception:
-          pass
-
-        st.success(
-            f"✅ Transfer request sent to {target_area}! Waiting for recipient"
-            " confirmation."
-        )
-        time.sleep(1.2)
-        st.rerun()
-
-
 # --- BROADCAST & SINGLE AREA MESSAGE MODAL ---
-@st.dialog("📢 Send Inter-Area Broadcast / Message", width="large")
+@st.dialog("📢 Send Inter-Area Message / Broadcast", width="large")
 def show_broadcast_message_dialog(current_area_name):
   st.markdown(f"**From Area:** 📍 `{current_area_name}`")
 
@@ -779,21 +597,19 @@ def show_broadcast_message_dialog(current_area_name):
     is_urgent = "Urgent" in priority_level
 
     broadcast_record = {
-        "transfer_id": f"MSG-{int(time.time())}",
+        "msg_id": f"MSG-{int(time.time())}",
         "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
         "from_area": current_area_name,
         "to_area": target_area,
-        "type": "MESSAGE",
         "sender_officer": (
             sender_name.strip() if sender_name else "Area Incharge"
         ),
         "priority": "URGENT" if is_urgent else "NORMAL",
         "message": clean_msg,
-        "seen_by": [],  # Har area ka Seen status individually track hoga
-        "status": "PENDING",
+        "seen_by": [],  # Individually tracked per area
     }
 
-    GLOBAL_TRANSFERS.append(broadcast_record)
+    GLOBAL_MESSAGES.append(broadcast_record)
 
     try:
       requests.post(
@@ -809,285 +625,165 @@ def show_broadcast_message_dialog(current_area_name):
     st.rerun()
 
 
-# --- NOTIFICATIONS MODAL (INDEPENDENT SEEN + ZERO-LAG INLINE REPLY) ---
-@st.dialog("🔔 Notifications & Incoming Alerts", width="large")
+# --- NOTIFICATIONS MODAL (INDEPENDENT SEEN + INLINE REPLY) ---
+@st.dialog("🔔 Notifications & Inbound Messages", width="large")
 def show_notifications_dialog(current_area_name):
-  # Messages filter: safe check agar seen_by list na ho
+  # Filter unread messages for current area
   active_messages = []
-  for t in GLOBAL_TRANSFERS:
-    if t.get("type") == "MESSAGE":
-      is_target = t["to_area"] == current_area_name or t["to_area"] == "ALL"
-      not_self = t.get("from_area") != current_area_name
+  for m in GLOBAL_MESSAGES:
+    is_target = m["to_area"] == current_area_name or m["to_area"] == "ALL"
+    not_self = m.get("from_area") != current_area_name
 
-      # Safe seen_by checking
-      seen_list = (
-          t.get("seen_by")
-          if isinstance(t.get("seen_by"), list)
-          else ([t.get("seen_by")] if t.get("seen_by") else [])
-      )
-      is_not_seen = current_area_name not in seen_list
+    # Safe seen_by list verification
+    seen_list = (
+        m.get("seen_by")
+        if isinstance(m.get("seen_by"), list)
+        else ([m.get("seen_by")] if m.get("seen_by") else [])
+    )
+    is_not_seen = current_area_name not in seen_list
 
-      if is_target and not_self and is_not_seen:
-        active_messages.append(t)
+    if is_target and not_self and is_not_seen:
+      active_messages.append(m)
 
-  # Spares transfers filter
-  pending_transfers = [
-      t
-      for t in GLOBAL_TRANSFERS
-      if t.get("type") != "MESSAGE"
-      and t["to_area"] == current_area_name
-      and t["status"] == "PENDING"
-  ]
-
-  if not active_messages and not pending_transfers:
-    st.info("🎉 No pending transfer requests or unread messages for your area.")
+  if not active_messages:
+    st.info("🎉 No unread messages or broadcast alerts for your area.")
     return
 
-  # 1. MESSAGES SECTION
-  if active_messages:
-    st.markdown(f"### 💬 New Area Messages & Alerts ({len(active_messages)})")
+  st.markdown(f"### 💬 New Area Messages & Alerts ({len(active_messages)})")
 
-    for m in active_messages:
-      m_id = m["transfer_id"]
-      from_a = m["from_area"]
-      m_time = m["timestamp"]
-      is_urg = m.get("priority") == "URGENT"
+  for m in active_messages:
+    m_id = m["msg_id"]
+    from_a = m["from_area"]
+    m_time = m["timestamp"]
+    is_urg = m.get("priority") == "URGENT"
 
-      target_tag = (
-          "📢 [Plant-wide Broadcast]"
-          if m["to_area"] == "ALL"
-          else "📍 [Private Message to You]"
-      )
-      border_col = "#ef4444" if is_urg else "#0284c7"
-      badge_bg = "#fee2e2" if is_urg else "#e0f2fe"
-      badge_color = "#b91c1c" if is_urg else "#0369a1"
-
-      st.markdown(
-          f"""
-                <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid {border_col}; padding: 12px 16px; border-radius: 10px; margin-bottom: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 13.5px; font-weight: 800; color: #0f172a;">
-                            📍 From: {from_a} 
-                            <span style="font-size: 11px; font-weight: 600; color: {badge_color}; background: {badge_bg}; padding: 2px 8px; border-radius: 12px; margin-left: 6px;">
-                                {target_tag}
-                            </span>
-                        </span>
-                        <span style="font-size: 11px; color: #64748b; font-weight: 600;">🕒 {m_time}</span>
-                    </div>
-                    <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;"><b>Sent by:</b> {m.get('sender_officer', 'Area Incharge')}</div>
-                    <div style="font-size: 13px; color: #1e293b; margin-top: 8px; background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 3px solid #94a3b8; line-height: 1.4;">
-                        {m['message']}
-                    </div>
-                </div>
-            """,
-          unsafe_allow_html=True,
-      )
-
-      # Action Bar: Quick Reply Expander + Direct Seen Button
-      c_reply, c_seen = st.columns([3.6, 1.4], vertical_alignment="center")
-
-      with c_seen:
-        if st.button(
-            "👁️ Seen",
-            key=f"seen_{m_id}",
-            use_container_width=True,
-            type="primary",
-        ):
-          # Safe ensure list
-          if not isinstance(m.get("seen_by"), list):
-            old_val = m.get("seen_by")
-            m["seen_by"] = [old_val] if old_val else []
-
-          if current_area_name not in m["seen_by"]:
-            m["seen_by"].append(current_area_name)
-
-          try:
-            requests.post(
-                AUTH_API_URL,
-                json={
-                    "action": "RESOLVE_MESSAGE",
-                    "transfer_id": m_id,
-                    "seen_by": current_area_name,
-                },
-                timeout=3,
-            )
-          except Exception:
-            pass
-
-          st.rerun()
-
-      with c_reply:
-        with st.expander(f"↩️ Reply to {from_a}"):
-          reply_text = st.text_input(
-              "Reply Text:",
-              placeholder=f"Type reply back to {from_a}...",
-              key=f"rep_{m_id}",
-              label_visibility="collapsed",
-          )
-          if st.button(
-              "🚀 Send Reply", key=f"send_{m_id}", use_container_width=True
-          ):
-            clean_reply = reply_text.strip()
-            if not clean_reply:
-              st.error("Reply text cannot be empty!")
-            else:
-              reply_record = {
-                  "transfer_id": f"MSG-{int(time.time())}",
-                  "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
-                  "from_area": current_area_name,
-                  "to_area": from_a,
-                  "type": "MESSAGE",
-                  "sender_officer": "Area Reply",
-                  "priority": "NORMAL",
-                  "message": (
-                      f"↩️ Re: [{m['message'][:35]}...] -> {clean_reply}"
-                  ),
-                  "seen_by": [],
-                  "status": "PENDING",
-              }
-              GLOBAL_TRANSFERS.append(reply_record)
-
-              # Safe ensure list for auto-seen
-              if not isinstance(m.get("seen_by"), list):
-                old_val = m.get("seen_by")
-                m["seen_by"] = [old_val] if old_val else []
-
-              if current_area_name not in m["seen_by"]:
-                m["seen_by"].append(current_area_name)
-
-              try:
-                requests.post(
-                    AUTH_API_URL,
-                    json={
-                        "action": "INTERAREA_BROADCAST",
-                        "data": reply_record,
-                    },
-                    timeout=3,
-                )
-                requests.post(
-                    AUTH_API_URL,
-                    json={
-                        "action": "RESOLVE_MESSAGE",
-                        "transfer_id": m_id,
-                        "seen_by": current_area_name,
-                    },
-                    timeout=3,
-                )
-              except Exception:
-                pass
-
-              st.success(f"✅ Reply sent to {from_a}!")
-              time.sleep(0.8)
-              st.rerun()
-
-      st.markdown(
-          "<div style='margin: 8px 0; border-bottom: 1px dashed #cbd5e1;'></div>",
-          unsafe_allow_html=True,
-      )
+    target_tag = (
+        "📢 [Plant-wide Broadcast]"
+        if m["to_area"] == "ALL"
+        else "📍 [Private Message to You]"
+    )
+    border_col = "#ef4444" if is_urg else "#0284c7"
+    badge_bg = "#fee2e2" if is_urg else "#e0f2fe"
+    badge_color = "#b91c1c" if is_urg else "#0369a1"
 
     st.markdown(
-        "<div style='margin: 15px 0; border-top: 2px dashed #cbd5e1;'></div>",
+        f"""
+            <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid {border_col}; padding: 12px 16px; border-radius: 10px; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 13.5px; font-weight: 800; color: #0f172a;">
+                        📍 From: {from_a} 
+                        <span style="font-size: 11px; font-weight: 600; color: {badge_color}; background: {badge_bg}; padding: 2px 8px; border-radius: 12px; margin-left: 6px;">
+                            {target_tag}
+                        </span>
+                    </span>
+                    <span style="font-size: 11px; color: #64748b; font-weight: 600;">🕒 {m_time}</span>
+                </div>
+                <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;"><b>Sent by:</b> {m.get('sender_officer', 'Area Incharge')}</div>
+                <div style="font-size: 13px; color: #1e293b; margin-top: 8px; background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 3px solid #94a3b8; line-height: 1.4;">
+                    {m['message']}
+                </div>
+            </div>
+        """,
         unsafe_allow_html=True,
     )
 
-  # 2. HARDWARE SPARES TRANSFERS SECTION
-  if pending_transfers:
+    # Action Bar: Quick Reply Expander + Direct Seen Button
+    c_reply, c_seen = st.columns([3.6, 1.4], vertical_alignment="center")
+
+    with c_seen:
+      if st.button(
+          "👁️ Seen",
+          key=f"seen_{m_id}",
+          use_container_width=True,
+          type="primary",
+      ):
+        if not isinstance(m.get("seen_by"), list):
+          old_val = m.get("seen_by")
+          m["seen_by"] = [old_val] if old_val else []
+
+        if current_area_name not in m["seen_by"]:
+          m["seen_by"].append(current_area_name)
+
+        try:
+          requests.post(
+              AUTH_API_URL,
+              json={
+                  "action": "RESOLVE_MESSAGE",
+                  "msg_id": m_id,
+                  "seen_by": current_area_name,
+              },
+              timeout=3,
+          )
+        except Exception:
+          pass
+
+        st.rerun()
+
+    with c_reply:
+      with st.expander(f"↩️ Reply to {from_a}"):
+        reply_text = st.text_input(
+            "Reply Text:",
+            placeholder=f"Type reply back to {from_a}...",
+            key=f"rep_{m_id}",
+            label_visibility="collapsed",
+        )
+        if st.button(
+            "🚀 Send Reply", key=f"send_{m_id}", use_container_width=True
+        ):
+          clean_reply = reply_text.strip()
+          if not clean_reply:
+            st.error("Reply text cannot be empty!")
+          else:
+            reply_record = {
+                "msg_id": f"MSG-{int(time.time())}",
+                "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
+                "from_area": current_area_name,
+                "to_area": from_a,  # Direct return reply to original sender
+                "sender_officer": "Area Reply",
+                "priority": "NORMAL",
+                "message": f"↩️ Re: [{m['message'][:35]}...] -> {clean_reply}",
+                "seen_by": [],
+            }
+            GLOBAL_MESSAGES.append(reply_record)
+
+            # Auto-mark as seen for this receiver
+            if not isinstance(m.get("seen_by"), list):
+              old_val = m.get("seen_by")
+              m["seen_by"] = [old_val] if old_val else []
+
+            if current_area_name not in m["seen_by"]:
+              m["seen_by"].append(current_area_name)
+
+            try:
+              requests.post(
+                  AUTH_API_URL,
+                  json={
+                      "action": "INTERAREA_BROADCAST",
+                      "data": reply_record,
+                  },
+                  timeout=3,
+              )
+              requests.post(
+                  AUTH_API_URL,
+                  json={
+                      "action": "RESOLVE_MESSAGE",
+                      "msg_id": m_id,
+                      "seen_by": current_area_name,
+                  },
+                  timeout=3,
+              )
+            except Exception:
+              pass
+
+            st.success(f"✅ Reply sent to {from_a}!")
+            time.sleep(0.8)
+            st.rerun()
+
     st.markdown(
-        f"### 📥 Pending Inbound Spares Transfers ({len(pending_transfers)})"
+        "<div style='margin: 8px 0; border-bottom: 1px dashed #cbd5e1;'></div>",
+        unsafe_allow_html=True,
     )
-    for t in pending_transfers:
-      t_id = t["transfer_id"]
-      from_a = t["from_area"]
-      t_time = t["timestamp"]
-      items = t["items"]
 
-      with st.container():
-        st.markdown(
-            f"""
-                    <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid #0284c7; padding: 14px 16px; border-radius: 10px; margin-bottom: 12px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 14px; font-weight: 800; color: #0f172a;">📍 Incoming from: {from_a}</span>
-                            <span style="font-size: 11px; color: #64748b; font-weight: 600;">🕒 {t_time}</span>
-                        </div>
-                        <div style="font-size: 12px; color: #0284c7; font-weight: 700; margin-top: 4px;">Mat. Code: {t['material_code']} | Total Sub-Parts: {len(items)}</div>
-                    </div>
-                """,
-            unsafe_allow_html=True,
-        )
-
-        summary_data = []
-        for itm in items:
-          summary_data.append({
-              "Item Description": itm.get(
-                  "Instrument Name", itm.get("name", "N/A")
-              ),
-              "Specs": itm.get("Specs", "N/A"),
-              "Transfer Qty": itm.get("Transfer_Quantity", 1),
-          })
-        st.dataframe(
-            pd.DataFrame(summary_data),
-            use_container_width=True,
-            hide_index=True,
-        )
-
-        btn_col1, btn_col2 = st.columns([1, 1])
-        with btn_col1:
-          if st.button(
-              "✅ Accept & Add to Store",
-              key=f"acc_{t_id}",
-              use_container_width=True,
-              type="primary",
-          ):
-            t["status"] = "ACCEPTED"
-            t["resolved_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
-            try:
-              requests.post(
-                  AUTH_API_URL,
-                  json={
-                      "action": "RESOLVE_TRANSFER",
-                      "transfer_id": t_id,
-                      "resolution": "ACCEPTED",
-                      "current_timestamp": t["resolved_time"],
-                  },
-                  timeout=4,
-              )
-            except Exception:
-              pass
-            st.success(
-                f"✅ Items accepted! Both {from_a} (Removed) and"
-                f" {current_area_name} (Added) entries are logged."
-            )
-            time.sleep(1.2)
-            st.rerun()
-
-        with btn_col2:
-          if st.button(
-              "❌ Reject Request", key=f"rej_{t_id}", use_container_width=True
-          ):
-            t["status"] = "REJECTED"
-            t["resolved_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
-            try:
-              requests.post(
-                  AUTH_API_URL,
-                  json={
-                      "action": "RESOLVE_TRANSFER",
-                      "transfer_id": t_id,
-                      "resolution": "REJECTED",
-                      "current_timestamp": t["resolved_time"],
-                  },
-                  timeout=4,
-              )
-            except Exception:
-              pass
-            st.warning("Request rejected.")
-            time.sleep(1.0)
-            st.rerun()
-
-        st.markdown(
-            "<div style='margin: 15px 0; border-bottom: 1px solid"
-            " #e2e8f0;'></div>",
-            unsafe_allow_html=True,
-        )
 
 # --- DYNAMIC THEMED ROW RENDERER ---
 def render_row(row, mapping, current_area_name):
@@ -1232,18 +928,17 @@ def inject_custom_css():
 
     button[key="team_btn"],
     button[key="urgent_pr_btn"],
-    button[key="transfer_btn"],
     button[key="broadcast_btn"],
     button[key="notify_btn"] {
         height: 42px !important;
         min-height: 42px !important;
         max-height: 42px !important;
         line-height: 42px !important;
-        padding: 0px 14px !important;
+        padding: 0px 16px !important;
         margin: 0 !important;
         border-radius: 24px !important;
         font-weight: 800 !important;
-        font-size: 12.5px !important;
+        font-size: 13px !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -1256,13 +951,6 @@ def inject_custom_css():
         color: #ffffff !important;
         border: 2px solid #38bdf8 !important;
         box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4) !important;
-    }
-
-    button[key="transfer_btn"] {
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-        color: #ffffff !important;
-        border: 2px solid #38bdf8 !important;
-        box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3) !important;
     }
 
     button[key="broadcast_btn"] {
@@ -1365,21 +1053,22 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
   is_pr_active = st.session_state.get("smart_intelligence_mode", False)
   current_area = st.session_state.get("selected_area") or url_area
 
-  # Real-time counter from global shared queue (Transfers + Messages)
-  # Messages sirf tabhi count honge jab current_area ne unhe SEEN na kiya ho
+  # Real-time counter: current area unread messages
   pending_count = 0
-  for t in GLOBAL_TRANSFERS:
-    if not current_area or t.get("from_area") == current_area:
+  for m in GLOBAL_MESSAGES:
+    if not current_area or m.get("from_area") == current_area:
       continue
 
-    if t.get("type") == "MESSAGE":
-      is_target = t["to_area"] == current_area or t["to_area"] == "ALL"
-      is_not_seen = current_area not in t.get("seen_by", [])
-      if is_target and is_not_seen:
-        pending_count += 1
-    else:
-      if t["to_area"] == current_area and t["status"] == "PENDING":
-        pending_count += 1
+    is_target = m["to_area"] == current_area or m["to_area"] == "ALL"
+    seen_list = (
+        m.get("seen_by")
+        if isinstance(m.get("seen_by"), list)
+        else ([m.get("seen_by")] if m.get("seen_by") else [])
+    )
+    is_not_seen = current_area not in seen_list
+
+    if is_target and is_not_seen:
+      pending_count += 1
 
   notify_label = (
       f"🔔 Alerts ({pending_count})"
@@ -1421,8 +1110,8 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
         show_team_modal()
   else:
     if current_area and current_area in AREA_CONFIGS:
-      c_left, c_tr, c_bc, c_not, c_team = st.columns(
-          [3.2, 2.0, 1.8, 1.8, 1.6], vertical_alignment="center"
+      c_left, c_bc, c_not, c_team = st.columns(
+          [4.0, 2.0, 2.0, 2.0], vertical_alignment="center"
       )
       with c_left:
         st.markdown(
@@ -1433,14 +1122,6 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                 """,
             unsafe_allow_html=True,
         )
-      with c_tr:
-        if st.button(
-            "🔄 Transfer",
-            key="transfer_btn",
-            type="primary",
-            use_container_width=True,
-        ):
-          show_inter_area_transfer_dialog(current_area)
       with c_bc:
         if st.button(
             "📢 Message",
