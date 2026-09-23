@@ -1,20 +1,25 @@
-import streamlit as st
-import pandas as pd
-pd.set_option('display.max_rows', None)
+import hashlib
+import json
 import time
 from datetime import datetime, timedelta
-import hashlib
+import pandas as pd
 import requests
-import json
+import streamlit as st
+
+pd.set_option("display.max_rows", None)
 
 # 1. Page Configuration
-st.set_page_config(page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭")
+st.set_page_config(
+    page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭"
+)
 
 # --- GOOGLE APPS SCRIPT AUTH & TRANSFER WEBHOOK URL ---
 AUTH_API_URL = "https://script.google.com/macros/s/AKfycbwnf2s_JeEKydIm4xZE5Lc4MTj3D_A30hKIDOBqJa-ykjDbhgCkvL6YaTqG4myn2I52/exec"
 
+
 def hash_pass(pwd: str) -> str:
-    return hashlib.sha256(pwd.strip().encode()).hexdigest()
+  return hashlib.sha256(pwd.strip().encode()).hexdigest()
+
 
 DEFAULT_HASH = hash_pass("nalco123")
 
@@ -23,55 +28,53 @@ MASTER_AUTHORIZED_USERS = {
     "10372": {
         "name": "Er. Amit Jangra",
         "pin": "9742900004",
-        "role": "Lead Administrator"
+        "role": "Lead Administrator",
     },
-    "06505": {
-        "name": "Er. S.K. Jain",
-        "pin": "9437106841",
-        "role": "HOD (C&I)"
-    },
+    "06505": {"name": "Er. S.K. Jain", "pin": "9437106841", "role": "HOD (C&I)"},
     "08165": {
         "name": "Er. H. S. Behera",
         "pin": "9437006963",
-        "role": "Planning Cell Head"
+        "role": "Planning Cell Head",
     },
 }
 
+
 @st.cache_data(ttl=300)
 def fetch_passwords_from_sheet():
-    try:
-        res = requests.get(AUTH_API_URL, timeout=8)
-        if res.status_code == 200:
-            return res.json()
-    except Exception:
-        pass
-    return {}
+  try:
+    res = requests.get(AUTH_API_URL, timeout=8)
+    if res.status_code == 200:
+      return res.json()
+  except Exception:
+    pass
+  return {}
+
 
 def update_password_in_sheet(area_key, new_password_hash):
-    try:
-        payload = {
-            "area": area_key,
-            "new_hash": new_password_hash
-        }
-        res = requests.post(
-            AUTH_API_URL, 
-            json=payload, 
-            timeout=15,
-            headers={"Content-Type": "application/json"}
-        )
-        if res.status_code in [200, 302] and ("OK" in res.text or res.status_code == 200):
-            fetch_passwords_from_sheet.clear()
-            return True, "Success"
-        return False, f"API Response: {res.text}"
-    except requests.exceptions.Timeout:
-        time.sleep(2)
-        fetch_passwords_from_sheet.clear()
-        verify_db = fetch_passwords_from_sheet()
-        if verify_db.get(area_key) == new_password_hash:
-            return True, "Success (Verified from Sheet)"
-        return False, "Request timed out. Please try once more."
-    except Exception as e:
-        return False, str(e)
+  try:
+    payload = {"area": area_key, "new_hash": new_password_hash}
+    res = requests.post(
+        AUTH_API_URL,
+        json=payload,
+        timeout=15,
+        headers={"Content-Type": "application/json"},
+    )
+    if res.status_code in [200, 302] and (
+        "OK" in res.text or res.status_code == 200
+    ):
+      fetch_passwords_from_sheet.clear()
+      return True, "Success"
+    return False, f"API Response: {res.text}"
+  except requests.exceptions.Timeout:
+    time.sleep(2)
+    fetch_passwords_from_sheet.clear()
+    verify_db = fetch_passwords_from_sheet()
+    if verify_db.get(area_key) == new_password_hash:
+      return True, "Success (Verified from Sheet)"
+    return False, "Request timed out. Please try once more."
+  except Exception as e:
+    return False, str(e)
+
 
 # --- AREA CONFIGURATIONS & ZONE THEMES ---
 AREA_CONFIGS = {
@@ -81,8 +84,12 @@ AREA_CONFIGS = {
         "zone_type": "Refinery Process Area",
         "color": "#0284c7",
         "gradient": "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
-        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv",
-        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=1345118798&single=true&output=csv"
+        "sheet_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=383890446&single=true&output=csv"
+        ),
+        "removal_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=1345118798&single=true&output=csv"
+        ),
     },
     "Area 04/05": {
         "title": "Area 04/05 Instrumentation Inventory",
@@ -90,8 +97,12 @@ AREA_CONFIGS = {
         "zone_type": "Refinery Process Area",
         "color": "#0284c7",
         "gradient": "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
-        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZopDMRgkBThhmBF8NAXoBERx24tj7Ae2y6HlvimEHUhahXEWY8tmXoNDSM_MNlkDB7TfGpHB9I2H_/pub?gid=1836901304&single=true&output=csv",
-        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZopDMRgkBThhmBF8NAXoBERx24tj7Ae2y6HlvimEHUhahXEWY8tmXoNDSM_MNlkDB7TfGpHB9I2H_/pub?gid=1951924870&single=true&output=csv"
+        "sheet_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZopDMRgkBThhmBF8NAXoBERx24tj7Ae2y6HlvimEHUhahXEWY8tmXoNDSM_MNlkDB7TfGpHB9I2H_/pub?gid=1836901304&single=true&output=csv"
+        ),
+        "removal_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZopDMRgkBThhmBF8NAXoBERx24tj7Ae2y6HlvimEHUhahXEWY8tmXoNDSM_MNlkDB7TfGpHB9I2H_/pub?gid=1951924870&single=true&output=csv"
+        ),
     },
     "Area 06/07": {
         "title": "Area 06/07 Instrumentation Inventory",
@@ -99,8 +110,12 @@ AREA_CONFIGS = {
         "zone_type": "Refinery Process Area",
         "color": "#0284c7",
         "gradient": "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
-        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vStPdBa-nm7i9eHjSxpyrIOyyu5VJZo77E4KF3tk2R9ewp0hK58RDVYBKiW5UsRD2DxBTrafX-CfJry/pub?gid=175582315&single=true&output=csv",
-        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vStPdBa-nm7i9eHjSxpyrIOyyu5VJZo77E4KF3tk2R9ewp0hK58RDVYBKiW5UsRD2DxBTrafX-CfJry/pub?gid=1371227319&single=true&output=csv"
+        "sheet_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vStPdBa-nm7i9eHjSxpyrIOyyu5VJZo77E4KF3tk2R9ewp0hK58RDVYBKiW5UsRD2DxBTrafX-CfJry/pub?gid=175582315&single=true&output=csv"
+        ),
+        "removal_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vStPdBa-nm7i9eHjSxpyrIOyyu5VJZo77E4KF3tk2R9ewp0hK58RDVYBKiW5UsRD2DxBTrafX-CfJry/pub?gid=1371227319&single=true&output=csv"
+        ),
     },
     "Area 08": {
         "title": "Area 08 Instrumentation Inventory",
@@ -108,8 +123,12 @@ AREA_CONFIGS = {
         "zone_type": "Refinery Process Area",
         "color": "#0284c7",
         "gradient": "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
-        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMj_W_6-T0duFQ_XS8Yf9xTQPQvguuQP9P_aUwkKuiOZeT8BXSkAHeQspMlhXebcmz0ff-VZRdya-M/pub?gid=664188260&single=true&output=csv",
-        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMj_W_6-T0duFQ_XS8Yf9xTQPQvguuQP9P_aUwkKuiOZeT8BXSkAHeQspMlhXebcmz0ff-VZRdya-M/pub?gid=260669801&single=true&output=csv"
+        "sheet_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMj_W_6-T0duFQ_XS8Yf9xTQPQvguuQP9P_aUwkKuiOZeT8BXSkAHeQspMlhXebcmz0ff-VZRdya-M/pub?gid=664188260&single=true&output=csv"
+        ),
+        "removal_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMj_W_6-T0duFQ_XS8Yf9xTQPQvguuQP9P_aUwkKuiOZeT8BXSkAHeQspMlhXebcmz0ff-VZRdya-M/pub?gid=260669801&single=true&output=csv"
+        ),
     },
     "Area 09/10": {
         "title": "Area 09/10 Instrumentation Inventory",
@@ -117,8 +136,12 @@ AREA_CONFIGS = {
         "zone_type": "Refinery Process Area",
         "color": "#0284c7",
         "gradient": "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
-        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7NvVXAcew2ZWcA_kSTmCQJk6OVq3RQfqGqCZ08jGKosNmTYWprvR4JUMC3-vXI28wF6HJ1B_Wk1uo/pub?gid=87821600&single=true&output=csv",
-        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7NvVXAcew2ZWcA_kSTmCQJk6OVq3RQfqGqCZ08jGKosNmTYWprvR4JUMC3-vXI28wF6HJ1B_Wk1uo/pub?gid=1187023151&single=true&output=csv"
+        "sheet_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7NvVXAcew2ZWcA_kSTmCQJk6OVq3RQfqGqCZ08jGKosNmTYWprvR4JUMC3-vXI28wF6HJ1B_Wk1uo/pub?gid=87821600&single=true&output=csv"
+        ),
+        "removal_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7NvVXAcew2ZWcA_kSTmCQJk6OVq3RQfqGqCZ08jGKosNmTYWprvR4JUMC3-vXI28wF6HJ1B_Wk1uo/pub?gid=1187023151&single=true&output=csv"
+        ),
     },
     "SPP TG": {
         "title": "SPP TG Instrumentation Inventory",
@@ -126,8 +149,12 @@ AREA_CONFIGS = {
         "zone_type": "Steam Power Plant (SPP)",
         "color": "#d97706",
         "gradient": "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
-        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPmgZl9jEQaGMQbxeOu0Xr_GtQ2P4_twAx2qNxUOjoYSvSW27vJsUgRtQB7XtIcU-bcCulPJLX3PLA/pub?gid=974689106&single=true&output=csv",
-        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPmgZl9jEQaGMQbxeOu0Xr_GtQ2P4_twAx2qNxUOjoYSvSW27vJsUgRtQB7XtIcU-bcCulPJLX3PLA/pub?gid=900388666&single=true&output=csv"
+        "sheet_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPmgZl9jEQaGMQbxeOu0Xr_GtQ2P4_twAx2qNxUOjoYSvSW27vJsUgRtQB7XtIcU-bcCulPJLX3PLA/pub?gid=974689106&single=true&output=csv"
+        ),
+        "removal_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPmgZl9jEQaGMQbxeOu0Xr_GtQ2P4_twAx2qNxUOjoYSvSW27vJsUgRtQB7XtIcU-bcCulPJLX3PLA/pub?gid=900388666&single=true&output=csv"
+        ),
     },
     "SPP Boiler": {
         "title": "SPP Boiler Instrumentation Inventory",
@@ -135,8 +162,12 @@ AREA_CONFIGS = {
         "zone_type": "Steam Power Plant (SPP)",
         "color": "#d97706",
         "gradient": "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
-        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVTH56rybWjsWYThgCiTWzafjabniWhqHUUuXoVdqexuWIjrmvh65AtimfDlFNB5V4StSi5G4BWuKf/pub?gid=1937643350&single=true&output=csv",
-        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVTH56rybWjsWYThgCiTWzafjabniWhqHUUuXoVdqexuWIjrmvh65AtimfDlFNB5V4StSi5G4BWuKf/pub?gid=223018013&single=true&output=csv"
+        "sheet_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVTH56rybWjsWYThgCiTWzafjabniWhqHUUuXoVdqexuWIjrmvh65AtimfDlFNB5V4StSi5G4BWuKf/pub?gid=1937643350&single=true&output=csv"
+        ),
+        "removal_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVTH56rybWjsWYThgCiTWzafjabniWhqHUUuXoVdqexuWIjrmvh65AtimfDlFNB5V4StSi5G4BWuKf/pub?gid=223018013&single=true&output=csv"
+        ),
     },
     "C&I Sub Store": {
         "title": "C&I Sub Store Instrumentation Inventory",
@@ -144,9 +175,13 @@ AREA_CONFIGS = {
         "zone_type": "Central Logistics & Sub-Store",
         "color": "#16a34a",
         "gradient": "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
-        "sheet_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJUMrlU1bWLUsOt0tL-4xsBpsO2kt70Rq4am-OpMb7hsZZxe69JzLwBqT1EOLZtuU-PGkY-mx4EuZ/pub?gid=2014684236&single=true&output=csv",
-        "removal_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJUMrlU1bWLUsOt0tL-4xsBpsO2kt70Rq4am-OpMb7hsZZxe69JzLwBqT1EOLZtuU-PGkY-mx4EuZ/pub?gid=158170506&single=true&output=csv"
-    }
+        "sheet_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJUMrlU1bWLUsOt0tL-4xsBpsO2kt70Rq4am-OpMb7hsZZxe69JzLwBqT1EOLZtuU-PGkY-mx4EuZ/pub?gid=2014684236&single=true&output=csv"
+        ),
+        "removal_url": (
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJUMrlU1bWLUsOt0tL-4xsBpsO2kt70Rq4am-OpMb7hsZZxe69JzLwBqT1EOLZtuU-PGkY-mx4EuZ/pub?gid=158170506&single=true&output=csv"
+        ),
+    },
 }
 
 STOCK_MATRIX_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=868142398&single=true&output=csv"
@@ -160,43 +195,46 @@ url_pr_area = query_params.get("pr_area", None)
 is_area_direct_mode = bool(url_area and url_area in AREA_CONFIGS)
 
 if "auth_status" not in st.session_state:
-    st.session_state["auth_status"] = {}
+  st.session_state["auth_status"] = {}
 
 if "hod_auth_user" not in st.session_state:
-    st.session_state["hod_auth_user"] = None
+  st.session_state["hod_auth_user"] = None
 
 if "selected_area" not in st.session_state:
-    st.session_state["selected_area"] = url_area if is_area_direct_mode else None
+  st.session_state["selected_area"] = url_area if is_area_direct_mode else None
 
 if "smart_intelligence_mode" not in st.session_state:
-    st.session_state["smart_intelligence_mode"] = (url_view == "pr")
+  st.session_state["smart_intelligence_mode"] = url_view == "pr"
 
 if "stock_matrix_mode" not in st.session_state:
-    st.session_state["stock_matrix_mode"] = (url_view == "stock_matrix")
+  st.session_state["stock_matrix_mode"] = url_view == "stock_matrix"
 
 if "pr_selected_view" not in st.session_state:
-    if is_area_direct_mode and st.session_state["smart_intelligence_mode"]:
-        st.session_state["pr_selected_view"] = url_area
-    else:
-        st.session_state["pr_selected_view"] = url_pr_area
+  if is_area_direct_mode and st.session_state["smart_intelligence_mode"]:
+    st.session_state["pr_selected_view"] = url_area
+  else:
+    st.session_state["pr_selected_view"] = url_pr_area
 
 if "data_timestamp" not in st.session_state:
-    st.session_state["data_timestamp"] = int(time.time())
+  st.session_state["data_timestamp"] = int(time.time())
 
 if "urgent_pr_filter_state" not in st.session_state:
-    st.session_state["urgent_pr_filter_state"] = False
+  st.session_state["urgent_pr_filter_state"] = False
 
-# --- SERVER-LEVEL SHARED PERSISTENT MEMORY (Cross-Session & Refresh Safe) ---
+
+# --- SERVER-LEVEL SHARED PERSISTENT MEMORY ---
 @st.cache_resource
 def get_global_transfers():
-    return []
+  return []
+
 
 GLOBAL_TRANSFERS = get_global_transfers()
+
 
 # --- INVENTORY TEAM HIERARCHY MODAL POPUP ---
 @st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
 def show_team_modal():
-    svg_tree = """
+  svg_tree = """
     <svg viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg" style="background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border-radius: 12px; border: 1px solid #e2e8f0; width: 100%;">
       <defs>
         <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
@@ -272,433 +310,729 @@ def show_team_modal():
       </g>
     </svg>
     """
-    st.components.v1.html(svg_tree, height=600, scrolling=True)
+  st.components.v1.html(svg_tree, height=600, scrolling=True)
+
 
 # --- MODAL: CHANGE PASSWORD ---
 @st.dialog("🔑 Change Area Password")
 def change_password_dialog(area_key):
-    st.markdown(f"**Area:** `{area_key}`")
-    curr_pass = st.text_input("Current Password", type="password", key="curr_pwd_input")
-    new_pass = st.text_input("New Password", type="password", key="new_pwd_input")
-    confirm_pass = st.text_input("Confirm New Password", type="password", key="conf_pwd_input")
-    
-    if st.button("Update Password", use_container_width=True, type="primary"):
-        c_curr = curr_pass.strip()
-        c_new = new_pass.strip()
-        c_conf = confirm_pass.strip()
+  st.markdown(f"**Area:** `{area_key}`")
+  curr_pass = st.text_input(
+      "Current Password", type="password", key="curr_pwd_input"
+  )
+  new_pass = st.text_input("New Password", type="password", key="new_pwd_input")
+  confirm_pass = st.text_input(
+      "Confirm New Password", type="password", key="conf_pwd_input"
+  )
 
-        db = fetch_passwords_from_sheet()
-        stored_val = str(db.get(area_key, "")).strip()
+  if st.button("Update Password", use_container_width=True, type="primary"):
+    c_curr = curr_pass.strip()
+    c_new = new_pass.strip()
+    c_conf = confirm_pass.strip()
 
-        is_curr_valid = (
-            c_curr == stored_val or 
-            hash_pass(c_curr) == stored_val or 
-            c_curr == "nalco123" or 
-            hash_pass(c_curr) == DEFAULT_HASH
-        )
+    db = fetch_passwords_from_sheet()
+    stored_val = str(db.get(area_key, "")).strip()
 
-        if not is_curr_valid:
-            st.error("❌ Current password is incorrect!")
-        elif len(c_new) < 4:
-            st.error("⚠️ New password must be at least 4 characters long.")
-        elif c_new != c_conf:
-            st.error("❌ New passwords do not match!")
+    is_curr_valid = (
+        c_curr == stored_val
+        or hash_pass(c_curr) == stored_val
+        or c_curr == "nalco123"
+        or hash_pass(c_curr) == DEFAULT_HASH
+    )
+
+    if not is_curr_valid:
+      st.error("❌ Current password is incorrect!")
+    elif len(c_new) < 4:
+      st.error("⚠️ New password must be at least 4 characters long.")
+    elif c_new != c_conf:
+      st.error("❌ New passwords do not match!")
+    else:
+      with st.spinner("Updating password..."):
+        success, msg = update_password_in_sheet(area_key, hash_pass(c_new))
+        if success:
+          st.success("✅ Password successfully updated!")
+          time.sleep(1.2)
+          st.rerun()
         else:
-            with st.spinner("Updating password..."):
-                success, msg = update_password_in_sheet(area_key, hash_pass(c_new))
-                if success:
-                    st.success("✅ Password successfully updated!")
-                    time.sleep(1.2)
-                    st.rerun()
-                else:
-                    st.error(f"❌ Failed to update password: {msg}")
+          st.error(f"❌ Failed to update password: {msg}")
+
 
 # --- AREA ACCESS CHECK ---
 def check_authentication(area_key):
-    if not is_area_direct_mode or st.session_state.get("auth_status", {}).get(area_key, False):
-        return True
+  if not is_area_direct_mode or st.session_state.get("auth_status", {}).get(
+      area_key, False
+  ):
+    return True
 
-    st.markdown(f"""
+  st.markdown(
+      f"""
         <div style="max-width: 480px; margin: 40px auto; background: #ffffff; padding: 30px; border-radius: 14px; border: 1.5px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.04); text-align: center;">
             <div style="font-size: 36px; margin-bottom: 8px;">🔒</div>
             <h2 style="color: #0f172a; margin: 0; font-size: 22px; font-weight: 700;">Protected Area Access</h2>
             <p style="color: #64748b; font-size: 13.5px; margin-top: 6px;">Enter password to view <b>{area_key}</b> data.</p>
         </div>
-    """, unsafe_allow_html=True)
+    """,
+      unsafe_allow_html=True,
+  )
 
-    col1, col2, col3 = st.columns([1, 1.5, 1])
-    with col2:
-        pwd = st.text_input("Password", type="password", key=f"login_{area_key}", placeholder="Enter password...")
-        if st.button("Unlock Portal 🔓", use_container_width=True, type="primary"):
-            c_pwd = pwd.strip()
-            db = fetch_passwords_from_sheet()
-            stored_val = str(db.get(area_key, "")).strip()
+  col1, col2, col3 = st.columns([1, 1.5, 1])
+  with col2:
+    pwd = st.text_input(
+        "Password",
+        type="password",
+        key=f"login_{area_key}",
+        placeholder="Enter password...",
+    )
+    if st.button("Unlock Portal 🔓", use_container_width=True, type="primary"):
+      c_pwd = pwd.strip()
+      db = fetch_passwords_from_sheet()
+      stored_val = str(db.get(area_key, "")).strip()
 
-            is_valid = (
-                c_pwd == stored_val or 
-                hash_pass(c_pwd) == stored_val or 
-                c_pwd == "nalco123" or 
-                hash_pass(c_pwd) == DEFAULT_HASH
-            )
+      is_valid = (
+          c_pwd == stored_val
+          or hash_pass(c_pwd) == stored_val
+          or c_pwd == "nalco123"
+          or hash_pass(c_pwd) == DEFAULT_HASH
+      )
 
-            if is_valid:
-                st.session_state["auth_status"][area_key] = True
-                st.rerun()
-            else:
-                st.error("❌ Incorrect Password. Contact- Amit Jangra, 9742900004.")
-    return False
+      if is_valid:
+        st.session_state["auth_status"][area_key] = True
+        st.rerun()
+      else:
+        st.error("❌ Incorrect Password. Contact- Amit Jangra, 9742900004.")
+  return False
+
 
 # --- HOD / MASTER LANDING PAGE CHECK ---
 def check_hod_authentication():
-    if st.session_state.get("hod_auth_user") is not None:
-        return True
+  if st.session_state.get("hod_auth_user") is not None:
+    return True
 
-    st.markdown("""
+  st.markdown(
+      """
         <div style="max-width: 480px; margin: 40px auto 20px auto; background: #ffffff; padding: 30px; border-radius: 14px; border: 1.5px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.04); text-align: center;">
             <div style="font-size: 38px; margin-bottom: 8px;">🏛️</div>
             <h2 style="color: #0f172a; margin: 0; font-size: 22px; font-weight: 800;">Master Control Room Access</h2>
             <p style="color: #64748b; font-size: 13.5px; margin-top: 6px;">Enter your Personal No. &amp; Secret PIN to unlock Master portal.</p>
         </div>
-    """, unsafe_allow_html=True)
+    """,
+      unsafe_allow_html=True,
+  )
 
-    col1, col2, col3 = st.columns([1, 1.4, 1])
-    with col2:
-        user_input_id = st.text_input("Personal No. / User ID", placeholder="e.g. 10372 (5-Digit)", key="hod_user_id_input").strip()
-        user_input_pin = st.text_input("Personal PIN", type="password", placeholder="Enter your secret PIN", key="hod_pin_input").strip()
+  col1, col2, col3 = st.columns([1, 1.4, 1])
+  with col2:
+    user_input_id = st.text_input(
+        "Personal No. / User ID",
+        placeholder="e.g. 10372 (5-Digit)",
+        key="hod_user_id_input",
+    ).strip()
+    user_input_pin = st.text_input(
+        "Personal PIN",
+        type="password",
+        placeholder="Enter your secret PIN",
+        key="hod_pin_input",
+    ).strip()
 
-        if st.button("Unlock Master Portal 🔓", use_container_width=True, type="primary"):
-            clean_id = user_input_id.lstrip("0")
-            matched_user = None
-            for uid, udata in MASTER_AUTHORIZED_USERS.items():
-                if uid.lstrip("0") == clean_id or uid.lower() == user_input_id.lower():
-                    matched_user = udata
-                    break
+    if st.button(
+        "Unlock Master Portal 🔓", use_container_width=True, type="primary"
+    ):
+      clean_id = user_input_id.lstrip("0")
+      matched_user = None
+      for uid, udata in MASTER_AUTHORIZED_USERS.items():
+        if (
+            uid.lstrip("0") == clean_id
+            or uid.lower() == user_input_id.lower()
+        ):
+          matched_user = udata
+          break
 
-            if not matched_user:
-                st.error("❌ Unauthorized User ID / Personal No. for Master Dashboard.")
-            elif matched_user["pin"] != user_input_pin and user_input_pin != "nalco123":
-                st.error("❌ Incorrect PIN for this officer.")
-            else:
-                st.session_state["hod_auth_user"] = matched_user
-                st.success(f"✅ Welcome {matched_user['name']}!")
-                time.sleep(0.8)
-                st.rerun()
+      if not matched_user:
+        st.error("❌ Unauthorized User ID / Personal No. for Master Dashboard.")
+      elif (
+          matched_user["pin"] != user_input_pin and user_input_pin != "nalco123"
+      ):
+        st.error("❌ Incorrect PIN for this officer.")
+      else:
+        st.session_state["hod_auth_user"] = matched_user
+        st.success(f"✅ Welcome {matched_user['name']}!")
+        time.sleep(0.8)
+        st.rerun()
 
-    return False
+  return False
+
 
 def clean_material_code(val):
-    if pd.isna(val):
-        return "N/A"
-    s_val = str(val).strip()
-    if s_val == "" or s_val.lower() == "nan":
-        return "N/A"
-    if s_val.endswith(".0"):
-        s_val = s_val[:-2]
-    cleaned = s_val.lstrip('0')
-    return cleaned if cleaned != "" else "0"
+  if pd.isna(val):
+    return "N/A"
+  s_val = str(val).strip()
+  if s_val == "" or s_val.lower() == "nan":
+    return "N/A"
+  if s_val.endswith(".0"):
+    s_val = s_val[:-2]
+  cleaned = s_val.lstrip("0")
+  return cleaned if cleaned != "" else "0"
+
 
 def resolve_columns(df):
-    cols = df.columns
-    mat_col, field_col, store_col, shop_col, total_col, specs_col, name_col, area_belongs_col = (
-        None, None, None, None, None, None, None, None
-    )
-    for col in cols:
-        c_low = col.lower()
-        if not mat_col and ("code" in c_low or "mat" in c_low):
-            mat_col = col
-        elif not field_col and ("field" in c_low or "existing" in c_low):
-            field_col = col
-        elif not store_col and ("store" in c_low or "m7" in c_low or ("room" in c_low and "shop" not in c_low)):
-            store_col = col
-        elif not shop_col and ("shop" in c_low or "floor" in c_low):
-            shop_col = col
-        elif not total_col and "total" in c_low:
-            total_col = col
-        elif not specs_col and "spec" in c_low:
-            specs_col = col
-        elif not name_col and ("instrument" in c_low or "name" in c_low):
-            name_col = col
-        elif not area_belongs_col and ("belong" in c_low or "area" in c_low or "location" in c_low or "section" in c_low):
-            area_belongs_col = col
+  cols = df.columns
+  (
+      mat_col,
+      field_col,
+      store_col,
+      shop_col,
+      total_col,
+      specs_col,
+      name_col,
+      area_belongs_col,
+  ) = (None, None, None, None, None, None, None, None)
+  for col in cols:
+    c_low = col.lower()
+    if not mat_col and ("code" in c_low or "mat" in c_low):
+      mat_col = col
+    elif not field_col and ("field" in c_low or "existing" in c_low):
+      field_col = col
+    elif not store_col and (
+        "store" in c_low
+        or "m7" in c_low
+        or ("room" in c_low and "shop" not in c_low)
+    ):
+      store_col = col
+    elif not shop_col and ("shop" in c_low or "floor" in c_low):
+      shop_col = col
+    elif not total_col and "total" in c_low:
+      total_col = col
+    elif not specs_col and "spec" in c_low:
+      specs_col = col
+    elif not name_col and ("instrument" in c_low or "name" in c_low):
+      name_col = col
+    elif not area_belongs_col and (
+        "belong" in c_low
+        or "area" in c_low
+        or "location" in c_low
+        or "section" in c_low
+    ):
+      area_belongs_col = col
 
-    return {
-        "name": name_col or "Instrument Name",
-        "material": mat_col or "Material Code",
-        "specs": specs_col or "Specs",
-        "field": field_col or "Existing Instrument on Field",
-        "store": store_col or "Remaining Spares in Store-Room",
-        "shop": shop_col or "Remaining Spares in Shop-Floor",
-        "total": total_col or "Total Spares",
-        "area_belongs": area_belongs_col or "Belongs To Area"
-    }
+  return {
+      "name": name_col or "Instrument Name",
+      "material": mat_col or "Material Code",
+      "specs": specs_col or "Specs",
+      "field": field_col or "Existing Instrument on Field",
+      "store": store_col or "Remaining Spares in Store-Room",
+      "shop": shop_col or "Remaining Spares in Shop-Floor",
+      "total": total_col or "Total Spares",
+      "area_belongs": area_belongs_col or "Belongs To Area",
+  }
+
 
 def safe_int(val):
-    if pd.isna(val):
-        return 0
-    try:
-        return int(float(str(val).strip()))
-    except ValueError:
-        return 0
+  if pd.isna(val):
+    return 0
+  try:
+    return int(float(str(val).strip()))
+  except ValueError:
+    return 0
+
 
 @st.cache_data(ttl=60)
 def fetch_data(url, timestamp):
-    live_url = f"{url}&t={timestamp}"
-    df = pd.read_csv(live_url, dtype=str)
-    return df
+  live_url = f"{url}&t={timestamp}"
+  df = pd.read_csv(live_url, dtype=str)
+  return df
 
-# --- INTER-AREA TRANSFER MODAL (TEXT-TRIGGERED & HIDDEN STOCK FOR PRIVACY) ---
+
+# --- INTER-AREA TRANSFER MODAL ---
 @st.dialog("🔄 Inter-Area Spares Transfer", width="large")
 def show_inter_area_transfer_dialog(current_area_name):
-    cfg = AREA_CONFIGS.get(current_area_name)
-    if not cfg:
-        st.warning("Please select a valid area first.")
-        return
+  cfg = AREA_CONFIGS.get(current_area_name)
+  if not cfg:
+    st.warning("Please select a valid area first.")
+    return
 
-    st.markdown(f"**From (Source Area):** 📍 `{current_area_name}`")
-    
-    other_areas = [a for a in AREA_CONFIGS.keys() if a != current_area_name]
-    target_area = st.selectbox("Target / Receiving Area:", other_areas, key="transfer_target_area")
+  st.markdown(f"**From (Source Area):** 📍 `{current_area_name}`")
 
-    df_current = fetch_data(cfg["sheet_url"], st.session_state["data_timestamp"])
-    df_current.columns = df_current.columns.str.strip()
-    mapping = resolve_columns(df_current)
+  other_areas = [a for a in AREA_CONFIGS.keys() if a != current_area_name]
+  target_area = st.selectbox(
+      "Target / Receiving Area:", other_areas, key="transfer_target_area"
+  )
 
-    mat_col = mapping["material"]
-    store_col = mapping["store"]
-    name_col = mapping["name"]
-    specs_col = mapping["specs"]
+  df_current = fetch_data(
+      cfg["sheet_url"], st.session_state["data_timestamp"]
+  )
+  df_current.columns = df_current.columns.str.strip()
+  mapping = resolve_columns(df_current)
 
-    df_current["Clean_Mat"] = df_current[mat_col].apply(clean_material_code)
-    valid_df = df_current[df_current["Clean_Mat"] != "N/A"].copy()
+  mat_col = mapping["material"]
+  store_col = mapping["store"]
+  name_col = mapping["name"]
+  specs_col = mapping["specs"]
 
-    # Text Search Input: Only reveals dropdown when typed
-    search_term = st.text_input(
-        "🔍 Search Instrument or Material Code:", 
-        placeholder="Type Material Code or Name (e.g. 104231, Rosemount, RTD)...",
-        key="transfer_search_box"
-    ).strip()
+  df_current["Clean_Mat"] = df_current[mat_col].apply(clean_material_code)
+  valid_df = df_current[df_current["Clean_Mat"] != "N/A"].copy()
 
-    if not search_term:
-        st.info("💡 Start typing a Material Code or Instrument Name above to find items.")
-        return
+  search_term = st.text_input(
+      "🔍 Search Instrument or Material Code:",
+      placeholder=(
+          "Type Material Code or Name (e.g. 104231, Rosemount, RTD)..."
+      ),
+      key="transfer_search_box",
+  ).strip()
 
-    filtered_matches = valid_df[
-        valid_df["Clean_Mat"].str.contains(search_term, case=False, na=False) |
-        valid_df[name_col].astype(str).str.contains(search_term, case=False, na=False) |
-        valid_df[specs_col].astype(str).str.contains(search_term, case=False, na=False)
-    ]
-    available_codes = sorted(list(filtered_matches["Clean_Mat"].unique()))
+  if not search_term:
+    st.info(
+        "💡 Start typing a Material Code or Instrument Name above to find items."
+    )
+    return
 
-    if not available_codes:
-        st.warning(f"❌ No instruments found matching '{search_term}'. Try another keyword.")
-        return
+  filtered_matches = valid_df[
+      valid_df["Clean_Mat"].str.contains(search_term, case=False, na=False)
+      | valid_df[name_col]
+          .astype(str)
+          .str.contains(search_term, case=False, na=False)
+      | valid_df[specs_col]
+          .astype(str)
+          .str.contains(search_term, case=False, na=False)
+  ]
+  available_codes = sorted(list(filtered_matches["Clean_Mat"].unique()))
 
-    # Safe mapping without relying on DataFrameGroupBy.apply
-    code_summary = {}
-    for mat_code, group in filtered_matches.groupby("Clean_Mat"):
-        names = group[name_col].dropna()
-        first_name = str(names.iloc[0]).strip() if not names.empty else "Instrument"
-        code_summary[mat_code] = f"{mat_code} — {first_name}"
+  if not available_codes:
+    st.warning(
+        f"❌ No instruments found matching '{search_term}'. Try another"
+        " keyword."
+    )
+    return
 
-    options_display = ["-- Select Matched Instrument --"] + [
-        code_summary.get(c, f"{c} — Item") for c in available_codes
-    ]
+  code_summary = {}
+  for mat_code, group in filtered_matches.groupby("Clean_Mat"):
+    names = group[name_col].dropna()
+    first_name = str(names.iloc[0]).strip() if not names.empty else "Instrument"
+    code_summary[mat_code] = f"{mat_code} — {first_name}"
 
-    selected_option = st.selectbox(
-        "Select Instrument:",
-        options_display,
-        key="transfer_mat_select"
+  options_display = ["-- Select Matched Instrument --"] + [
+      code_summary.get(c, f"{c} — Item") for c in available_codes
+  ]
+
+  selected_option = st.selectbox(
+      "Select Instrument:", options_display, key="transfer_mat_select"
+  )
+
+  if selected_option != "-- Select Matched Instrument --":
+    selected_mat = selected_option.split(" — ")[0].strip()
+    matching_rows = valid_df[valid_df["Clean_Mat"] == selected_mat].copy()
+    count_variants = len(matching_rows)
+
+    if count_variants > 1:
+      st.markdown(f"**Found `{count_variants}` Sub-Parts / Line Items:**")
+      select_all_variants = st.checkbox(
+          "✅ Select All (Complete Set)", value=True, key="chk_select_all_var"
+      )
+    else:
+      select_all_variants = True
+
+    selected_transfer_items = []
+    st.markdown(
+        "<div style='margin: 10px 0; border-top: 1px solid #cbd5e1;'></div>",
+        unsafe_allow_html=True,
     )
 
-    if selected_option != "-- Select Matched Instrument --":
-        selected_mat = selected_option.split(" — ")[0].strip()
-        matching_rows = valid_df[valid_df["Clean_Mat"] == selected_mat].copy()
-        count_variants = len(matching_rows)
+    for idx, row in matching_rows.iterrows():
+      item_name = (
+          str(row[name_col]).strip()
+          if name_col in row and pd.notna(row[name_col])
+          else "Unknown Item"
+      )
+      item_specs = (
+          str(row[specs_col]).strip()
+          if specs_col in row and pd.notna(row[specs_col])
+          else "No Specs"
+      )
 
-        if count_variants > 1:
-            st.markdown(f"**Found `{count_variants}` Sub-Parts / Line Items:**")
-            select_all_variants = st.checkbox("✅ Select All (Complete Set)", value=True, key="chk_select_all_var")
-        else:
-            select_all_variants = True
+      c1, c2, c3 = st.columns([0.8, 4.4, 1.8], vertical_alignment="center")
+      with c1:
+        is_selected = (
+            st.checkbox("", value=select_all_variants, key=f"var_chk_{idx}")
+            if count_variants > 1
+            else True
+        )
+      with c2:
+        st.markdown(
+            f"""
+                <div style="font-size: 13.5px; font-weight: 700; color: #0f172a;">{item_name}</div>
+                <div style="font-size: 11.5px; color: #64748b;"><b>Specs:</b> {item_specs}</div>
+            """,
+            unsafe_allow_html=True,
+        )
+      with c3:
+        qty_to_send = st.number_input(
+            "Transfer Qty:",
+            min_value=1,
+            value=1,
+            step=1,
+            key=f"var_qty_{idx}",
+        )
 
-        selected_transfer_items = []
+      if is_selected:
+        row_dict = row.to_dict()
+        row_dict["Transfer_Quantity"] = qty_to_send
+        selected_transfer_items.append(row_dict)
 
-        st.markdown("<div style='margin: 10px 0; border-top: 1px solid #cbd5e1;'></div>", unsafe_allow_html=True)
-        
-        for idx, row in matching_rows.iterrows():
-            item_name = str(row[name_col]).strip() if name_col in row and pd.notna(row[name_col]) else "Unknown Item"
-            item_specs = str(row[specs_col]).strip() if specs_col in row and pd.notna(row[specs_col]) else "No Specs"
+      st.markdown(
+          "<div style='margin: 6px 0; border-bottom: 1px dashed #e2e8f0;'></div>",
+          unsafe_allow_html=True,
+      )
 
-            c1, c2, c3 = st.columns([0.8, 4.4, 1.8], vertical_alignment="center")
-            with c1:
-                is_selected = st.checkbox("", value=select_all_variants, key=f"var_chk_{idx}") if count_variants > 1 else True
-            with c2:
-                # Privacy maintained: Stock count completely hidden
-                st.markdown(f"""
-                    <div style="font-size: 13.5px; font-weight: 700; color: #0f172a;">{item_name}</div>
-                    <div style="font-size: 11.5px; color: #64748b;"><b>Specs:</b> {item_specs}</div>
-                """, unsafe_allow_html=True)
-            with c3:
-                qty_to_send = st.number_input(
-                    "Transfer Qty:", 
-                    min_value=1, 
-                    value=1, 
-                    step=1, 
-                    key=f"var_qty_{idx}"
-                )
+    transfer_remarks = st.text_input(
+        "Remarks / Work Order Ref (Optional):",
+        placeholder="e.g. Urgent plant maintenance requirement...",
+    )
 
-            if is_selected:
-                row_dict = row.to_dict()
-                row_dict["Transfer_Quantity"] = qty_to_send
-                selected_transfer_items.append(row_dict)
+    if st.button(
+        "🚀 Send Transfer Request", type="primary", use_container_width=True
+    ):
+      if not selected_transfer_items:
+        st.error("❌ Please select at least one item to transfer.")
+      else:
+        transfer_record = {
+            "transfer_id": f"TR-{int(time.time())}",
+            "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
+            "from_area": current_area_name,
+            "to_area": target_area,
+            "type": "TRANSFER",
+            "material_code": selected_mat,
+            "items": selected_transfer_items,
+            "remarks": transfer_remarks,
+            "status": "PENDING",
+        }
 
-            st.markdown("<div style='margin: 6px 0; border-bottom: 1px dashed #e2e8f0;'></div>", unsafe_allow_html=True)
+        GLOBAL_TRANSFERS.append(transfer_record)
 
-        transfer_remarks = st.text_input("Remarks / Work Order Ref (Optional):", placeholder="e.g. Urgent plant maintenance requirement...")
+        try:
+          requests.post(
+              AUTH_API_URL,
+              json={"action": "INITIATE_TRANSFER", "data": transfer_record},
+              timeout=3,
+          )
+        except Exception:
+          pass
 
-        if st.button("🚀 Send Transfer Request", type="primary", use_container_width=True):
-            if not selected_transfer_items:
-                st.error("❌ Please select at least one item to transfer.")
-            else:
-                transfer_record = {
-                    "transfer_id": f"TR-{int(time.time())}",
-                    "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
-                    "from_area": current_area_name,
-                    "to_area": target_area,
-                    "material_code": selected_mat,
-                    "items": selected_transfer_items,
-                    "remarks": transfer_remarks,
-                    "status": "PENDING"
-                }
+        st.success(
+            f"✅ Transfer request sent to {target_area}! Waiting for recipient"
+            " confirmation."
+        )
+        time.sleep(1.2)
+        st.rerun()
 
-                # Push to persistent shared memory across all tabs/reloads
-                GLOBAL_TRANSFERS.append(transfer_record)
 
-                try:
-                    requests.post(
-                        AUTH_API_URL, 
-                        json={"action": "INITIATE_TRANSFER", "data": transfer_record}, 
-                        timeout=3
-                    )
-                except Exception:
-                    pass
+# --- NAYA MODAL: BROADCAST & SINGLE AREA MESSAGE ---
+@st.dialog("📢 Send Inter-Area Broadcast / Message", width="large")
+def show_broadcast_message_dialog(current_area_name):
+  st.markdown(f"**From Area:** 📍 `{current_area_name}`")
 
-                st.success(f"✅ Transfer request sent to {target_area}! Waiting for recipient confirmation.")
-                time.sleep(1.2)
-                st.rerun()
+  other_areas = [a for a in AREA_CONFIGS.keys() if a != current_area_name]
+  target_options = ["📢 ALL AREAS (Plant-wide Broadcast)"] + other_areas
 
-# --- NOTIFICATIONS MODAL (ACCEPT / REJECT WORKFLOW) ---
-@st.dialog("🔔 Notifications & Incoming Transfers", width="large")
+  selected_target = st.selectbox(
+      "Send Message To (Target Area):",
+      target_options,
+      help=(
+          "Kisi ek specific area ko bhejna ho toh choose karein, ya plant-wide"
+          " broadcast karein."
+      ),
+      key="bc_target_select",
+  )
+
+  c_pri1, c_pri2 = st.columns([1.5, 1])
+  with c_pri1:
+    priority_level = st.radio(
+        "Priority:",
+        ["Normal Info / Query", "🚨 Urgent Spare Required"],
+        horizontal=True,
+    )
+  with c_pri2:
+    sender_name = st.text_input(
+        "Officer Name / Ref (Optional):",
+        placeholder="e.g. Er. Amit Jangra | 10372",
+        key="bc_sender_name",
+    )
+
+  msg_body = st.text_area(
+      "Message Content:",
+      placeholder=(
+          "e.g., Immediate requirement for 1x Masibus loop-powered indicator or"
+          " 4-20mA calibrator..."
+      ),
+      height=110,
+      key="bc_body_text",
+  )
+
+  if st.button("🚀 Dispatch Message", type="primary", use_container_width=True):
+    clean_msg = msg_body.strip()
+    if not clean_msg:
+      st.error("❌ Message cannot be empty!")
+      return
+
+    target_area = (
+        "ALL"
+        if "ALL AREAS" in selected_target
+        else selected_target.replace("📍 ", "").strip()
+    )
+    is_urgent = "Urgent" in priority_level
+
+    broadcast_record = {
+        "transfer_id": f"MSG-{int(time.time())}",
+        "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
+        "from_area": current_area_name,
+        "to_area": target_area,
+        "type": "MESSAGE",
+        "sender_officer": (
+            sender_name.strip() if sender_name else "Area Incharge"
+        ),
+        "priority": "URGENT" if is_urgent else "NORMAL",
+        "message": clean_msg,
+        "status": "PENDING",
+    }
+
+    GLOBAL_TRANSFERS.append(broadcast_record)
+
+    try:
+      requests.post(
+          AUTH_API_URL,
+          json={"action": "INTERAREA_BROADCAST", "data": broadcast_record},
+          timeout=3,
+      )
+    except Exception:
+      pass
+
+    st.success(f"✅ Message dispatched successfully to {target_area}!")
+    time.sleep(1.0)
+    st.rerun()
+
+
+# --- NOTIFICATIONS MODAL (INCLUDES SEEN/DISMISS LOGIC) ---
+@st.dialog("🔔 Notifications & Incoming Alerts", width="large")
 def show_notifications_dialog(current_area_name):
-    # Fetch directly from shared global cache
-    pending = [
-        t for t in GLOBAL_TRANSFERS 
-        if t["to_area"] == current_area_name and t["status"] == "PENDING"
-    ]
+  # Unread / Pending alerts (Direct messages + Broadcasts + Spares transfers)
+  pending = [
+      t
+      for t in GLOBAL_TRANSFERS
+      if (t["to_area"] == current_area_name or t["to_area"] == "ALL")
+      and t["status"] == "PENDING"
+      and t.get("from_area") != current_area_name
+  ]
 
-    if not pending:
-        st.info("🎉 No pending incoming transfer requests for your area.")
-        return
+  if not pending:
+    st.info("🎉 No pending transfer requests or unread messages for your area.")
+    return
 
-    st.markdown(f"### 📥 Pending Inbound Transfers ({len(pending)})")
-    st.caption("Review specifications and quantities before accepting into your Store Inventory.")
+  messages = [t for t in pending if t.get("type") == "MESSAGE"]
+  transfers = [t for t in pending if t.get("type") != "MESSAGE"]
 
-    for t in pending:
-        t_id = t["transfer_id"]
-        from_a = t["from_area"]
-        t_time = t["timestamp"]
-        items = t["items"]
+  # --- 1. MESSAGES & BROADCAST FEED ---
+  if messages:
+    st.markdown(f"### 💬 New Area Messages & Alerts ({len(messages)})")
+    for m in messages:
+      m_id = m["transfer_id"]
+      from_a = m["from_area"]
+      m_time = m["timestamp"]
+      is_urg = m.get("priority") == "URGENT"
+      target_tag = (
+          "📢 [Plant-wide Broadcast]"
+          if m["to_area"] == "ALL"
+          else "📍 [Private Direct Message]"
+      )
 
-        with st.container():
-            st.markdown(f"""
-                <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid #0284c7; padding: 14px 16px; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+      border_col = "#ef4444" if is_urg else "#0284c7"
+      badge_bg = "#fee2e2" if is_urg else "#e0f2fe"
+      badge_color = "#b91c1c" if is_urg else "#0369a1"
+
+      st.markdown(
+          f"""
+                <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid {border_col}; padding: 12px 16px; border-radius: 10px; margin-bottom: 8px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 14px; font-weight: 800; color: #0f172a;">📍 Incoming from: {from_a}</span>
-                        <span style="font-size: 11px; color: #64748b; font-weight: 600;">🕒 {t_time}</span>
+                        <span style="font-size: 13.5px; font-weight: 800; color: #0f172a;">📍 From: {from_a} <span style="font-size: 11px; font-weight: 600; color: {badge_color}; background: {badge_bg}; padding: 2px 8px; border-radius: 12px; margin-left: 6px;">{target_tag}</span></span>
+                        <span style="font-size: 11px; color: #64748b; font-weight: 600;">🕒 {m_time}</span>
                     </div>
-                    <div style="font-size: 12px; color: #0284c7; font-weight: 700; margin-top: 4px;">Mat. Code: {t['material_code']} | Total Sub-Parts: {len(items)}</div>
+                    <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;"><b>Sent by:</b> {m.get('sender_officer', 'Area Desk')}</div>
+                    <div style="font-size: 13px; color: #1e293b; margin-top: 8px; background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 3px solid #94a3b8; line-height: 1.4;">
+                        {m['message']}
+                    </div>
                 </div>
-            """, unsafe_allow_html=True)
+            """,
+          unsafe_allow_html=True,
+      )
 
-            summary_data = []
-            for itm in items:
-                summary_data.append({
-                    "Item Description": itm.get("Instrument Name", itm.get("name", "N/A")),
-                    "Specs": itm.get("Specs", "N/A"),
-                    "Transfer Qty": itm.get("Transfer_Quantity", 1)
-                })
-            st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
+      c_seen1, c_seen2 = st.columns([3.5, 1.5])
+      with c_seen2:
+        if st.button(
+            "👁️ Mark as Seen",
+            key=f"seen_{m_id}",
+            use_container_width=True,
+            type="primary",
+        ):
+          m["status"] = "SEEN"
+          m["seen_by"] = current_area_name
+          m["seen_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
 
-            btn_col1, btn_col2 = st.columns([1, 1])
-            with btn_col1:
-                if st.button("✅ Accept & Add to Store", key=f"acc_{t_id}", use_container_width=True, type="primary"):
-                    t["status"] = "ACCEPTED"
-                    t["resolved_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
+          try:
+            requests.post(
+                AUTH_API_URL,
+                json={
+                    "action": "RESOLVE_MESSAGE",
+                    "transfer_id": m_id,
+                    "seen_by": current_area_name,
+                },
+                timeout=3,
+            )
+          except Exception:
+            pass
 
-                    try:
-                        requests.post(
-                            AUTH_API_URL, 
-                            json={
-                                "action": "RESOLVE_TRANSFER", 
-                                "transfer_id": t_id, 
-                                "resolution": "ACCEPTED",
-                                "current_timestamp": t["resolved_time"]
-                            }, 
-                            timeout=4
-                        )
-                    except Exception:
-                        pass
+          st.rerun()
 
-                    st.success(f"✅ Items accepted! Both {from_a} (Removed) and {current_area_name} (Added) entries are logged.")
-                    time.sleep(1.2)
-                    st.rerun()
+    st.markdown(
+        "<div style='margin: 15px 0; border-top: 2px dashed #cbd5e1;'></div>",
+        unsafe_allow_html=True,
+    )
 
-            with btn_col2:
-                if st.button("❌ Reject Request", key=f"rej_{t_id}", use_container_width=True):
-                    t["status"] = "REJECTED"
-                    t["resolved_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
-                    try:
-                        requests.post(
-                            AUTH_API_URL, 
-                            json={
-                                "action": "RESOLVE_TRANSFER", 
-                                "transfer_id": t_id, 
-                                "resolution": "REJECTED",
-                                "current_timestamp": t["resolved_time"]
-                            }, 
-                            timeout=4
-                        )
-                    except Exception:
-                        pass
-                    st.warning("Request rejected.")
-                    time.sleep(1.0)
-                    st.rerun()
+  # --- 2. HARDWARE SPARES TRANSFERS ---
+  if transfers:
+    st.markdown(f"### 📥 Pending Inbound Spares Transfers ({len(transfers)})")
+    st.caption(
+        "Review specifications and quantities before accepting into your Store"
+        " Inventory."
+    )
 
-            st.markdown("<div style='margin: 15px 0; border-bottom: 1px solid #e2e8f0;'></div>", unsafe_allow_html=True)
+    for t in transfers:
+      t_id = t["transfer_id"]
+      from_a = t["from_area"]
+      t_time = t["timestamp"]
+      items = t["items"]
+
+      with st.container():
+        st.markdown(
+            f"""
+                    <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid #0284c7; padding: 14px 16px; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 14px; font-weight: 800; color: #0f172a;">📍 Incoming from: {from_a}</span>
+                            <span style="font-size: 11px; color: #64748b; font-weight: 600;">🕒 {t_time}</span>
+                        </div>
+                        <div style="font-size: 12px; color: #0284c7; font-weight: 700; margin-top: 4px;">Mat. Code: {t['material_code']} | Total Sub-Parts: {len(items)}</div>
+                    </div>
+                """,
+            unsafe_allow_html=True,
+        )
+
+        summary_data = []
+        for itm in items:
+          summary_data.append({
+              "Item Description": itm.get(
+                  "Instrument Name", itm.get("name", "N/A")
+              ),
+              "Specs": itm.get("Specs", "N/A"),
+              "Transfer Qty": itm.get("Transfer_Quantity", 1),
+          })
+        st.dataframe(
+            pd.DataFrame(summary_data),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        btn_col1, btn_col2 = st.columns([1, 1])
+        with btn_col1:
+          if st.button(
+              "✅ Accept & Add to Store",
+              key=f"acc_{t_id}",
+              use_container_width=True,
+              type="primary",
+          ):
+            t["status"] = "ACCEPTED"
+            t["resolved_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
+
+            try:
+              requests.post(
+                  AUTH_API_URL,
+                  json={
+                      "action": "RESOLVE_TRANSFER",
+                      "transfer_id": t_id,
+                      "resolution": "ACCEPTED",
+                      "current_timestamp": t["resolved_time"],
+                  },
+                  timeout=4,
+              )
+            except Exception:
+              pass
+
+            st.success(
+                f"✅ Items accepted! Both {from_a} (Removed) and"
+                f" {current_area_name} (Added) entries are logged."
+            )
+            time.sleep(1.2)
+            st.rerun()
+
+        with btn_col2:
+          if st.button(
+              "❌ Reject Request", key=f"rej_{t_id}", use_container_width=True
+          ):
+            t["status"] = "REJECTED"
+            t["resolved_time"] = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
+            try:
+              requests.post(
+                  AUTH_API_URL,
+                  json={
+                      "action": "RESOLVE_TRANSFER",
+                      "transfer_id": t_id,
+                      "resolution": "REJECTED",
+                      "current_timestamp": t["resolved_time"],
+                  },
+                  timeout=4,
+              )
+            except Exception:
+              pass
+            st.warning("Request rejected.")
+            time.sleep(1.0)
+            st.rerun()
+
+        st.markdown(
+            "<div style='margin: 15px 0; border-bottom: 1px solid"
+            " #e2e8f0;'></div>",
+            unsafe_allow_html=True,
+        )
+
 
 # --- DYNAMIC THEMED ROW RENDERER ---
 def render_row(row, mapping, current_area_name):
-    name_key = mapping["name"]
-    mat_key = mapping["material"]
-    specs_key = mapping["specs"]
-    field_key = mapping["field"]
-    store_key = mapping["store"]
-    area_belongs_key = mapping.get("area_belongs", "Belongs To Area")
+  name_key = mapping["name"]
+  mat_key = mapping["material"]
+  specs_key = mapping["specs"]
+  field_key = mapping["field"]
+  store_key = mapping["store"]
+  area_belongs_key = mapping.get("area_belongs", "Belongs To Area")
 
-    inst_name = str(row[name_key]).strip() if name_key in row and pd.notna(row[name_key]) else "No Name"
-    mat_code = clean_material_code(row[mat_key]) if mat_key in row else "N/A"
-    full_spec = str(row[specs_key]).strip() if specs_key in row and pd.notna(row[specs_key]) else "No Specs Added"
-    spares_store = safe_int(row[store_key]) if store_key in row else 0
-    cleaned_spec = full_spec.replace('•', '').strip()
-    show_name_flag = mapping.get("show_name", True)
+  inst_name = (
+      str(row[name_key]).strip()
+      if name_key in row and pd.notna(row[name_key])
+      else "No Name"
+  )
+  mat_code = clean_material_code(row[mat_key]) if mat_key in row else "N/A"
+  full_spec = (
+      str(row[specs_key]).strip()
+      if specs_key in row and pd.notna(row[specs_key])
+      else "No Specs Added"
+  )
+  spares_store = safe_int(row[store_key]) if store_key in row else 0
+  cleaned_spec = full_spec.replace("•", "").strip()
+  show_name_flag = mapping.get("show_name", True)
 
-    area_cfg = AREA_CONFIGS.get(current_area_name, {})
-    theme_accent = area_cfg.get("color", "#0284c7")
+  area_cfg = AREA_CONFIGS.get(current_area_name, {})
+  theme_accent = area_cfg.get("color", "#0284c7")
 
-    if current_area_name == "C&I Sub Store":
-        belongs_val = str(row[area_belongs_key]).strip() if area_belongs_key in row and pd.notna(row[area_belongs_key]) else "Unassigned / General"
+  if current_area_name == "C&I Sub Store":
+    belongs_val = (
+        str(row[area_belongs_key]).strip()
+        if area_belongs_key in row and pd.notna(row[area_belongs_key])
+        else "Unassigned / General"
+    )
 
-        card_html = f"""
+    card_html = f"""
         <div class="inventory-card">
             <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                 <div style="flex: 2; min-width: 180px;">
@@ -719,29 +1053,39 @@ def render_row(row, mapping, current_area_name):
             </div>
         </div>
         """
-        st.markdown(card_html, unsafe_allow_html=True)
-        return
+    st.markdown(card_html, unsafe_allow_html=True)
+    return
 
-    field_count = safe_int(row[field_key]) if field_key in row else 0
+  field_count = safe_int(row[field_key]) if field_key in row else 0
 
-    name_lower = inst_name.lower()
-    if "transmitter" in name_lower or "converter" in name_lower:
-        healthy_stock = max(2, int(field_count * 0.20))
-    elif "element" in name_lower or "switch" in name_lower or "probe" in name_lower:
-        healthy_stock = max(3, int(field_count * 0.30))
-    else:
-        healthy_stock = max(2, int(field_count * 0.15))
+  name_lower = inst_name.lower()
+  if "transmitter" in name_lower or "converter" in name_lower:
+    healthy_stock = max(2, int(field_count * 0.20))
+  elif (
+      "element" in name_lower or "switch" in name_lower or "probe" in name_lower
+  ):
+    healthy_stock = max(3, int(field_count * 0.30))
+  else:
+    healthy_stock = max(2, int(field_count * 0.15))
 
-    shortfall_excess = spares_store - healthy_stock
+  shortfall_excess = spares_store - healthy_stock
 
-    if shortfall_excess < 0:
-        status_html = f'<div class="status-badge status-shortfall">🚨 Shortfall ({shortfall_excess})</div>'
-    elif shortfall_excess > 0:
-        status_html = f'<div class="status-badge status-surplus">✅ Surplus (+{shortfall_excess})</div>'
-    else:
-        status_html = '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
+  if shortfall_excess < 0:
+    status_html = (
+        '<div class="status-badge status-shortfall">🚨 Shortfall'
+        f" ({shortfall_excess})</div>"
+    )
+  elif shortfall_excess > 0:
+    status_html = (
+        '<div class="status-badge status-surplus">✅ Surplus'
+        f" (+{shortfall_excess})</div>"
+    )
+  else:
+    status_html = (
+        '<div class="status-badge status-balanced">👌 Balanced (0)</div>'
+    )
 
-    card_html = f"""
+  card_html = f"""
     <div class="inventory-card">
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
             <div style="flex: 2; min-width: 180px;">
@@ -766,10 +1110,11 @@ def render_row(row, mapping, current_area_name):
         </div>
     </div>
     """
-    st.markdown(card_html, unsafe_allow_html=True)
+  st.markdown(card_html, unsafe_allow_html=True)
+
 
 def inject_custom_css():
-    css = """
+  css = """
     <style>
     .stApp { background-color: #f8fafc; }
     h1, h2, h3 { color: #1e293b !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
@@ -797,16 +1142,17 @@ def inject_custom_css():
     button[key="team_btn"],
     button[key="urgent_pr_btn"],
     button[key="transfer_btn"],
+    button[key="broadcast_btn"],
     button[key="notify_btn"] {
         height: 42px !important;
         min-height: 42px !important;
         max-height: 42px !important;
         line-height: 42px !important;
-        padding: 0px 16px !important;
+        padding: 0px 14px !important;
         margin: 0 !important;
         border-radius: 24px !important;
         font-weight: 800 !important;
-        font-size: 13px !important;
+        font-size: 12.5px !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -826,6 +1172,13 @@ def inject_custom_css():
         color: #ffffff !important;
         border: 2px solid #38bdf8 !important;
         box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3) !important;
+    }
+
+    button[key="broadcast_btn"] {
+        background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
+        color: #ffffff !important;
+        border: 2px solid #a78bfa !important;
+        box-shadow: 0 2px 10px rgba(124, 58, 237, 0.3) !important;
     }
 
     button[key="notify_btn"] {
@@ -913,249 +1266,400 @@ def inject_custom_css():
     }
     </style>
     """
-    st.markdown(css, unsafe_allow_html=True)
+  st.markdown(css, unsafe_allow_html=True)
+
 
 # --- TOP BAR ---
 def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
-    is_pr_active = st.session_state.get("smart_intelligence_mode", False)
-    current_area = st.session_state.get("selected_area") or url_area
+  is_pr_active = st.session_state.get("smart_intelligence_mode", False)
+  current_area = st.session_state.get("selected_area") or url_area
 
-    # Real-time counter from global shared queue
-    pending_count = sum(
-        1 for t in GLOBAL_TRANSFERS
-        if current_area and t["to_area"] == current_area and t["status"] == "PENDING"
+  # Real-time counter from global shared queue (Transfers + Messages)
+  pending_count = sum(
+      1
+      for t in GLOBAL_TRANSFERS
+      if current_area
+      and (t["to_area"] == current_area or t["to_area"] == "ALL")
+      and t["status"] == "PENDING"
+      and t.get("from_area") != current_area
+  )
+  notify_label = (
+      f"🔔 Alerts ({pending_count})"
+      if pending_count > 0
+      else "🔔 Notifications"
+  )
+
+  if is_pr_active:
+    c_left, c_mid, c_right = st.columns(
+        [4.0, 3.5, 2.5], vertical_alignment="center"
     )
-    notify_label = f"🔔 Notifications ({pending_count})" if pending_count > 0 else "🔔 Notifications"
-
-    if is_pr_active:
-        c_left, c_mid, c_right = st.columns([4.0, 3.5, 2.5], vertical_alignment="center")
-        with c_left:
-            st.markdown(f"""
+    with c_left:
+      st.markdown(
+          f"""
                 <div class="header-pill">
                     <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
                 </div>
-            """, unsafe_allow_html=True)
-        with c_mid:
-            is_active = st.session_state["urgent_pr_filter_state"]
-            btn_label = "✅ Showing Overdue PR" if is_active else "🚨 Show Overdue PR Only"
-            if st.button(btn_label, key="urgent_pr_btn", type="primary", use_container_width=True):
-                st.session_state["urgent_pr_filter_state"] = not is_active
-                st.rerun()
-        with c_right:
-            if st.button("👥 Inventory Team", key="team_btn", type="primary", use_container_width=True):
-                show_team_modal()
+            """,
+          unsafe_allow_html=True,
+      )
+    with c_mid:
+      is_active = st.session_state["urgent_pr_filter_state"]
+      btn_label = "✅ Showing Overdue PR" if is_active else "🚨 Show Overdue PR Only"
+      if st.button(
+          btn_label,
+          key="urgent_pr_btn",
+          type="primary",
+          use_container_width=True,
+      ):
+        st.session_state["urgent_pr_filter_state"] = not is_active
+        st.rerun()
+    with c_right:
+      if st.button(
+          "👥 Inventory Team",
+          key="team_btn",
+          type="primary",
+          use_container_width=True,
+      ):
+        show_team_modal()
+  else:
+    if current_area and current_area in AREA_CONFIGS:
+      c_left, c_tr, c_bc, c_not, c_team = st.columns(
+          [3.2, 2.0, 1.8, 1.8, 1.6], vertical_alignment="center"
+      )
+      with c_left:
+        st.markdown(
+            f"""
+                    <div class="header-pill">
+                        <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
+                    </div>
+                """,
+            unsafe_allow_html=True,
+        )
+      with c_tr:
+        if st.button(
+            "🔄 Transfer",
+            key="transfer_btn",
+            type="primary",
+            use_container_width=True,
+        ):
+          show_inter_area_transfer_dialog(current_area)
+      with c_bc:
+        if st.button(
+            "📢 Message",
+            key="broadcast_btn",
+            type="primary",
+            use_container_width=True,
+        ):
+          show_broadcast_message_dialog(current_area)
+      with c_not:
+        if st.button(
+            notify_label,
+            key="notify_btn",
+            type="primary",
+            use_container_width=True,
+        ):
+          show_notifications_dialog(current_area)
+      with c_team:
+        if st.button(
+            "👥 Team",
+            key="team_btn",
+            type="primary",
+            use_container_width=True,
+        ):
+          show_team_modal()
     else:
-        if current_area and current_area in AREA_CONFIGS:
-            c_left, c_tr, c_not, c_team = st.columns([3.5, 2.3, 2.2, 2.0], vertical_alignment="center")
-            with c_left:
-                st.markdown(f"""
+      c_left, c_team = st.columns([8.0, 2.0], vertical_alignment="center")
+      with c_left:
+        st.markdown(
+            f"""
                     <div class="header-pill">
                         <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
                     </div>
-                """, unsafe_allow_html=True)
-            with c_tr:
-                if st.button("🔄 Inter-Area Transfer", key="transfer_btn", type="primary", use_container_width=True):
-                    show_inter_area_transfer_dialog(current_area)
-            with c_not:
-                if st.button(notify_label, key="notify_btn", type="primary", use_container_width=True):
-                    show_notifications_dialog(current_area)
-            with c_team:
-                if st.button("👥 Team", key="team_btn", type="primary", use_container_width=True):
-                    show_team_modal()
-        else:
-            c_left, c_team = st.columns([8.0, 2.0], vertical_alignment="center")
-            with c_left:
-                st.markdown(f"""
-                    <div class="header-pill">
-                        <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
-                    </div>
-                """, unsafe_allow_html=True)
-            with c_team:
-                if st.button("👥 Inventory Team", key="team_btn", type="primary", use_container_width=True):
-                    show_team_modal()
-                
-    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+                """,
+            unsafe_allow_html=True,
+        )
+      with c_team:
+        if st.button(
+            "👥 Inventory Team",
+            key="team_btn",
+            type="primary",
+            use_container_width=True,
+        ):
+          show_team_modal()
+
+  st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+
 
 # --- BULLETPROOF CONSUMPTION ENGINE ---
 @st.cache_data(ttl=60)
 def build_consumption_map(removal_url, timestamp, analysis_months=12):
-    if not removal_url:
+  if not removal_url:
+    return {}
+  try:
+    live_url = f"{removal_url}&t={timestamp}"
+    df_log = pd.read_csv(live_url, dtype=str)
+    df_log.columns = df_log.columns.str.strip()
+
+    if df_log.empty:
+      return {}
+
+    mat_col = None
+    for c in df_log.columns:
+      c_l = c.lower()
+      if any(
+          k in c_l
+          for k in [
+              "material",
+              "mat code",
+              "item code",
+              "sap code",
+              "code",
+              "mat",
+          ]
+      ):
+        mat_col = c
+        break
+
+    if not mat_col:
+      for c in df_log.columns:
+        if not any(
+            k in c.lower() for k in ["time", "date", "timestamp", "user", "name"]
+        ):
+          mat_col = c
+          break
+
+    if not mat_col:
+      return {}
+
+    action_col = None
+    for c in df_log.columns:
+      c_l = c.lower()
+      if any(
+          k in c_l
+          for k in [
+              "action",
+              "transaction",
+              "type",
+              "status",
+              "movement",
+              "nature",
+              "particular",
+          ]
+      ):
+        action_col = c
+        break
+
+    if action_col:
+
+      def is_valid_removal(val):
+        s = str(val).lower().strip()
+        return ("remov" in s) and ("add" not in s)
+
+      mask = df_log[action_col].astype(str).apply(is_valid_removal)
+      if mask.sum() > 0:
+        df_log = df_log[mask]
+      else:
         return {}
-    try:
-        live_url = f"{removal_url}&t={timestamp}"
-        df_log = pd.read_csv(live_url, dtype=str)
-        df_log.columns = df_log.columns.str.strip()
-        
-        if df_log.empty:
-            return {}
 
-        mat_col = None
-        for c in df_log.columns:
-            c_l = c.lower()
-            if any(k in c_l for k in ["material", "mat code", "item code", "sap code", "code", "mat"]):
-                mat_col = c
-                break
-        
-        if not mat_col:
-            for c in df_log.columns:
-                if not any(k in c.lower() for k in ["time", "date", "timestamp", "user", "name"]):
-                    mat_col = c
-                    break
+    df_log["clean_mat"] = (
+        df_log[mat_col]
+        .astype(str)
+        .str.replace(r"\.0$", "", regex=True)
+        .str.strip()
+        .str.lstrip("0")
+    )
 
-        if not mat_col:
-            return {}
+    qty_col = next(
+        (
+            c
+            for c in df_log.columns
+            if any(
+                k in c.lower()
+                for k in ["qty", "quantity", "issued", "nos", "count"]
+            )
+        ),
+        None,
+    )
+    if qty_col:
+      df_log["clean_qty"] = pd.to_numeric(
+          df_log[qty_col].astype(str).str.extract(r"(\d+)", expand=False),
+          errors="coerce",
+      ).fillna(1)
+    else:
+      df_log["clean_qty"] = 1.0
 
-        action_col = None
-        for c in df_log.columns:
-            c_l = c.lower()
-            if any(k in c_l for k in ["action", "transaction", "type", "status", "movement", "nature", "particular"]):
-                action_col = c
-                break
+    grouped = df_log.groupby("clean_mat")["clean_qty"].sum().to_dict()
 
-        if action_col:
-            def is_valid_removal(val):
-                s = str(val).lower().strip()
-                return ("remov" in s) and ("add" not in s)
+    res = {}
+    for m_code, total_removals in grouped.items():
+      if m_code and m_code not in ["nan", "none", "n/a", ""]:
+        tot = float(total_removals)
+        if tot > 0:
+          m_cons = round(tot / float(analysis_months), 2)
+          if m_cons == 0.0:
+            m_cons = 0.08
+          repl_cycle = round(1.0 / m_cons, 1) if m_cons > 0 else 0.0
+          res[str(m_code)] = (m_cons, repl_cycle, int(tot))
+    return res
+  except Exception:
+    return {}
 
-            mask = df_log[action_col].astype(str).apply(is_valid_removal)
-            if mask.sum() > 0:
-                df_log = df_log[mask]
-            else:
-                return {}
-
-        df_log["clean_mat"] = df_log[mat_col].astype(str).str.replace(r'\.0$', '', regex=True).str.strip().str.lstrip('0')
-
-        qty_col = next((c for c in df_log.columns if any(k in c.lower() for k in ["qty", "quantity", "issued", "nos", "count"])), None)
-        if qty_col:
-            df_log["clean_qty"] = pd.to_numeric(df_log[qty_col].astype(str).str.extract(r'(\d+)', expand=False), errors='coerce').fillna(1)
-        else:
-            df_log["clean_qty"] = 1.0
-
-        grouped = df_log.groupby("clean_mat")["clean_qty"].sum().to_dict()
-
-        res = {}
-        for m_code, total_removals in grouped.items():
-            if m_code and m_code not in ["nan", "none", "n/a", ""]:
-                tot = float(total_removals)
-                if tot > 0:
-                    m_cons = round(tot / float(analysis_months), 2)
-                    if m_cons == 0.0:
-                        m_cons = 0.08
-                    repl_cycle = round(1.0 / m_cons, 1) if m_cons > 0 else 0.0
-                    res[str(m_code)] = (m_cons, repl_cycle, int(tot))
-        return res
-    except Exception:
-        return {}
 
 inject_custom_css()
 
-active_tag = f"📍 Active Area: {st.session_state['selected_area']}" if st.session_state["selected_area"] else "🏭 Master Control Room"
+active_tag = (
+    f"📍 Active Area: {st.session_state['selected_area']}"
+    if st.session_state["selected_area"]
+    else "🏭 Master Control Room"
+)
 render_top_bar(status_text=active_tag)
 
 # --- SIDEBAR DESIGN ---
-st.sidebar.markdown("""
+st.sidebar.markdown(
+    """
     <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 14px; border-radius: 10px; margin-bottom: 15px; text-align: center; border: 1px solid #334155;">
         <h4 style="margin:0; color:#38bdf8; font-size:15px; font-weight:800; letter-spacing:0.5px;">⚙️ CONTROL PANEL</h4>
         <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; font-weight:500;">C&I Instrumentation Suite</p>
     </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # 1. DIRECT AREA USER MODE
 if is_area_direct_mode:
-    st.sidebar.markdown('<div class="sidebar-section-title">📌 Area Dedicated Modules</div>', unsafe_allow_html=True)
-    if not st.session_state["smart_intelligence_mode"]:
-        if st.sidebar.button("📈  Predictive PR Date", use_container_width=True):
-            st.session_state["smart_intelligence_mode"] = True
-            st.session_state["pr_selected_view"] = url_area
-            st.query_params["area"] = url_area
-            st.query_params["view"] = "pr"
-            st.rerun()
-    else:
-        if st.sidebar.button("📦  Back to Area Stock", use_container_width=True):
-            st.session_state["smart_intelligence_mode"] = False
-            st.session_state["pr_selected_view"] = None
-            st.query_params["area"] = url_area
-            if "view" in st.query_params:
-                del st.query_params["view"]
-            st.rerun()
+  st.sidebar.markdown(
+      '<div class="sidebar-section-title">📌 Area Dedicated Modules</div>',
+      unsafe_allow_html=True,
+  )
+  if not st.session_state["smart_intelligence_mode"]:
+    if st.sidebar.button("📈  Predictive PR Date", use_container_width=True):
+      st.session_state["smart_intelligence_mode"] = True
+      st.session_state["pr_selected_view"] = url_area
+      st.query_params["area"] = url_area
+      st.query_params["view"] = "pr"
+      st.rerun()
+  else:
+    if st.sidebar.button("📦  Back to Area Stock", use_container_width=True):
+      st.session_state["smart_intelligence_mode"] = False
+      st.session_state["pr_selected_view"] = None
+      st.query_params["area"] = url_area
+      if "view" in st.query_params:
+        del st.query_params["view"]
+      st.rerun()
 
 # 2. HOD / MASTER PORTAL MODE
 else:
-    if st.session_state.get("hod_auth_user"):
-        u_info = st.session_state["hod_auth_user"]
-        st.sidebar.markdown(f"""
+  if st.session_state.get("hod_auth_user"):
+    u_info = st.session_state["hod_auth_user"]
+    st.sidebar.markdown(
+        f"""
             <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px;">
                 <div style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Active Master Session</div>
                 <div style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-top: 2px;">👤 {u_info['name']}</div>
                 <div style="font-size: 11px; color: #0284c7; font-weight: 600;">{u_info['role']}</div>
             </div>
-        """, unsafe_allow_html=True)
-        
-        if st.sidebar.button("🔒 Logout Master", use_container_width=True):
-            st.session_state["hod_auth_user"] = None
-            st.rerun()
+        """,
+        unsafe_allow_html=True,
+    )
 
-    st.sidebar.markdown('<div class="sidebar-section-title">🧭 Portal Navigation</div>', unsafe_allow_html=True)
-    if st.sidebar.button("🏠  Dashboard Home", use_container_width=True):
-        st.session_state["smart_intelligence_mode"] = False
-        st.session_state["stock_matrix_mode"] = False
-        st.session_state["selected_area"] = None
-        st.session_state["pr_selected_view"] = None
-        st.query_params.clear()
-        st.rerun()
-        
-    if st.sidebar.button("📈  Predictive PR Intelligence", use_container_width=True):
-        st.session_state["smart_intelligence_mode"] = True
-        st.session_state["stock_matrix_mode"] = False
-        st.session_state["selected_area"] = None
-        st.session_state["pr_selected_view"] = None
-        st.query_params["view"] = "pr"
-        st.rerun()
+    if st.sidebar.button("🔒 Logout Master", use_container_width=True):
+      st.session_state["hod_auth_user"] = None
+      st.rerun()
 
-    if st.sidebar.button("📊  Areawise Stock Matrix", use_container_width=True):
-        st.session_state["stock_matrix_mode"] = True
-        st.session_state["smart_intelligence_mode"] = False
-        st.session_state["selected_area"] = None
-        st.session_state["pr_selected_view"] = None
-        st.query_params["view"] = "stock_matrix"
-        st.rerun()
+  st.sidebar.markdown(
+      '<div class="sidebar-section-title">🧭 Portal Navigation</div>',
+      unsafe_allow_html=True,
+  )
+  if st.sidebar.button("🏠  Dashboard Home", use_container_width=True):
+    st.session_state["smart_intelligence_mode"] = False
+    st.session_state["stock_matrix_mode"] = False
+    st.session_state["selected_area"] = None
+    st.session_state["pr_selected_view"] = None
+    st.query_params.clear()
+    st.rerun()
 
-st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
+  if st.sidebar.button(
+      "📈  Predictive PR Intelligence", use_container_width=True
+  ):
+    st.session_state["smart_intelligence_mode"] = True
+    st.session_state["stock_matrix_mode"] = False
+    st.session_state["selected_area"] = None
+    st.session_state["pr_selected_view"] = None
+    st.query_params["view"] = "pr"
+    st.rerun()
+
+  if st.sidebar.button("📊  Areawise Stock Matrix", use_container_width=True):
+    st.session_state["stock_matrix_mode"] = True
+    st.session_state["smart_intelligence_mode"] = False
+    st.session_state["selected_area"] = None
+    st.session_state["pr_selected_view"] = None
+    st.query_params["view"] = "stock_matrix"
+    st.rerun()
+
+st.sidebar.markdown(
+    "<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>",
+    unsafe_allow_html=True,
+)
 
 # --- AREAWISE STOCK MATRIX VIEWER ---
 if st.session_state["stock_matrix_mode"] and not is_area_direct_mode:
-    if not check_hod_authentication():
-        st.stop()
+  if not check_hod_authentication():
+    st.stop()
 
-    st.markdown("""
+  st.markdown(
+      """
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
             <h1 style="color: #0f172a !important; margin: 0; font-size: 28px; font-weight: 800;">📊 Areawise Stock Matrix</h1>
             <p style="color: #475569 !important; margin-top: 8px; font-size: 14px;">Live centralized stock overview across all operating areas.</p>
         </div>
-    """, unsafe_allow_html=True)
+    """,
+      unsafe_allow_html=True,
+  )
 
-    try:
-        df_matrix = fetch_data(STOCK_MATRIX_URL, st.session_state["data_timestamp"])
-        df_matrix.columns = df_matrix.columns.str.strip()
-        matrix_search = st.text_input("🔍 Search (Material Code, Description or Area):", "").strip()
-        filtered_matrix = df_matrix[df_matrix.astype(str).apply(lambda x: x.str.contains(matrix_search, case=False, na=False)).any(axis=1)] if matrix_search else df_matrix
-        styled_matrix = filtered_matrix.style.set_table_styles([
-            {'selector': 'th', 'props': [('font-weight', 'bold'), ('color', '#000000')]},
-            {'selector': 'tr th', 'props': [('font-weight', 'bold'), ('color', '#000000')]}
-        ]).set_properties(**{'color': '#000000'})
-        st.dataframe(styled_matrix, use_container_width=True, height=600)
-    except Exception as e:
-        st.error(f"Error loading Stock Matrix data: {e}")
+  try:
+    df_matrix = fetch_data(
+        STOCK_MATRIX_URL, st.session_state["data_timestamp"]
+    )
+    df_matrix.columns = df_matrix.columns.str.strip()
+    matrix_search = st.text_input(
+        "🔍 Search (Material Code, Description or Area):", ""
+    ).strip()
+    filtered_matrix = (
+        df_matrix[
+            df_matrix.astype(str)
+            .apply(
+                lambda x: x.str.contains(matrix_search, case=False, na=False)
+            )
+            .any(axis=1)
+        ]
+        if matrix_search
+        else df_matrix
+    )
+    styled_matrix = filtered_matrix.style.set_table_styles([
+        {
+            "selector": "th",
+            "props": [("font-weight", "bold"), ("color", "#000000")],
+        },
+        {
+            "selector": "tr th",
+            "props": [("font-weight", "bold"), ("color", "#000000")],
+        },
+    ]).set_properties(**{"color": "#000000"})
+    st.dataframe(styled_matrix, use_container_width=True, height=600)
+  except Exception as e:
+    st.error(f"Error loading Stock Matrix data: {e}")
 
 # --- PREDICTIVE PR INTELLIGENCE ---
 elif st.session_state["smart_intelligence_mode"]:
-    current_view = url_area if is_area_direct_mode else st.session_state["pr_selected_view"]
+  current_view = (
+      url_area if is_area_direct_mode else st.session_state["pr_selected_view"]
+  )
 
-    if current_view is None:
-        if not is_area_direct_mode and not check_hod_authentication():
-            st.stop()
+  if current_view is None:
+    if not is_area_direct_mode and not check_hod_authentication():
+      st.stop()
 
-        hero_pr_html = """
+    hero_pr_html = """
 <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 34px 28px; border-radius: 18px; border: 1.5px solid #334155; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25); text-align: center; margin-bottom: 25px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
     <div style="display: inline-block; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 4px 14px; border-radius: 20px; color: #fbbf24; font-size: 11.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">
         📈 PREDICTIVE REQUISITION INTELLIGENCE
@@ -1168,184 +1672,258 @@ elif st.session_state["smart_intelligence_mode"]:
     </p>
 </div>
 """
-        st.html(hero_pr_html)
+    st.html(hero_pr_html)
 
-        st.markdown("""
+    st.markdown(
+        """
             <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 20px; border-radius: 12px; border: 2px solid #3b82f6; margin-bottom: 25px; text-align: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);">
                 <h3 style="margin: 0 0 5px 0; color: #1e3a8a; font-size: 20px; font-weight: 800;">🌐 Combined Areas (Plant-wide / Planning Cell View)</h3>
                 <p style="margin: 0; color: #1e40af; font-size: 13px;">Merges identical material codes across all active areas for centralized bulk procurement and unified PR dates.</p>
             </div>
-        """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True,
+    )
 
-        if st.button("🚀 Open Combined Plant-wide PR View", use_container_width=True):
-            st.session_state["pr_selected_view"] = "Combined"
-            st.query_params["view"] = "pr"
-            st.query_params["pr_area"] = "Combined"
-            st.rerun()
+    if st.button("🚀 Open Combined Plant-wide PR View", use_container_width=True):
+      st.session_state["pr_selected_view"] = "Combined"
+      st.query_params["view"] = "pr"
+      st.query_params["pr_area"] = "Combined"
+      st.rerun()
 
-        st.markdown("<div style='margin: 20px 0; border-top: 1px solid #e2e8f0;'></div>", unsafe_allow_html=True)
-        st.markdown("<h3 style='color: #0f172a; font-size: 18px; font-weight: 700; margin-bottom: 15px;'>🎛️ Or Select Individual Area Block:</h3>", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='margin: 20px 0; border-top: 1px solid #e2e8f0;'></div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<h3 style='color: #0f172a; font-size: 18px; font-weight: 700;"
+        " margin-bottom: 15px;'>🎛️ Or Select Individual Area Block:</h3>",
+        unsafe_allow_html=True,
+    )
 
-        areas = list(AREA_CONFIGS.keys())
-        for i in range(0, len(areas), 3):
-            cols = st.columns(3)
-            for j in range(3):
-                if i + j < len(areas):
-                    area_name = areas[i + j]
-                    cfg = AREA_CONFIGS[area_name]
-                    accent_col = cfg.get("color", "#0284c7")
-                    with cols[j]:
-                        st.markdown(f"""
+    areas = list(AREA_CONFIGS.keys())
+    for i in range(0, len(areas), 3):
+      cols = st.columns(3)
+      for j in range(3):
+        if i + j < len(areas):
+          area_name = areas[i + j]
+          cfg = AREA_CONFIGS[area_name]
+          accent_col = cfg.get("color", "#0284c7")
+          with cols[j]:
+            st.markdown(
+                f"""
                             <div style="background: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; border-top: 3px solid {accent_col}; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 10px; text-align: center;">
                                 <h4 style="margin: 0 0 4px 0; color: #0f172a; font-size: 16px; font-weight: 700;">📍 {area_name}</h4>
                                 <span style="font-size: 11px; color: {accent_col}; font-weight: 700;">{cfg.get('zone_type', '')}</span>
                             </div>
-                        """, unsafe_allow_html=True)
-                        if st.button(f"Open {area_name}", use_container_width=True, key=f"pr_btn_{area_name}"):
-                            st.session_state["pr_selected_view"] = area_name
-                            st.query_params["view"] = "pr"
-                            st.query_params["pr_area"] = area_name
-                            st.rerun()
-    else:
-        if current_view != "Combined" and not check_authentication(current_view):
-            st.stop()
+                        """,
+                unsafe_allow_html=True,
+            )
+            if st.button(
+                f"Open {area_name}",
+                use_container_width=True,
+                key=f"pr_btn_{area_name}",
+            ):
+              st.session_state["pr_selected_view"] = area_name
+              st.query_params["view"] = "pr"
+              st.query_params["pr_area"] = area_name
+              st.rerun()
+  else:
+    if current_view != "Combined" and not check_authentication(current_view):
+      st.stop()
 
-        if not is_area_direct_mode:
-            if st.sidebar.button("⬅️  Back to PR Area Selector", use_container_width=True):
-                st.session_state["pr_selected_view"] = None
-                st.query_params["view"] = "pr"
-                if "pr_area" in st.query_params:
-                    del st.query_params["pr_area"]
-                st.rerun()
+    if not is_area_direct_mode:
+      if st.sidebar.button(
+          "⬅️  Back to PR Area Selector", use_container_width=True
+      ):
+        st.session_state["pr_selected_view"] = None
+        st.query_params["view"] = "pr"
+        if "pr_area" in st.query_params:
+          del st.query_params["pr_area"]
+        st.rerun()
 
-        header_title = "🌐 Combined Plant-wide PR Intelligence (Planning Cell)" if current_view == "Combined" else f"📍 Predictive PR Intelligence — {current_view}"
-        
-        st.markdown(f"""
+    header_title = (
+        "🌐 Combined Plant-wide PR Intelligence (Planning Cell)"
+        if current_view == "Combined"
+        else f"📍 Predictive PR Intelligence — {current_view}"
+    )
+
+    st.markdown(
+        f"""
             <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 25px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); margin-bottom: 25px;">
                 <h1 style="color: #0f172a !important; margin: 0; font-size: 24px; font-weight: 800;">{header_title}</h1>
                 <p style="color: #475569 !important; margin-top: 6px; font-size: 13px;">Real-time consumption logs and lead-time-adjusted Purchase Requisition schedules.</p>
             </div>
-        """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True,
+    )
 
-        st.sidebar.markdown('<div class="sidebar-section-title">⚙️ Analysis Parameters</div>', unsafe_allow_html=True)
-        lead_time_months = st.sidebar.slider("Procurement Lead Time (Months):", min_value=1, max_value=12, value=6)
-        analysis_months = st.sidebar.selectbox("Consumption Historical Span:", [6, 12, 24], index=1)
+    st.sidebar.markdown(
+        '<div class="sidebar-section-title">⚙️ Analysis Parameters</div>',
+        unsafe_allow_html=True,
+    )
+    lead_time_months = st.sidebar.slider(
+        "Procurement Lead Time (Months):", min_value=1, max_value=12, value=6
+    )
+    analysis_months = st.sidebar.selectbox(
+        "Consumption Historical Span:", [6, 12, 24], index=1
+    )
 
-        only_urgent_pr = st.session_state.get("urgent_pr_filter_state", False)
+    only_urgent_pr = st.session_state.get("urgent_pr_filter_state", False)
 
-        target_configs = AREA_CONFIGS if current_view == "Combined" else {current_view: AREA_CONFIGS[current_view]}
+    target_configs = (
+        AREA_CONFIGS
+        if current_view == "Combined"
+        else {current_view: AREA_CONFIGS[current_view]}
+    )
 
-        master_records = []
-        now_dt = datetime.now()
+    master_records = []
+    now_dt = datetime.now()
 
-        for area_key, area_cfg in target_configs.items():
-            try:
-                df_area = fetch_data(area_cfg["sheet_url"], st.session_state["data_timestamp"])
-                df_area.columns = df_area.columns.str.strip()
-                mapping = resolve_columns(df_area)
-                
-                consumption_map = build_consumption_map(area_cfg.get("removal_url"), st.session_state["data_timestamp"], analysis_months)
+    for area_key, area_cfg in target_configs.items():
+      try:
+        df_area = fetch_data(
+            area_cfg["sheet_url"], st.session_state["data_timestamp"]
+        )
+        df_area.columns = df_area.columns.str.strip()
+        mapping = resolve_columns(df_area)
 
-                for _, r in df_area.iterrows():
-                    raw_mat = r.get(mapping["material"], "N/A")
-                    mat_code = clean_material_code(raw_mat)
-                    if mat_code == "N/A":
-                        continue
-                    store_stock = safe_int(r.get(mapping["store"], 0))
-                    field_count = safe_int(r.get(mapping["field"], 0))
-                    
-                    monthly_consumption, replacement_cycle, total_removals = consumption_map.get(str(mat_code), (0.0, 0.0, 0))
-                    
-                    master_records.append({
-                        "Area": area_key,
-                        "Material Code": mat_code,
-                        "Instrument Name": str(r.get(mapping["name"], "No Name")).strip(),
-                        "Specs": str(r.get(mapping["specs"], "N/A")).strip(),
-                        "Field Count": field_count,
-                        "Store Stock": store_stock,
-                        "Monthly Consumption": monthly_consumption,
-                        "Replacement Cycle": replacement_cycle,
-                        "Total Removals": total_removals
-                    })
-            except Exception:
-                pass
+        consumption_map = build_consumption_map(
+            area_cfg.get("removal_url"),
+            st.session_state["data_timestamp"],
+            analysis_months,
+        )
 
-        if master_records:
-            master_df = pd.DataFrame(master_records)
-            if current_view == "Combined":
-                grouped_records = []
-                for mat_code, group in master_df.groupby("Material Code"):
-                    combined_area_tag = ", ".join(group["Area"].unique())
-                    combined_field = group["Field Count"].sum()
-                    combined_store = group["Store Stock"].sum()
-                    combined_consumption = round(group["Monthly Consumption"].sum(), 2)
-                    combined_removals = group["Total Removals"].sum()
-                    combined_name = group["Instrument Name"].iloc[0]
-                    combined_specs = group["Specs"].iloc[0]
-                    combined_cycle = round(1.0 / combined_consumption, 1) if combined_consumption > 0 else 0.0
+        for _, r in df_area.iterrows():
+          raw_mat = r.get(mapping["material"], "N/A")
+          mat_code = clean_material_code(raw_mat)
+          if mat_code == "N/A":
+            continue
+          store_stock = safe_int(r.get(mapping["store"], 0))
+          field_count = safe_int(r.get(mapping["field"], 0))
 
-                    grouped_records.append({
-                        "Area": f"Plant-wide ({combined_area_tag})",
-                        "Material Code": mat_code,
-                        "Instrument Name": combined_name,
-                        "Specs": combined_specs,
-                        "Field Count": combined_field,
-                        "Store Stock": combined_store,
-                        "Monthly Consumption": combined_consumption,
-                        "Replacement Cycle": combined_cycle,
-                        "Total Removals": combined_removals
-                    })
-                master_df = pd.DataFrame(grouped_records)
+          monthly_consumption, replacement_cycle, total_removals = (
+              consumption_map.get(str(mat_code), (0.0, 0.0, 0))
+          )
 
-            pr_dates_str = []
-            is_urgents = []
-            
-            for _, row in master_df.iterrows():
-                m_cons = row["Monthly Consumption"]
-                s_stock = row["Store Stock"]
-                if m_cons > 0:
-                    days_remaining = int((s_stock / m_cons) * 30)
-                    exhaustion_date = now_dt + timedelta(days=days_remaining)
-                    lead_time_days = lead_time_months * 30
-                    pr_trigger_date = exhaustion_date - timedelta(days=lead_time_days)
-                    urgent = (pr_trigger_date <= now_dt)
-                    p_str = pr_trigger_date.strftime('%d %b %Y')
-                else:
-                    urgent = False
-                    p_str = "No History / Stable"
-                is_urgents.append(urgent)
-                pr_dates_str.append(p_str)
+          master_records.append({
+              "Area": area_key,
+              "Material Code": mat_code,
+              "Instrument Name": (
+                  str(r.get(mapping["name"], "No Name")).strip()
+              ),
+              "Specs": str(r.get(mapping["specs"], "N/A")).strip(),
+              "Field Count": field_count,
+              "Store Stock": store_stock,
+              "Monthly Consumption": monthly_consumption,
+              "Replacement Cycle": replacement_cycle,
+              "Total Removals": total_removals,
+          })
+      except Exception:
+        pass
 
-            master_df["Is_Urgent"] = is_urgents
-            master_df["PR_Date_Str"] = pr_dates_str
+    if master_records:
+      master_df = pd.DataFrame(master_records)
+      if current_view == "Combined":
+        grouped_records = []
+        for mat_code, group in master_df.groupby("Material Code"):
+          combined_area_tag = ", ".join(group["Area"].unique())
+          combined_field = group["Field Count"].sum()
+          combined_store = group["Store Stock"].sum()
+          combined_consumption = round(group["Monthly Consumption"].sum(), 2)
+          combined_removals = group["Total Removals"].sum()
+          combined_name = group["Instrument Name"].iloc[0]
+          combined_specs = group["Specs"].iloc[0]
+          combined_cycle = (
+              round(1.0 / combined_consumption, 1)
+              if combined_consumption > 0
+              else 0.0
+          )
 
-            master_df = master_df.sort_values(by="Instrument Name", key=lambda col: col.str.lower(), ascending=True).reset_index(drop=True)
+          grouped_records.append({
+              "Area": f"Plant-wide ({combined_area_tag})",
+              "Material Code": mat_code,
+              "Instrument Name": combined_name,
+              "Specs": combined_specs,
+              "Field Count": combined_field,
+              "Store Stock": combined_store,
+              "Monthly Consumption": combined_consumption,
+              "Replacement Cycle": combined_cycle,
+              "Total Removals": combined_removals,
+          })
+        master_df = pd.DataFrame(grouped_records)
 
-            if only_urgent_pr:
-                master_df = master_df[master_df["Is_Urgent"] == True]
+      pr_dates_str = []
+      is_urgents = []
 
-            search_query = st.text_input("🔍 Search (Enter Material Code or Instrument Description):", "").strip()
-            if search_query:
-                filtered_df = master_df[
-                    master_df["Material Code"].str.contains(search_query, case=False, na=False) |
-                    master_df["Instrument Name"].str.contains(search_query, case=False, na=False) |
-                    master_df["Specs"].str.contains(search_query, case=False, na=False)
-                ]
-            else:
-                filtered_df = master_df
+      for _, row in master_df.iterrows():
+        m_cons = row["Monthly Consumption"]
+        s_stock = row["Store Stock"]
+        if m_cons > 0:
+          days_remaining = int((s_stock / m_cons) * 30)
+          exhaustion_date = now_dt + timedelta(days=days_remaining)
+          lead_time_days = lead_time_months * 30
+          pr_trigger_date = exhaustion_date - timedelta(days=lead_time_days)
+          urgent = pr_trigger_date <= now_dt
+          p_str = pr_trigger_date.strftime("%d %b %Y")
+        else:
+          urgent = False
+          p_str = "No History / Stable"
+        is_urgents.append(urgent)
+        pr_dates_str.append(p_str)
 
-            if not filtered_df.empty:
-                status_text = f"🚨 Showing {len(filtered_df)} Overdue / Urgent PR Items" if only_urgent_pr else f"🔎 Analytics Results ({len(filtered_df)} items displayed - Alphabetical A-Z)"
-                st.markdown(f"### {status_text}")
-                
-                for _, item in filtered_df.iterrows():
-                    is_urgent = item["Is_Urgent"]
-                    pr_date_str = item["PR_Date_Str"]
-                    store_stock = item["Store Stock"]
+      master_df["Is_Urgent"] = is_urgents
+      master_df["PR_Date_Str"] = pr_dates_str
 
-                    urgency_badge = '<span style="background-color: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">🚨 URGENT PR REQUIRED</span>' if is_urgent else '<span style="background-color: #dcfce7; color: #16a34a; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">✅ Stock Healthy</span>'
+      master_df = master_df.sort_values(
+          by="Instrument Name", key=lambda col: col.str.lower(), ascending=True
+      ).reset_index(drop=True)
 
-                    card_html = f"""
+      if only_urgent_pr:
+        master_df = master_df[master_df["Is_Urgent"] == True]
+
+      search_query = st.text_input(
+          "🔍 Search (Enter Material Code or Instrument Description):", ""
+      ).strip()
+      if search_query:
+        filtered_df = master_df[
+            master_df["Material Code"].str.contains(
+                search_query, case=False, na=False
+            )
+            | master_df["Instrument Name"].str.contains(
+                search_query, case=False, na=False
+            )
+            | master_df["Specs"].str.contains(
+                search_query, case=False, na=False
+            )
+        ]
+      else:
+        filtered_df = master_df
+
+      if not filtered_df.empty:
+        status_text = (
+            f"🚨 Showing {len(filtered_df)} Overdue / Urgent PR Items"
+            if only_urgent_pr
+            else f"🔎 Analytics Results ({len(filtered_df)} items displayed -"
+            " Alphabetical A-Z)"
+        )
+        st.markdown(f"### {status_text}")
+
+        for _, item in filtered_df.iterrows():
+          is_urgent = item["Is_Urgent"]
+          pr_date_str = item["PR_Date_Str"]
+          store_stock = item["Store Stock"]
+
+          urgency_badge = (
+              '<span style="background-color: #fee2e2; color: #dc2626; padding:'
+              " 4px 10px; border-radius: 12px; font-weight: bold; font-size:"
+              ' 11px;">🚨 URGENT PR REQUIRED</span>'
+              if is_urgent
+              else '<span style="background-color: #dcfce7; color: #16a34a;'
+              " padding: 4px 10px; border-radius: 12px; font-weight: bold;"
+              ' font-size: 11px;">✅ Stock Healthy</span>'
+          )
+
+          card_html = f"""
                     <div class="inventory-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
                             <div>
@@ -1375,21 +1953,23 @@ elif st.session_state["smart_intelligence_mode"]:
                         </div>
                     </div>
                     """
-                    st.markdown(card_html, unsafe_allow_html=True)
-            else:
-                if only_urgent_pr:
-                    st.success("🎉 Great news! No items have overdue PR dates in this view.")
-                else:
-                    st.info("No matching material codes or instruments found.")
+          st.markdown(card_html, unsafe_allow_html=True)
+      else:
+        if only_urgent_pr:
+          st.success(
+              "🎉 Great news! No items have overdue PR dates in this view."
+          )
         else:
-            st.warning("No inventory records available for this area.")
+          st.info("No matching material codes or instruments found.")
+    else:
+      st.warning("No inventory records available for this area.")
 
 # --- LANDING PAGE (HOD INDIVIDUAL PIN AUTHENTICATION) ---
 elif st.session_state["selected_area"] is None:
-    if not check_hod_authentication():
-        st.stop()
+  if not check_hod_authentication():
+    st.stop()
 
-    hero_html = """
+  hero_html = """
 <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 34px 28px; border-radius: 18px; border: 1.5px solid #334155; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25); text-align: center; margin-bottom: 25px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
     <div style="display: inline-block; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 4px 14px; border-radius: 20px; color: #38bdf8; font-size: 11.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">
         ⚙️ CENTRAL C&amp;I INSTRUMENTATION SUITE
@@ -1416,20 +1996,20 @@ elif st.session_state["selected_area"] is None:
     </div>
 </div>
 """
-    st.html(hero_html)
+  st.html(hero_html)
 
-    areas = list(AREA_CONFIGS.keys())
-    for i in range(0, len(areas), 3):
-        cols = st.columns(3)
-        for j in range(3):
-            if i + j < len(areas):
-                area_name = areas[i + j]
-                cfg = AREA_CONFIGS[area_name]
-                mgr = cfg.get("manager", "Plant Engineer")
-                accent_color = cfg.get("color", "#0284c7")
-                
-                with cols[j]:
-                    card_html = f"""
+  areas = list(AREA_CONFIGS.keys())
+  for i in range(0, len(areas), 3):
+    cols = st.columns(3)
+    for j in range(3):
+      if i + j < len(areas):
+        area_name = areas[i + j]
+        cfg = AREA_CONFIGS[area_name]
+        mgr = cfg.get("manager", "Plant Engineer")
+        accent_color = cfg.get("color", "#0284c7")
+
+        with cols[j]:
+          card_html = f"""
 <div style="background: #ffffff; padding: 20px 20px 14px 20px; border-radius: 14px 14px 0 0; border: 1.5px solid #cbd5e1; border-bottom: none; box-shadow: 0 4px 12px rgba(0,0,0,0.03); text-align: center; border-top: 4px solid {accent_color}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
     <h3 style="margin: 0 0 6px 0; color: #0f172a; font-size: 18px; font-weight: 800;">
         📍 {area_name}
@@ -1442,35 +2022,41 @@ elif st.session_state["selected_area"] is None:
     </p>
 </div>
 """
-                    st.html(card_html)
-                    if st.button(f"Enter {area_name} ➔", use_container_width=True, key=f"btn_{area_name}"):
-                        st.session_state["selected_area"] = area_name
-                        st.rerun()
-                    st.markdown("<div style='margin-bottom: 22px;'></div>", unsafe_allow_html=True)
+          st.html(card_html)
+          if st.button(
+              f"Enter {area_name} ➔",
+              use_container_width=True,
+              key=f"btn_{area_name}",
+          ):
+            st.session_state["selected_area"] = area_name
+            st.rerun()
+          st.markdown(
+              "<div style='margin-bottom: 22px;'></div>", unsafe_allow_html=True
+          )
 
 # --- ACTIVE AREA DASHBOARD VIEW ---
 else:
-    current_area = st.session_state["selected_area"]
+  current_area = st.session_state["selected_area"]
 
-    if not check_authentication(current_area):
-        st.stop()
+  if not check_authentication(current_area):
+    st.stop()
 
-    if is_area_direct_mode:
-        st.sidebar.markdown(f"**Current Area:** `{current_area}`")
-        if st.sidebar.button("🔑 Change Password", use_container_width=True):
-            change_password_dialog(current_area)
+  if is_area_direct_mode:
+    st.sidebar.markdown(f"**Current Area:** `{current_area}`")
+    if st.sidebar.button("🔑 Change Password", use_container_width=True):
+      change_password_dialog(current_area)
 
-        if st.sidebar.button("🔒 Logout", use_container_width=True):
-            st.session_state["auth_status"][current_area] = False
-            st.rerun()
-        st.sidebar.markdown("---")
+    if st.sidebar.button("🔒 Logout", use_container_width=True):
+      st.session_state["auth_status"][current_area] = False
+      st.rerun()
+    st.sidebar.markdown("---")
 
-    config = AREA_CONFIGS[current_area]
-    manager_name = config.get("manager", "Er. Amit Jangra | P.No. 10372")
-    zone_name = config.get("zone_type", "Refinery Process Area")
-    theme_accent = config.get("color", "#0284c7")
+  config = AREA_CONFIGS[current_area]
+  manager_name = config.get("manager", "Er. Amit Jangra | P.No. 10372")
+  zone_name = config.get("zone_type", "Refinery Process Area")
+  theme_accent = config.get("color", "#0284c7")
 
-    area_header_html = f"""
+  area_header_html = f"""
     <div style="background: #ffffff; padding: 22px 26px; border-radius: 14px; border: 1.5px solid #cbd5e1; border-top: 5px solid {theme_accent}; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-bottom: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div>
@@ -1491,73 +2077,116 @@ else:
         </div>
     </div>
     """
-    st.markdown(area_header_html, unsafe_allow_html=True)
+  st.markdown(area_header_html, unsafe_allow_html=True)
 
-    try:
-        df = fetch_data(config["sheet_url"], st.session_state["data_timestamp"])
-        df.columns = df.columns.str.strip()
-        
-        mapping = resolve_columns(df)
-        NAME_COL = mapping["name"]
-        STORE_COL = mapping["store"]
+  try:
+    df = fetch_data(config["sheet_url"], st.session_state["data_timestamp"])
+    df.columns = df.columns.str.strip()
 
-        df = df.dropna(subset=[NAME_COL])
-        
-        st.sidebar.markdown('<div class="sidebar-section-title">🔍 Filter &amp; Search</div>', unsafe_allow_html=True)
-        all_instruments = ["All System Data"] + sorted(list(df[NAME_COL].dropna().unique()), key=lambda x: str(x).lower())
-        selected_instrument = st.sidebar.selectbox("Select Instrument Category:", all_instruments)
-        
-        items_per_page = st.sidebar.selectbox("Items Per Page:", [10, 20, 30, 40, 50, 100], index=3)
-        st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
+    mapping = resolve_columns(df)
+    NAME_COL = mapping["name"]
+    STORE_COL = mapping["store"]
 
-        if selected_instrument != "All System Data":
-            df = df[df[NAME_COL].str.strip() == selected_instrument]
+    df = df.dropna(subset=[NAME_COL])
 
-        unique_names_ordered = sorted(df[NAME_COL].unique(), key=lambda x: str(x).lower())
-        total_items = len(unique_names_ordered)
+    st.sidebar.markdown(
+        '<div class="sidebar-section-title">🔍 Filter &amp; Search</div>',
+        unsafe_allow_html=True,
+    )
+    all_instruments = ["All System Data"] + sorted(
+        list(df[NAME_COL].dropna().unique()), key=lambda x: str(x).lower()
+    )
+    selected_instrument = st.sidebar.selectbox(
+        "Select Instrument Category:", all_instruments
+    )
 
-        # --- PAGINATION ---
-        total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
+    items_per_page = st.sidebar.selectbox(
+        "Items Per Page:", [10, 20, 30, 40, 50, 100], index=3
+    )
+    st.sidebar.markdown(
+        "<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>",
+        unsafe_allow_html=True,
+    )
 
-        st.sidebar.markdown('<div class="sidebar-section-title">📄 Page Navigation</div>', unsafe_allow_html=True)
-        page_number = st.sidebar.number_input("Select Page Number:", min_value=1, max_value=total_pages, value=1, step=1)
-        st.sidebar.caption(f"Showing page {page_number} of {total_pages} (Total unique: {total_items} items)")
-        st.sidebar.markdown("<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
+    if selected_instrument != "All System Data":
+      df = df[df[NAME_COL].str.strip() == selected_instrument]
 
-        start_idx = (page_number - 1) * items_per_page
-        end_idx = start_idx + items_per_page
-        paginated_names = unique_names_ordered[start_idx:end_idx]
+    unique_names_ordered = sorted(
+        df[NAME_COL].unique(), key=lambda x: str(x).lower()
+    )
+    total_items = len(unique_names_ordered)
 
-        for current_name in paginated_names:
-            sub_df = df[df[NAME_COL].astype(str).str.strip() == str(current_name).strip()]
-            entry_count = len(sub_df)
+    # --- PAGINATION ---
+    total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
 
-            if entry_count == 1:
-                row = sub_df.iloc[0]
-                mapping["show_name"] = True
-                render_row(row, mapping, current_area)
-            else:
-                total_current_store = sum(safe_int(r[STORE_COL]) for _, r in sub_df.iterrows() if STORE_COL in r)
-                
-                st.markdown(f"""
+    st.sidebar.markdown(
+        '<div class="sidebar-section-title">📄 Page Navigation</div>',
+        unsafe_allow_html=True,
+    )
+    page_number = st.sidebar.number_input(
+        "Select Page Number:",
+        min_value=1,
+        max_value=total_pages,
+        value=1,
+        step=1,
+    )
+    st.sidebar.caption(
+        f"Showing page {page_number} of {total_pages} (Total unique:"
+        f" {total_items} items)"
+    )
+    st.sidebar.markdown(
+        "<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>",
+        unsafe_allow_html=True,
+    )
+
+    start_idx = (page_number - 1) * items_per_page
+    end_idx = start_idx + items_per_page
+    paginated_names = unique_names_ordered[start_idx:end_idx]
+
+    for current_name in paginated_names:
+      sub_df = df[
+          df[NAME_COL].astype(str).str.strip() == str(current_name).strip()
+      ]
+      entry_count = len(sub_df)
+
+      if entry_count == 1:
+        row = sub_df.iloc[0]
+        mapping["show_name"] = True
+        render_row(row, mapping, current_area)
+      else:
+        total_current_store = sum(
+            safe_int(r[STORE_COL])
+            for _, r in sub_df.iterrows()
+            if STORE_COL in r
+        )
+
+        st.markdown(
+            f"""
                 <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-left: 4px solid {theme_accent}; padding: 12px 16px; border-radius: 8px; margin-bottom: -43px; position: relative; z-index: 99; pointer-events: none; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
                     <span style="font-size: 15px !important; font-weight: 700 !important; color: #0f172a !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                         📂 {current_name} — ({entry_count} Variants Grouped) | Combined Store Stock: {total_current_store}
                     </span>
                     <span style="font-size: 12px; color: #475569; font-weight: bold; margin-right: 5px;">▼</span>
                 </div>
-                """, unsafe_allow_html=True)
-                
-                with st.expander(" "):
-                    for idx, row in sub_df.iterrows():
-                        mapping["show_name"] = False
-                        render_row(row, mapping, current_area)
+                """,
+            unsafe_allow_html=True,
+        )
 
-    except Exception as e:
-        st.error(f"Error accessing Google Sheets Database for {current_area}: {e}")
+        with st.expander(" "):
+          for idx, row in sub_df.iterrows():
+            mapping["show_name"] = False
+            render_row(row, mapping, current_area)
 
-    st.sidebar.markdown('<div class="sidebar-section-title">🔄 Database Control</div>', unsafe_allow_html=True)
-    if st.sidebar.button("🔄  Sync Live Data Now", use_container_width=True):
-        st.cache_data.clear()
-        st.session_state["data_timestamp"] = int(time.time())
-        st.rerun()
+  except Exception as e:
+    st.error(
+        f"Error accessing Google Sheets Database for {current_area}: {e}"
+    )
+
+  st.sidebar.markdown(
+      '<div class="sidebar-section-title">🔄 Database Control</div>',
+      unsafe_allow_html=True,
+  )
+  if st.sidebar.button("🔄  Sync Live Data Now", use_container_width=True):
+    st.cache_data.clear()
+    st.session_state["data_timestamp"] = int(time.time())
+    st.rerun()
