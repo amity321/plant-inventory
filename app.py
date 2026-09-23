@@ -185,13 +185,14 @@ AREA_CONFIGS = {
 STOCK_MATRIX_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=868142398&single=true&output=csv"
 
 SUBSTORE_AREA_KEYWORD_MAP = {
-    "Area 02/03": ["02/03"],
-    "Area 04/05": ["04/05"],
-    "Area 06/07": ["06/07"],
-    "Area 08": ["08"],
-    "Area 09/10": ["09/10"],
-    "SPP TG": ["SPP TG", "TG"],
-    "SPP Boiler": ["SPP Boiler", "Boiler"],
+    "Area 02/03": ["02/03", "area 2", "area 3"],
+    "Area 04/05": ["04/05", "area 4", "area 5"],
+    "Area 06/07": ["06/07", "area 6", "area 7"],
+    "Area 08": ["08", "area 8"],
+    "Area 09/10": ["09/10", "area 9", "area 10"],
+    "SPP TG": ["spp tg", "tg"],
+    "SPP Boiler": ["spp boiler", "boiler"],
+    "C&I Sub Store": ["sub store", "store", "central store", "m7"],
 }
 
 # --- URL QUERY PARAMETERS & ROUTING ---
@@ -238,7 +239,293 @@ def get_global_messages():
 GLOBAL_MESSAGES = get_global_messages()
 
 
-# --- INVENTORY TEAM HIERARCHY MODAL POPUP ---
+# --- UTILITY & DATA RESOLUTION HELPERS ---
+def clean_material_code(val):
+    if pd.isna(val):
+        return "N/A"
+    s_val = str(val).strip()
+    if s_val == "" or s_val.lower() == "nan":
+        return "N/A"
+    if s_val.endswith(".0"):
+        s_val = s_val[:-2]
+    cleaned = s_val.lstrip("0")
+    return cleaned if cleaned != "" else "0"
+
+
+def safe_int(val):
+    if pd.isna(val):
+        return 0
+    try:
+        return int(float(str(val).strip()))
+    except (ValueError, TypeError):
+        return 0
+
+
+def resolve_columns(df):
+    cols = df.columns
+    (
+        mat_col,
+        field_col,
+        store_col,
+        shop_col,
+        total_col,
+        specs_col,
+        name_col,
+        area_belongs_col,
+    ) = (None, None, None, None, None, None, None, None)
+    for col in cols:
+        c_low = col.lower()
+        if not mat_col and ("code" in c_low or "mat" in c_low):
+            mat_col = col
+        elif not field_col and ("field" in c_low or "existing" in c_low):
+            field_col = col
+        elif not store_col and (
+            "store" in c_low
+            or "m7" in c_low
+            or ("room" in c_low and "shop" not in c_low)
+        ):
+            store_col = col
+        elif not shop_col and ("shop" in c_low or "floor" in c_low):
+            shop_col = col
+        elif not total_col and "total" in c_low:
+            total_col = col
+        elif not specs_col and "spec" in c_low:
+            specs_col = col
+        elif not name_col and ("instrument" in c_low or "name" in c_low):
+            name_col = col
+        elif not area_belongs_col and (
+            "belong" in c_low
+            or "area" in c_low
+            or "location" in c_low
+            or "section" in c_low
+        ):
+            area_belongs_col = col
+
+    return {
+        "name": name_col or "Instrument Name",
+        "material": mat_col or "Material Code",
+        "specs": specs_col or "Specs",
+        "field": field_col or "Existing Instrument on Field",
+        "store": store_col or "Remaining Spares in Store-Room",
+        "shop": shop_col or "Remaining Spares in Shop-Floor",
+        "total": total_col or "Total Spares",
+        "area_belongs": area_belongs_col or "Belongs To Area",
+    }
+
+
+@st.cache_data(ttl=60)
+def fetch_data(url, timestamp):
+    live_url = f"{url}&t={timestamp}"
+    df = pd.read_csv(live_url, dtype=str)
+    return df
+
+
+# --- PRIVACY-FIRST STOCK MATRIX SEARCH & BACKGROUND EXTRACTOR ---
+@st.cache_data(ttl=60)
+def search_stock_matrix_catalog(search_term, timestamp):
+    """Searches Material Code and Description from Central Stock Matrix without exposing quantities to the sender."""
+    if not search_term or len(search_term.strip()) < 2:
+        return []
+
+    try:
+        df_mat = fetch_data(STOCK_MATRIX_URL, timestamp)
+        df_mat.columns = df_mat.columns.str.strip()
+
+        cols = df_mat.columns
+        mat_col = next(
+            (
+                c
+                for c in cols
+                if any(k in c.lower() for k in ["code", "mat", "item", "sap"])
+            ),
+            cols[0],
+        )
+        desc_col = next(
+            (
+                c
+                for c in cols
+                if any(
+                    k in c.lower()
+                    for k in ["desc", "name", "instrument", "details"]
+                )
+            ),
+            cols[1] if len(cols) > 1 else cols[0],
+        )
+
+        term = search_term.strip().lower()
+
+        mask = df_mat[mat_col].astype(str).str.lower().str.contains(
+            term, na=False
+        ) | df_mat[desc_col].astype(str).str.lower().str.contains(
+            term, na=False
+        )
+
+        matched_df = df_mat[mask].head(25)
+
+        results = []
+        for _, r in matched_df.iterrows():
+            m_code = clean_material_code(r.get(mat_col, "N/A"))
+            d_name = str(r.get(desc_col, "N/A")).strip()
+
+            results.append(
+                {
+                    "label": f"[{m_code}] {d_name}",
+                    "mat_code": m_code,
+                    "description": d_name,
+                    "_raw_row": r.to_dict(),
+                }
+            )
+
+        return results
+    except Exception:
+        return []
+
+
+def extract_area_stock_from_row(raw_row, target_area_name):
+    """Extracts target area stock quantity quietly from raw Stock Matrix row for the receiver."""
+    if not raw_row or not target_area_name:
+        return 0
+
+    target_keywords = SUBSTORE_AREA_KEYWORD_MAP.get(
+        target_area_name, [target_area_name]
+    )
+
+    for col_name, val in raw_row.items():
+        col_lower = col_name.lower().strip()
+        if any(kw.lower() in col_lower for kw in target_keywords):
+            return safe_int(val)
+
+    clean_target = (
+        target_area_name.replace("Area", "")
+        .replace("C&I", "")
+        .strip()
+        .lower()
+    )
+    if clean_target:
+        for col_name, val in raw_row.items():
+            if clean_target in col_name.lower():
+                return safe_int(val)
+
+    return 0
+
+
+# --- BULLETPROOF CONSUMPTION ENGINE ---
+@st.cache_data(ttl=60)
+def build_consumption_map(removal_url, timestamp, analysis_months=12):
+    if not removal_url:
+        return {}
+    try:
+        live_url = f"{removal_url}&t={timestamp}"
+        df_log = pd.read_csv(live_url, dtype=str)
+        df_log.columns = df_log.columns.str.strip()
+
+        if df_log.empty:
+            return {}
+
+        mat_col = None
+        for c in df_log.columns:
+            c_l = c.lower()
+            if any(
+                k in c_l
+                for k in [
+                    "material",
+                    "mat code",
+                    "item code",
+                    "sap code",
+                    "code",
+                    "mat",
+                ]
+            ):
+                mat_col = c
+                break
+
+        if not mat_col:
+            for c in df_log.columns:
+                if not any(
+                    k in c.lower()
+                    for k in ["time", "date", "timestamp", "user", "name"]
+                ):
+                    mat_col = c
+                    break
+
+        if not mat_col:
+            return {}
+
+        action_col = None
+        for c in df_log.columns:
+            c_l = c.lower()
+            if any(
+                k in c_l
+                for k in [
+                    "action",
+                    "transaction",
+                    "type",
+                    "status",
+                    "movement",
+                    "nature",
+                    "particular",
+                ]
+            ):
+                action_col = c
+                break
+
+        if action_col:
+
+            def is_valid_removal(val):
+                s = str(val).lower().strip()
+                return ("remov" in s) and ("add" not in s)
+
+            mask = df_log[action_col].astype(str).apply(is_valid_removal)
+            if mask.sum() > 0:
+                df_log = df_log[mask]
+            else:
+                return {}
+
+        df_log["clean_mat"] = (
+            df_log[mat_col]
+            .astype(str)
+            .str.replace(r"\.0$", "", regex=True)
+            .str.strip()
+            .str.lstrip("0")
+        )
+
+        qty_col = next(
+            (
+                c
+                for c in df_log.columns
+                if any(
+                    k in c.lower()
+                    for k in ["qty", "quantity", "issued", "nos", "count"]
+                )
+            ),
+            None,
+        )
+        if qty_col:
+            df_log["clean_qty"] = pd.to_numeric(
+                df_log[qty_col].astype(str).str.extract(r"(\d+)", expand=False),
+                errors="coerce",
+            ).fillna(1)
+        else:
+            df_log["clean_qty"] = 1.0
+
+        grouped = df_log.groupby("clean_mat")["clean_qty"].sum().to_dict()
+
+        res = {}
+        for m_code, total_removals in grouped.items():
+            if m_code and m_code not in ["nan", "none", "n/a", ""]:
+                tot = float(total_removals)
+                if tot > 0:
+                    m_cons = round(tot / float(analysis_months), 2)
+                    if m_cons == 0.0:
+                        m_cons = 0.08
+                    repl_cycle = round(1.0 / m_cons, 1) if m_cons > 0 else 0.0
+                    res[str(m_code)] = (m_cons, repl_cycle, int(tot))
+        return res
+    except Exception:
+        return {}
+
+
+# --- INVENTORY TEAM HIERARCHY MODAL ---
 @st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
 def show_team_modal():
     svg_tree = """
@@ -320,7 +607,7 @@ def show_team_modal():
     st.components.v1.html(svg_tree, height=600, scrolling=True)
 
 
-# --- MODAL: CHANGE PASSWORD ---
+# --- CHANGE PASSWORD MODAL ---
 @st.dialog("🔑 Change Area Password")
 def change_password_dialog(area_key):
     st.markdown(f"**Area:** `{area_key}`")
@@ -340,7 +627,6 @@ def change_password_dialog(area_key):
         db = fetch_passwords_from_sheet()
         stored_hash = str(db.get(area_key, "")).strip().lower()
 
-        # STRICT VERIFICATION: Database hash must match SHA-256 of entered password
         is_curr_valid = stored_hash and (hash_pass(c_curr).lower() == stored_hash)
 
         if not is_curr_valid:
@@ -391,14 +677,13 @@ def check_authentication(area_key):
             db = fetch_passwords_from_sheet()
             stored_hash = str(db.get(area_key, "")).strip().lower()
 
-            # STRICT VERIFICATION: SHA-256 match only. Zero backdoors.
             is_valid = bool(stored_hash and hash_pass(c_pwd).lower() == stored_hash)
 
             if is_valid:
                 st.session_state["auth_status"][area_key] = True
                 st.rerun()
             else:
-                st.error("❌ Incorrect Password. Contact- Amit Jangra, 9742900004.")
+                st.error("❌ Incorrect Password. Contact Lead Admin.")
     return False
 
 
@@ -458,87 +743,7 @@ def check_hod_authentication():
     return False
 
 
-def clean_material_code(val):
-    if pd.isna(val):
-        return "N/A"
-    s_val = str(val).strip()
-    if s_val == "" or s_val.lower() == "nan":
-        return "N/A"
-    if s_val.endswith(".0"):
-        s_val = s_val[:-2]
-    cleaned = s_val.lstrip("0")
-    return cleaned if cleaned != "" else "0"
-
-
-def resolve_columns(df):
-    cols = df.columns
-    (
-        mat_col,
-        field_col,
-        store_col,
-        shop_col,
-        total_col,
-        specs_col,
-        name_col,
-        area_belongs_col,
-    ) = (None, None, None, None, None, None, None, None)
-    for col in cols:
-        c_low = col.lower()
-        if not mat_col and ("code" in c_low or "mat" in c_low):
-            mat_col = col
-        elif not field_col and ("field" in c_low or "existing" in c_low):
-            field_col = col
-        elif not store_col and (
-            "store" in c_low
-            or "m7" in c_low
-            or ("room" in c_low and "shop" not in c_low)
-        ):
-            store_col = col
-        elif not shop_col and ("shop" in c_low or "floor" in c_low):
-            shop_col = col
-        elif not total_col and "total" in c_low:
-            total_col = col
-        elif not specs_col and "spec" in c_low:
-            specs_col = col
-        elif not name_col and ("instrument" in c_low or "name" in c_low):
-            name_col = col
-        elif not area_belongs_col and (
-            "belong" in c_low
-            or "area" in c_low
-            or "location" in c_low
-            or "section" in c_low
-        ):
-            area_belongs_col = col
-
-    return {
-        "name": name_col or "Instrument Name",
-        "material": mat_col or "Material Code",
-        "specs": specs_col or "Specs",
-        "field": field_col or "Existing Instrument on Field",
-        "store": store_col or "Remaining Spares in Store-Room",
-        "shop": shop_col or "Remaining Spares in Shop-Floor",
-        "total": total_col or "Total Spares",
-        "area_belongs": area_belongs_col or "Belongs To Area",
-    }
-
-
-def safe_int(val):
-    if pd.isna(val):
-        return 0
-    try:
-        return int(float(str(val).strip()))
-    except ValueError:
-        return 0
-
-
-@st.cache_data(ttl=60)
-def fetch_data(url, timestamp):
-    live_url = f"{url}&t={timestamp}"
-    df = pd.read_csv(live_url, dtype=str)
-    return df
-
-
-# --- SUB-STORE ITEMS MODAL (EXCLUDES 0 STOCK & COMMON) ---
+# --- SUB-STORE ITEMS MODAL ---
 @st.dialog("📦 Area Spares in C&I Sub Store", width="large")
 def show_substore_items_dialog(current_area_name):
     substore_cfg = AREA_CONFIGS.get("C&I Sub Store")
@@ -620,71 +825,166 @@ def show_substore_items_dialog(current_area_name):
     st.dataframe(df_display, use_container_width=True, hide_index=True)
 
 
-# --- BROADCAST & SINGLE AREA MESSAGE MODAL ---
-@st.dialog("📢 Send Inter-Area Message / Broadcast", width="large")
+# --- PRIVACY-PRESERVED SEND MESSAGE / MATERIAL REQUEST MODAL ---
+@st.dialog("📢 Inter-Area Dispatch & Material Request", width="large")
 def show_broadcast_message_dialog(current_area_name):
-    st.markdown(f"**From Area:** 📍 `{current_area_name}`")
+    st.markdown(f"**Originating Area:** 📍 `{current_area_name}`")
 
-    other_areas = [a for a in AREA_CONFIGS.keys() if a != current_area_name]
-    target_options = ["📢 ALL AREAS (Plant-wide Broadcast)"] + other_areas
-
-    selected_target = st.selectbox(
-        "Send Message To (Target Area):",
-        target_options,
-        help=(
-            "Kisi ek specific area ko bhejna ho toh choose karein, ya plant-wide"
-            " broadcast karein."
-        ),
-        key="bc_target_select",
+    msg_category = st.radio(
+        "Select Operation Mode:",
+        ["📢 General Message / Announcement", "📦 Material Spare Request"],
+        horizontal=True,
     )
 
-    c_pri1, c_pri2 = st.columns([1.5, 1])
-    with c_pri1:
-        priority_level = st.radio(
-            "Priority:",
-            ["Normal Info / Query", "🚨 Urgent Spare Required"],
-            horizontal=True,
-        )
-    with c_pri2:
+    other_areas = [a for a in AREA_CONFIGS.keys() if a != current_area_name]
+
+    c_top1, c_top2 = st.columns([1.5, 1])
+    with c_top1:
         sender_name = st.text_input(
-            "Officer Name / Ref (Optional):",
+            "Officer Name / Designation:",
             placeholder="e.g. Er. Amit Jangra | 10372",
             key="bc_sender_name",
         )
+    with c_top2:
+        priority_level = st.radio(
+            "Priority:",
+            ["Normal", "🚨 Urgent Breakdown"],
+            horizontal=True,
+            key="bc_priority_radio",
+        )
+
+    selected_material_payload = None
+    target_area = None
+
+    # --- BLOCK A: MATERIAL REQUEST ---
+    if msg_category == "📦 Material Spare Request":
+        st.markdown(
+            """
+            <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; border-radius: 8px; padding: 10px 14px; margin: 10px 0;">
+                <div style="font-weight: 700; color: #0f172a; font-size: 13px;">🔍 Master Catalog Lookup</div>
+                <div style="font-size: 11.5px; color: #64748b;">Search the standardized instrument description or material code from the central database.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        search_kw = st.text_input(
+            "Type Material Code or Instrument Name:",
+            placeholder="e.g. 5040012 or RTD or Pressure Transmitter...",
+            key="mat_matrix_search",
+        ).strip()
+
+        if search_kw:
+            matching_items = search_stock_matrix_catalog(
+                search_kw, st.session_state["data_timestamp"]
+            )
+            if matching_items:
+                st.caption(f"Found {len(matching_items)} catalog matches:")
+                labels = [item["label"] for item in matching_items]
+                chosen_idx = st.selectbox(
+                    "Select Matching Instrument:",
+                    range(len(matching_items)),
+                    format_func=lambda x: labels[x],
+                    key="mat_matrix_chosen_idx",
+                )
+                selected_item = matching_items[chosen_idx]
+
+                st.markdown(
+                    f"""
+                    <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-left: 4px solid #0284c7; padding: 9px 13px; border-radius: 6px; font-size: 12.5px; margin-bottom: 10px;">
+                        <b>Selected Instrument:</b> {selected_item['description']}<br>
+                        <b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{selected_item['mat_code']}</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                c_tgt, c_qty = st.columns([1.6, 1])
+                with c_tgt:
+                    target_area = st.selectbox(
+                        "Send Spare Request To (Target Area / Store):",
+                        other_areas,
+                        key="target_area_mat_req",
+                    )
+                with c_qty:
+                    req_qty = st.number_input(
+                        "Required Quantity (Nos):", min_value=1, max_value=50, value=1
+                    )
+
+                req_purpose = st.text_input(
+                    "Tag No. / Plant Location / Purpose:",
+                    placeholder="e.g. Breakdown replacement at Ball Mill #2",
+                )
+
+                target_stock_val = extract_area_stock_from_row(
+                    selected_item.get("_raw_row", {}), target_area
+                )
+
+                selected_material_payload = {
+                    "material_code": selected_item["mat_code"],
+                    "instrument_name": selected_item["description"],
+                    "requested_qty": int(req_qty),
+                    "target_area_stock": target_stock_val,
+                    "purpose": req_purpose.strip(),
+                }
+            else:
+                st.warning(
+                    f"⚠️ No catalog item found for '{search_kw}'. Try a different keyword."
+                )
+
+    # --- BLOCK B: GENERAL MESSAGE ---
+    else:
+        target_options = ["📢 ALL AREAS (Plant-wide Broadcast)"] + other_areas
+        selected_target_opt = st.selectbox(
+            "Send Message To:", target_options, key="bc_general_target_select"
+        )
+        target_area = (
+            "ALL"
+            if "ALL AREAS" in selected_target_opt
+            else selected_target_opt.replace("📍 ", "").strip()
+        )
 
     msg_body = st.text_area(
-        "Message Content:",
+        "Remarks / Note for Receiver:",
         placeholder=(
-            "e.g., Immediate requirement for 1x Masibus loop-powered indicator or"
-            " 4-20mA calibrator..."
+            "Add details regarding the requirement or urgency..."
+            if msg_category == "📦 Material Spare Request"
+            else "Write plant broadcast or notification..."
         ),
-        height=110,
+        height=75,
         key="bc_body_text",
     )
 
-    if st.button("🚀 Dispatch Message", type="primary", use_container_width=True):
-        clean_msg = msg_body.strip()
-        if not clean_msg:
-            st.error("❌ Message cannot be empty!")
+    if st.button("🚀 Dispatch Request", type="primary", use_container_width=True):
+        if (
+            msg_category == "📦 Material Spare Request"
+            and not selected_material_payload
+        ):
+            st.error(
+                "❌ Please search and select an instrument from the catalog list first!"
+            )
             return
 
-        target_area = (
-            "ALL"
-            if "ALL AREAS" in selected_target
-            else selected_target.replace("📍 ", "").strip()
-        )
+        if msg_category == "📢 General Message / Announcement" and not msg_body.strip():
+            st.error("❌ Message text cannot be empty!")
+            return
+
         is_urgent = "Urgent" in priority_level
 
         broadcast_record = {
             "msg_id": f"MSG-{int(time.time())}",
+            "msg_type": (
+                "MATERIAL_REQUEST"
+                if msg_category == "📦 Material Spare Request"
+                else "ANNOUNCEMENT"
+            ),
             "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
             "from_area": current_area_name,
             "to_area": target_area,
-            "sender_officer": (
-                sender_name.strip() if sender_name else "Area Incharge"
-            ),
+            "sender_officer": sender_name.strip() if sender_name else "Area Incharge",
             "priority": "URGENT" if is_urgent else "NORMAL",
-            "message": clean_msg,
+            "message": msg_body.strip(),
+            "material_details": selected_material_payload,
             "seen_by": [],
         }
 
@@ -699,12 +999,12 @@ def show_broadcast_message_dialog(current_area_name):
         except Exception:
             pass
 
-        st.success(f"✅ Message dispatched successfully to {target_area}!")
+        st.success(f"✅ Request dispatched successfully to `{target_area}`!")
         time.sleep(1.0)
         st.rerun()
 
 
-# --- NOTIFICATIONS MODAL ---
+# --- NOTIFICATIONS & INCOMING ALERTS MODAL ---
 @st.dialog("🔔 Notifications & Incoming Alerts", width="large")
 def show_notifications_dialog(current_area_name):
     active_messages = []
@@ -723,42 +1023,77 @@ def show_notifications_dialog(current_area_name):
             active_messages.append(m)
 
     if not active_messages:
-        st.info("🎉 No unread messages or broadcast alerts for your area.")
+        st.info("🎉 No unread messages or material requests for your area.")
         return
 
-    st.markdown(f"### 💬 New Area Messages & Alerts ({len(active_messages)})")
+    st.markdown(f"### 🔔 Pending Alerts ({len(active_messages)})")
 
     for m in active_messages:
         m_id = m["msg_id"]
         from_a = m["from_area"]
         m_time = m["timestamp"]
         is_urg = m.get("priority") == "URGENT"
+        is_mat_req = m.get("msg_type") == "MATERIAL_REQUEST"
+        mat_info = m.get("material_details")
 
-        target_tag = (
-            "📢 [Plant-wide Broadcast]"
-            if m["to_area"] == "ALL"
-            else "📍 [Private Message to You]"
+        border_col = (
+            "#ef4444" if is_urg else ("#16a34a" if is_mat_req else "#0284c7")
         )
-        border_col = "#ef4444" if is_urg else "#0284c7"
-        badge_bg = "#fee2e2" if is_urg else "#e0f2fe"
-        badge_color = "#b91c1c" if is_urg else "#0369a1"
+
+        if is_mat_req:
+            badge_html = """<span style="font-size: 11px; font-weight: 700; color: #166534; background: #dcfce7; padding: 3px 10px; border-radius: 12px; border: 1px solid #86efac;">📦 MATERIAL SPARE REQUEST</span>"""
+        elif m["to_area"] == "ALL":
+            badge_html = """<span style="font-size: 11px; font-weight: 700; color: #0369a1; background: #e0f2fe; padding: 3px 10px; border-radius: 12px;">📢 PLANT BROADCAST</span>"""
+        else:
+            badge_html = """<span style="font-size: 11px; font-weight: 700; color: #4338ca; background: #e0e7ff; padding: 3px 10px; border-radius: 12px;">📍 DIRECT MESSAGE</span>"""
+
+        if is_urg:
+            badge_html += """ <span style="font-size: 11px; font-weight: 700; color: #b91c1c; background: #fee2e2; padding: 3px 8px; border-radius: 12px; margin-left: 4px;">🚨 URGENT</span>"""
+
+        mat_block_html = ""
+        if is_mat_req and mat_info:
+            area_stock = mat_info.get("target_area_stock", 0)
+            stock_badge_col = "#15803d" if area_stock > 0 else "#dc2626"
+
+            mat_block_html = f"""
+            <div style="background: #ffffff; border: 1.5px solid #86efac; border-radius: 8px; padding: 12px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 6px; margin-bottom: 6px;">
+                    <span style="font-size: 13.5px; font-weight: 800; color: #0f172a;">🛠️ {mat_info.get('instrument_name', 'Instrument')}</span>
+                    <div>
+                        <span style="font-size: 12px; font-weight: 800; color: #dc2626; background: #fee2e2; padding: 2px 8px; border-radius: 6px;">Requested: {mat_info.get('requested_qty', 1)} Nos</span>
+                        <span style="font-size: 12px; font-weight: 800; color: {stock_badge_col}; background: #f0fdf4; padding: 2px 8px; border-radius: 6px; border: 1px solid #bbf7d0; margin-left: 4px;">Your Stock: {area_stock} Nos</span>
+                    </div>
+                </div>
+                <div style="font-size: 12px; color: #475569; line-height: 1.6;">
+                    <b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{mat_info.get('material_code', 'N/A')}</span><br>
+                    {f"<b>Plant Location / Purpose:</b> {mat_info.get('purpose')}<br>" if mat_info.get('purpose') else ""}
+                </div>
+            </div>
+            """
+
+        msg_body_html = ""
+        if m.get("message"):
+            msg_body_html = f"""
+            <div style="font-size: 12.5px; color: #334155; margin-top: 6px; background: #f8fafc; padding: 8px 10px; border-radius: 6px; border-left: 3px solid #94a3b8;">
+                <b>Note:</b> {m['message']}
+            </div>
+            """
 
         st.markdown(
             f"""
-            <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid {border_col}; padding: 12px 16px; border-radius: 10px; margin-bottom: 8px;">
+            <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid {border_col}; padding: 14px 16px; border-radius: 10px; margin-bottom: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 13.5px; font-weight: 800; color: #0f172a;">
-                        📍 From: {from_a} 
-                        <span style="font-size: 11px; font-weight: 600; color: {badge_color}; background: {badge_bg}; padding: 2px 8px; border-radius: 12px; margin-left: 6px;">
-                            {target_tag}
-                        </span>
-                    </span>
+                    <div>
+                        <span style="font-size: 14px; font-weight: 800; color: #0f172a;">📍 From: {from_a}</span>
+                        <span style="margin-left: 8px;">{badge_html}</span>
+                    </div>
                     <span style="font-size: 11px; color: #64748b; font-weight: 600;">🕒 {m_time}</span>
                 </div>
-                <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;"><b>Sent by:</b> {m.get('sender_officer', 'Area Incharge')}</div>
-                <div style="font-size: 13px; color: #1e293b; margin-top: 8px; background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 3px solid #94a3b8; line-height: 1.4;">
-                    {m['message']}
+                <div style="font-size: 11.5px; color: #64748b; margin-top: 3px;">
+                    <b>Initiated by:</b> {m.get('sender_officer', 'Area Officer')}
                 </div>
+                {mat_block_html}
+                {msg_body_html}
             </div>
             """,
             unsafe_allow_html=True,
@@ -767,8 +1102,9 @@ def show_notifications_dialog(current_area_name):
         c_reply, c_seen = st.columns([3.6, 1.4], vertical_alignment="center")
 
         with c_seen:
+            ack_btn_text = "✅ Acknowledge / Seen" if is_mat_req else "👁️ Mark Seen"
             if st.button(
-                "👁️ Seen",
+                ack_btn_text,
                 key=f"seen_{m_id}",
                 use_container_width=True,
                 type="primary",
@@ -796,28 +1132,39 @@ def show_notifications_dialog(current_area_name):
                 st.rerun()
 
         with c_reply:
-            with st.expander(f"↩️ Reply to {from_a}"):
+            with st.expander(f"↩️ Reply / Confirm Availability to {from_a}"):
+                reply_placeholder = (
+                    "e.g. Approved. You can collect 1 unit from our area store..."
+                    if is_mat_req
+                    else f"Type reply back to {from_a}..."
+                )
                 reply_text = st.text_input(
                     "Reply Text:",
-                    placeholder=f"Type reply back to {from_a}...",
+                    placeholder=reply_placeholder,
                     key=f"rep_{m_id}",
                     label_visibility="collapsed",
                 )
                 if st.button(
-                    "🚀 Send Reply", key=f"send_{m_id}", use_container_width=True
+                    "🚀 Send Response", key=f"send_{m_id}", use_container_width=True
                 ):
                     clean_reply = reply_text.strip()
                     if not clean_reply:
                         st.error("Reply text cannot be empty!")
                     else:
+                        subject_tag = (
+                            f"Spare Req [{mat_info.get('material_code', '')}]"
+                            if is_mat_req and mat_info
+                            else "Message"
+                        )
                         reply_record = {
                             "msg_id": f"MSG-{int(time.time())}",
+                            "msg_type": "ANNOUNCEMENT",
                             "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
                             "from_area": current_area_name,
                             "to_area": from_a,
                             "sender_officer": "Area Reply",
                             "priority": "NORMAL",
-                            "message": f"↩️ Re: [{m['message'][:35]}...] -> {clean_reply}",
+                            "message": f"↩️ Re: [{subject_tag}] -> {clean_reply}",
                             "seen_by": [],
                         }
                         GLOBAL_MESSAGES.append(reply_record)
@@ -850,7 +1197,7 @@ def show_notifications_dialog(current_area_name):
                         except Exception:
                             pass
 
-                        st.success(f"✅ Reply sent to {from_a}!")
+                        st.success(f"✅ Response sent to {from_a}!")
                         time.sleep(0.8)
                         st.rerun()
 
@@ -1295,121 +1642,6 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                     show_team_modal()
 
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
-
-
-# --- BULLETPROOF CONSUMPTION ENGINE ---
-@st.cache_data(ttl=60)
-def build_consumption_map(removal_url, timestamp, analysis_months=12):
-    if not removal_url:
-        return {}
-    try:
-        live_url = f"{removal_url}&t={timestamp}"
-        df_log = pd.read_csv(live_url, dtype=str)
-        df_log.columns = df_log.columns.str.strip()
-
-        if df_log.empty:
-            return {}
-
-        mat_col = None
-        for c in df_log.columns:
-            c_l = c.lower()
-            if any(
-                k in c_l
-                for k in [
-                    "material",
-                    "mat code",
-                    "item code",
-                    "sap code",
-                    "code",
-                    "mat",
-                ]
-            ):
-                mat_col = c
-                break
-
-        if not mat_col:
-            for c in df_log.columns:
-                if not any(
-                    k in c.lower() for k in ["time", "date", "timestamp", "user", "name"]
-                ):
-                    mat_col = c
-                    break
-
-        if not mat_col:
-            return {}
-
-        action_col = None
-        for c in df_log.columns:
-            c_l = c.lower()
-            if any(
-                k in c_l
-                for k in [
-                    "action",
-                    "transaction",
-                    "type",
-                    "status",
-                    "movement",
-                    "nature",
-                    "particular",
-                ]
-            ):
-                action_col = c
-                break
-
-        if action_col:
-
-            def is_valid_removal(val):
-                s = str(val).lower().strip()
-                return ("remov" in s) and ("add" not in s)
-
-            mask = df_log[action_col].astype(str).apply(is_valid_removal)
-            if mask.sum() > 0:
-                df_log = df_log[mask]
-            else:
-                return {}
-
-        df_log["clean_mat"] = (
-            df_log[mat_col]
-            .astype(str)
-            .str.replace(r"\.0$", "", regex=True)
-            .str.strip()
-            .str.lstrip("0")
-        )
-
-        qty_col = next(
-            (
-                c
-                for c in df_log.columns
-                if any(
-                    k in c.lower()
-                    for k in ["qty", "quantity", "issued", "nos", "count"]
-                )
-            ),
-            None,
-        )
-        if qty_col:
-            df_log["clean_qty"] = pd.to_numeric(
-                df_log[qty_col].astype(str).str.extract(r"(\d+)", expand=False),
-                errors="coerce",
-            ).fillna(1)
-        else:
-            df_log["clean_qty"] = 1.0
-
-        grouped = df_log.groupby("clean_mat")["clean_qty"].sum().to_dict()
-
-        res = {}
-        for m_code, total_removals in grouped.items():
-            if m_code and m_code not in ["nan", "none", "n/a", ""]:
-                tot = float(total_removals)
-                if tot > 0:
-                    m_cons = round(tot / float(analysis_months), 2)
-                    if m_cons == 0.0:
-                        m_cons = 0.08
-                    repl_cycle = round(1.0 / m_cons, 1) if m_cons > 0 else 0.0
-                    res[str(m_code)] = (m_cons, repl_cycle, int(tot))
-        return res
-    except Exception:
-        return {}
 
 
 inject_custom_css()
@@ -1959,7 +2191,7 @@ else:
         st.sidebar.markdown("---")
 
     config = AREA_CONFIGS[current_area]
-    manager_name = config.get("manager", "Er. Amit Jangra | P.No. 10372")
+    manager_name = config.get("manager", "Lead Officer")
     zone_name = config.get("zone_type", "Refinery Process Area")
     theme_accent = config.get("color", "#0284c7")
 
@@ -1974,7 +2206,7 @@ else:
                     🏭 {config['title']}
                 </h1>
                 <p style="color: #475569 !important; margin: 4px 0 0 0; font-size: 13px; font-weight: 500;">
-                    Live Spares Tracking Sheet &bull; Managed by <span style="color: {theme_accent}; font-weight: 700;">{manager_name} (Inventory Team, C&I, NALCO)</span>
+                    Live Spares Tracking Sheet &bull; Managed by <span style="color: {theme_accent}; font-weight: 700;">{manager_name} (Inventory Team, C&I)</span>
                 </p>
             </div>
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 10px; text-align: right;">
