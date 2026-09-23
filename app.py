@@ -552,7 +552,7 @@ def fetch_data(url, timestamp):
   return df
 
 
-# --- SUB-STORE ITEMS MODAL (STRICT AREA MATCH - EXCLUDES COMMON) ---
+# --- SUB-STORE ITEMS MODAL (EXCLUDES 0 STOCK & COMMON) ---
 @st.dialog("📦 Area Spares in C&I Sub Store", width="large")
 def show_substore_items_dialog(current_area_name):
   substore_cfg = AREA_CONFIGS.get("C&I Sub Store")
@@ -577,7 +577,7 @@ def show_substore_items_dialog(current_area_name):
     store_col = mapping["store"]
     belongs_col = mapping.get("area_belongs", "Belongs To Area")
 
-    # Strict Area Match Filter (Common is completely ignored)
+    # Strict Area Match Filter (Common ignored)
     def is_strict_area_match(val):
       if pd.isna(val):
         return False
@@ -588,44 +588,54 @@ def show_substore_items_dialog(current_area_name):
         df_sub[belongs_col].apply(is_strict_area_match)
     ].copy()
 
-  st.markdown(f"#### 📍 Dedicated Spares Tagged for: `{current_area_name}`")
+  st.markdown(
+      f"#### 📍 Dedicated Available Spares for: `{current_area_name}`"
+  )
   st.caption(
-      f"Filtering Sub-Store column '{belongs_col}' for tags:"
-      f" {', '.join([f'`{t}`' for t in target_tags])}"
+      f"Filtering Sub-Store for tags: {', '.join([f'`{t}`' for t in target_tags])} (Stock > 0 Only)"
   )
 
-  if filtered_sub.empty:
-    st.info(
-        f"ℹ️ No items specifically tagged for {current_area_name} found in C&I"
-        " Sub Store."
-    )
-    return
-
-  q = st.text_input(
-      "🔍 Filter by Name, Specs, or Material Code:", "", key="sub_search_box"
-  ).strip()
-  if q:
-    filtered_sub = filtered_sub[
-        filtered_sub.astype(str)
-        .apply(lambda x: x.str.contains(q, case=False, na=False))
-        .any(axis=1)
-    ]
-
+  # Display table creation with > 0 stock check
   display_data = []
   for _, r in filtered_sub.iterrows():
+    qty = safe_int(r.get(store_col, 0))
+
+    # 👉 0 Stock filter yahan lagaya hai
+    if qty <= 0:
+      continue
+
     display_data.append({
         "Material Code": clean_material_code(r.get(mat_col, "N/A")),
         "Instrument Name": str(r.get(name_col, "N/A")).strip(),
         "Specifications": str(r.get(specs_col, "N/A")).strip(),
-        "Sub-Store Stock": safe_int(r.get(store_col, 0)),
+        "Sub-Store Stock": qty,
         "Belongs To Area": str(r.get(belongs_col, "N/A")).strip(),
     })
 
   df_display = pd.DataFrame(display_data)
-  st.markdown(f"**Found `{len(df_display)}` exclusive items in Sub Store:**")
+
+  if df_display.empty:
+    st.info(
+        f"ℹ️ Currently no available spares (stock > 0) in Sub Store for"
+        f" {current_area_name}."
+    )
+    return
+
+  # In-dialog search filter
+  q = st.text_input(
+      "🔍 Filter by Name, Specs, or Material Code:", "", key="sub_search_box"
+  ).strip()
+  if q:
+    df_display = df_display[
+        df_display.astype(str)
+        .apply(lambda x: x.str.contains(q, case=False, na=False))
+        .any(axis=1)
+    ]
+
+  st.markdown(
+      f"**Found `{len(df_display)}` available items in Sub Store:**"
+  )
   st.dataframe(df_display, use_container_width=True, hide_index=True)
-
-
 # --- BROADCAST & SINGLE AREA MESSAGE MODAL ---
 @st.dialog("📢 Send Inter-Area Message / Broadcast", width="large")
 def show_broadcast_message_dialog(current_area_name):
