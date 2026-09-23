@@ -826,7 +826,6 @@ def show_substore_items_dialog(current_area_name):
 
 
 # --- SENDER MODAL: STREAMLINED BROADCAST & MATERIAL REQUEST ---
-
 @st.dialog("📢 Inter-Area Dispatch & Material Request", width="large")
 def show_broadcast_message_dialog(current_area_name):
     st.markdown(f"**Originating Area:** 📍 `{current_area_name}`")
@@ -979,6 +978,7 @@ def show_broadcast_message_dialog(current_area_name):
         time.sleep(1.0)
         st.rerun()
 
+
 # --- NOTIFICATIONS & INCOMING ALERTS MODAL ---
 @st.dialog("🔔 Notifications & Incoming Alerts", width="large")
 def show_notifications_dialog(current_area_name):
@@ -1025,7 +1025,7 @@ def show_notifications_dialog(current_area_name):
         if is_urg:
             badge_html += """ <span style="font-size: 11px; font-weight: 700; color: #b91c1c; background: #fee2e2; padding: 3px 8px; border-radius: 12px; margin-left: 4px;">🚨 URGENT</span>"""
 
-       mat_block_html = ""
+        mat_block_html = ""
         if is_mat_req and mat_info:
             raw_row_data = mat_info.get("_raw_row", {})
             area_stock = (
@@ -2192,7 +2192,7 @@ else:
                 <h1 style="color: #0f172a !important; margin: 4px 0 0 0; font-size: 24px; font-weight: 800;">
                     🏭 {config['title']}
                 </h1>
-                <p style="color: #475569 !important; margin-top: 4px; font-size: 13px; font-weight: 500;">
+                <p style="color: #475569 !important; margin-4px 0 0 0; font-size: 13px; font-weight: 500;">
                     Live Spares Tracking Sheet &bull; Managed by <span style="color: {theme_accent}; font-weight: 700;">{manager_name} (Inventory Team, C&I)</span>
                 </p>
             </div>
