@@ -1025,7 +1025,7 @@ def show_notifications_dialog(current_area_name):
         if is_urg:
             badge_html += """ <span style="font-size: 11px; font-weight: 700; color: #b91c1c; background: #fee2e2; padding: 3px 8px; border-radius: 12px; margin-left: 4px;">🚨 URGENT</span>"""
 
-        mat_block_html = ""
+       mat_block_html = ""
         if is_mat_req and mat_info:
             raw_row_data = mat_info.get("_raw_row", {})
             area_stock = (
@@ -1035,6 +1035,13 @@ def show_notifications_dialog(current_area_name):
             )
 
             stock_badge_col = "#15803d" if area_stock > 0 else "#dc2626"
+            purpose_text = mat_info.get("purpose", "")
+            purpose_line = (
+                f"<br><b>Plant Location / Purpose:</b> {purpose_text}"
+                if purpose_text
+                else ""
+            )
+
             mat_block_html = f"""
             <div style="background: #ffffff; border: 1.5px solid #86efac; border-radius: 8px; padding: 12px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 6px; margin-bottom: 6px;">
@@ -1045,8 +1052,8 @@ def show_notifications_dialog(current_area_name):
                     </div>
                 </div>
                 <div style="font-size: 12px; color: #475569; line-height: 1.6;">
-                    <b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{mat_info.get('material_code', 'N/A')}</span><br>
-                    {f"<b>Plant Location / Purpose:</b> {mat_info.get('purpose')}<br>" if mat_info.get('purpose') else ""}
+                    <b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{mat_info.get('material_code', 'N/A')}</span>
+                    {purpose_line}
                 </div>
             </div>
             """
