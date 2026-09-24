@@ -2284,7 +2284,7 @@ elif st.session_state["selected_area"] is None:
         {mgr}
     </div>
     <p style="color: #64748b; font-size: 12.5px; margin: 0; line-height: 1.4; min-height: 36px;">
-        Live instrumentation spares.
+        Live instrumentation spares
     </p>
 </div>
 """
