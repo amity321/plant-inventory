@@ -1719,7 +1719,7 @@ def on_sidebar_search():
 
 st.sidebar.markdown('<div class="sidebar-section-title">🔍 Quick PR Search</div>', unsafe_allow_html=True)
 st.sidebar.text_input(
-    "Search Code / Instrument:",
+    "Search Mat Code/ Text:",
     placeholder="e.g. 5040012 or RTD...",
     key="global_pr_search",
     on_change=on_sidebar_search
