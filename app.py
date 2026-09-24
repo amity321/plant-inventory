@@ -735,7 +735,7 @@ def check_hod_authentication():
 
         user_input_id = st.text_input(
             "Personal No. (P.No.)",
-            placeholder="e.g. 10372",
+            placeholder="e.g. 06505",
             key="hod_user_id_input",
         ).strip()
 
