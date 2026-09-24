@@ -49,7 +49,7 @@ MASTER_AUTHORIZED_USERS = {
 
 
 @st.cache_data(ttl=60)
-def fetch_passwords_from_sheet():
+def fetch_passwords():
     try:
         res = requests.get(AUTH_API_URL, timeout=8)
         if res.status_code == 200:
@@ -71,13 +71,13 @@ def update_password_in_sheet(area_key, new_password_hash):
         if res.status_code in [200, 302] and (
             "OK" in res.text or res.status_code == 200
         ):
-            fetch_passwords_from_sheet.clear()
+            fetch_passwords.clear()
             return True, "Success"
         return False, f"API Response: {res.text}"
     except requests.exceptions.Timeout:
         time.sleep(2)
-        fetch_passwords_from_sheet.clear()
-        verify_db = fetch_passwords_from_sheet()
+        fetch_passwords.clear()
+        verify_db = fetch_passwords()
         if verify_db.get(area_key) == new_password_hash:
             return True, "Success (Verified from Sheet)"
         return False, "Request timed out. Please try once more."
@@ -633,7 +633,7 @@ def change_password_dialog(area_key):
         c_new = new_pass.strip()
         c_conf = confirm_pass.strip()
 
-        db = fetch_passwords_from_sheet()
+        db = fetch_passwords()
         stored_hash = str(db.get(area_key, "")).strip().lower()
 
         is_curr_valid = stored_hash and (hash_pass(c_curr).lower() == stored_hash)
@@ -713,7 +713,7 @@ def check_authentication(area_key):
 
         if st.button("Unlock Portal 🔓", use_container_width=True, type="primary"):
             c_pwd = pwd.strip()
-            db = fetch_passwords_from_sheet()
+            db = fetch_passwords()
             stored_hash = str(db.get(area_key, "")).strip().lower()
 
             is_valid = bool(stored_hash and hash_pass(c_pwd).lower() == stored_hash)
