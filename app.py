@@ -1647,7 +1647,7 @@ st.sidebar.markdown(
     """
     <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 14px; border-radius: 10px; margin-bottom: 15px; text-align: center; border: 1px solid #334155;">
         <h4 style="margin:0; color:#38bdf8; font-size:15px; font-weight:800; letter-spacing:0.5px;">⚙️ CONTROL PANEL</h4>
-        <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; font-weight:500;">C&I Instrumentation Suite</p>
+        <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; font-weight:500;">CENTRAL C&I SPARES PORTAL</p>
     </div>
 """,
     unsafe_allow_html=True,
