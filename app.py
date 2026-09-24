@@ -2146,7 +2146,6 @@ elif st.session_state["selected_area"] is None:
     </div>
     """
     st.html(hero_html)
-    st.html(hero_html)
 
     areas = list(AREA_CONFIGS.keys())
     for i in range(0, len(areas), 3):
