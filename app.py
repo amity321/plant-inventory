@@ -333,7 +333,6 @@ def fetch_data(url, timestamp):
 # --- PRIVACY-FIRST STOCK MATRIX SEARCH & BACKGROUND EXTRACTOR ---
 @st.cache_data(ttl=60)
 def search_stock_matrix_catalog(search_term, timestamp):
-    """Searches Material Code and Description from Central Stock Matrix without exposing quantities to the sender."""
     if not search_term or len(search_term.strip()) < 2:
         return []
 
@@ -392,7 +391,6 @@ def search_stock_matrix_catalog(search_term, timestamp):
 
 
 def extract_area_stock_from_row(raw_row, target_area_name):
-    """Extracts target area stock quantity quietly from raw Stock Matrix row for the receiver."""
     if not raw_row or not target_area_name:
         return 0
 
@@ -419,7 +417,7 @@ def extract_area_stock_from_row(raw_row, target_area_name):
     return 0
 
 
-# --- BULLETPROOF CONSUMPTION ENGINE ---
+# --- CONSUMPTION ENGINE ---
 @st.cache_data(ttl=60)
 def build_consumption_map(removal_url, timestamp, analysis_months=12):
     if not removal_url:
@@ -772,6 +770,8 @@ def check_hod_authentication():
                 st.rerun()
 
     return False
+
+
 # --- SUB-STORE ITEMS MODAL ---
 @st.dialog("📦 Area Spares in C&I Sub Store", width="large")
 def show_substore_items_dialog(current_area_name):
@@ -892,7 +892,6 @@ def show_broadcast_message_dialog(current_area_name):
     selected_material_payload = None
     msg_body = ""
 
-    # --- BLOCK A: MATERIAL REQUEST ---
     if msg_category == "📦 Material Spare Request":
         search_kw = st.text_input(
             "Type Material Code or Instrument Name:",
@@ -948,7 +947,6 @@ def show_broadcast_message_dialog(current_area_name):
                     f"⚠️ No catalog item found for '{search_kw}'. Try another keyword."
                 )
 
-    # --- BLOCK B: GENERAL MESSAGE ---
     else:
         msg_body = st.text_area(
             "Message Content:",
@@ -1337,13 +1335,24 @@ def render_row(row, mapping, current_area_name):
     st.markdown(card_html, unsafe_allow_html=True)
 
 
-def inject_custom_css():
-    css = """
+def inject_custom_css(hide_sidebar=False):
+    sidebar_hide_css = ""
+    if hide_sidebar:
+        sidebar_hide_css = """
+        [data-testid="stSidebar"],
+        [data-testid="collapsedControl"],
+        section[data-testid="stSidebar"] {
+            display: none !important;
+        }
+        """
+
+    css = f"""
     <style>
-    .stApp { background-color: #f8fafc; }
-    h1, h2, h3 { color: #1e293b !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    {sidebar_hide_css}
+    .stApp {{ background-color: #f8fafc; }}
+    h1, h2, h3 {{ color: #1e293b !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }}
     
-    .header-pill {
+    .header-pill {{
         background: #ffffff;
         border: 1px solid #e2e8f0;
         padding: 8px 16px;
@@ -1355,19 +1364,19 @@ def inject_custom_css():
         font-weight: 700;
         color: #0f172a;
         box-shadow: 0 2px 5px rgba(0,0,0,0.03);
-    }
+    }}
 
-    div[data-testid="column"] {
+    div[data-testid="column"] {{
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-    }
+    }}
 
     button[key="team_btn"],
     button[key="urgent_pr_btn"],
     button[key="substore_items_btn"],
     button[key="broadcast_btn"],
-    button[key="notify_btn"] {
+    button[key="notify_btn"] {{
         height: 42px !important;
         min-height: 42px !important;
         max-height: 42px !important;
@@ -1382,49 +1391,49 @@ def inject_custom_css():
         justify-content: center !important;
         box-sizing: border-box !important;
         transition: all 0.2s ease-in-out !important;
-    }
+    }}
 
-    button[key="team_btn"] {
+    button[key="team_btn"] {{
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
         color: #ffffff !important;
         border: 2px solid #38bdf8 !important;
         box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4) !important;
-    }
+    }}
 
-    button[key="substore_items_btn"] {
+    button[key="substore_items_btn"] {{
         background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
         color: #ffffff !important;
         border: 2px solid #34d399 !important;
         box-shadow: 0 2px 10px rgba(5, 150, 105, 0.3) !important;
-    }
+    }}
 
-    button[key="broadcast_btn"] {
+    button[key="broadcast_btn"] {{
         background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
         color: #ffffff !important;
         border: 2px solid #a78bfa !important;
         box-shadow: 0 2px 10px rgba(124, 58, 237, 0.3) !important;
-    }
+    }}
 
-    button[key="notify_btn"] {
+    button[key="notify_btn"] {{
         background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
         color: #ffffff !important;
         border: 2px solid #fcd34d !important;
         box-shadow: 0 2px 10px rgba(217, 119, 6, 0.3) !important;
-    }
+    }}
 
-    button[key="urgent_pr_btn"] {
+    button[key="urgent_pr_btn"] {{
         background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
         color: #ffffff !important;
         border: 2.5px solid #f87171 !important;
         box-shadow: 0 0 16px rgba(239, 68, 68, 0.6), 0 4px 12px rgba(220, 38, 38, 0.2) !important;
-    }
+    }}
 
-    section[data-testid="stSidebar"] {
+    section[data-testid="stSidebar"] {{
         background-color: #f1f5f9 !important;
         border-right: 2px solid #cbd5e1 !important;
-    }
+    }}
     
-    .sidebar-section-title {
+    .sidebar-section-title {{
         font-size: 12px !important;
         font-weight: 800 !important;
         color: #0f172a !important;
@@ -1435,9 +1444,9 @@ def inject_custom_css():
         display: flex;
         align-items: center;
         gap: 6px;
-    }
+    }}
 
-    .inventory-card { 
+    .inventory-card {{ 
         background-color: #ffffff; 
         border-radius: 12px; 
         padding: 14px 18px; 
@@ -1445,31 +1454,31 @@ def inject_custom_css():
         border: 1px solid #e2e8f0; 
         margin-bottom: 12px; 
         transition: all 0.15s ease-in-out;
-    }
-    .inventory-card:hover { 
+    }}
+    .inventory-card:hover {{ 
         border-color: #cbd5e1; 
         box-shadow: 0 6px 16px rgba(0,0,0,0.05); 
-    }
-    .metric-box { 
+    }}
+    .metric-box {{ 
         text-align: center; 
         padding: 6px; 
         background-color: #f8fafc; 
         border-radius: 8px; 
         border: 1px solid #f1f5f9; 
-    }
-    .metric-val { 
+    }}
+    .metric-val {{ 
         font-size: 17px; 
         font-weight: 700; 
         color: #0f172a; 
-    }
-    .metric-lbl { 
+    }}
+    .metric-lbl {{ 
         font-size: 10px; 
         text-transform: uppercase; 
         color: #64748b; 
         font-weight: 600; 
         margin-bottom: 2px; 
-    }
-    .status-badge { 
+    }}
+    .status-badge {{ 
         display: inline-block; 
         padding: 6px 10px; 
         border-radius: 20px; 
@@ -1477,17 +1486,17 @@ def inject_custom_css():
         font-weight: 600; 
         text-align: center; 
         width: 100%; 
-    }
-    .status-shortfall { background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-    .status-surplus { background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; }
-    .status-balanced { background-color: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }
-    .specs-box { 
+    }}
+    .status-shortfall {{ background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }}
+    .status-surplus {{ background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; }}
+    .status-balanced {{ background-color: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; }}
+    .specs-box {{ 
         background-color: #f8fafc; 
         padding: 6px 10px; 
         border-radius: 6px; 
         font-size: 11.5px; 
         color: #334155; 
-    }
+    }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -1659,7 +1668,28 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
 
-inject_custom_css()
+# ==============================================================================
+# --- AUTHENTICATION GATEWAY (BEFORE ANY SIDEBAR OR TOPBAR RENDERING) ---
+# ==============================================================================
+
+# 1. DIRECT AREA URL ACCESS CHECK
+if is_area_direct_mode:
+    is_area_auth = st.session_state.get("auth_status", {}).get(url_area, False)
+    if not is_area_auth:
+        inject_custom_css(hide_sidebar=True)
+        check_authentication(url_area)
+        st.stop()
+
+# 2. HOD / MASTER SUITE ACCESS CHECK
+else:
+    is_hod_auth = st.session_state.get("hod_auth_user") is not None
+    if not is_hod_auth:
+        inject_custom_css(hide_sidebar=True)
+        check_hod_authentication()
+        st.stop()
+
+# --- AT THIS POINT USER IS AUTHENTICATED: RENDER SIDEBAR & TOP BAR ---
+inject_custom_css(hide_sidebar=False)
 
 active_tag = (
     f"📍 Active Area: {st.session_state['selected_area']}"
@@ -1679,7 +1709,7 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 
-# 1. DIRECT AREA USER MODE
+# 1. DIRECT AREA USER MODE (SIDEBAR)
 if is_area_direct_mode:
     st.sidebar.markdown(
         '<div class="sidebar-section-title">📌 Area Dedicated Modules</div>',
@@ -1701,7 +1731,7 @@ if is_area_direct_mode:
                 del st.query_params["view"]
             st.rerun()
 
-# 2. HOD / MASTER PORTAL MODE
+# 2. HOD / MASTER PORTAL MODE (SIDEBAR)
 else:
     if st.session_state.get("hod_auth_user"):
         u_info = st.session_state["hod_auth_user"]
@@ -1755,11 +1785,12 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 
-# --- AREAWISE STOCK MATRIX VIEWER ---
-if st.session_state["stock_matrix_mode"] and not is_area_direct_mode:
-    if not check_hod_authentication():
-        st.stop()
+# ==============================================================================
+# --- MAIN APPLICATION VIEWS ---
+# ==============================================================================
 
+# --- VIEW 1: AREAWISE STOCK MATRIX VIEWER ---
+if st.session_state["stock_matrix_mode"] and not is_area_direct_mode:
     st.markdown(
         """
         <div style="background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); padding: 30px; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align: center; margin-bottom: 25px;">
@@ -1803,16 +1834,13 @@ if st.session_state["stock_matrix_mode"] and not is_area_direct_mode:
     except Exception as e:
         st.error(f"Error loading Stock Matrix data: {e}")
 
-# --- PREDICTIVE PR INTELLIGENCE ---
+# --- VIEW 2: PREDICTIVE PR INTELLIGENCE ---
 elif st.session_state["smart_intelligence_mode"]:
     current_view = (
         url_area if is_area_direct_mode else st.session_state["pr_selected_view"]
     )
 
     if current_view is None:
-        if not is_area_direct_mode and not check_hod_authentication():
-            st.stop()
-
         hero_pr_html = """
 <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 34px 28px; border-radius: 18px; border: 1.5px solid #334155; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25); text-align: center; margin-bottom: 25px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
     <div style="display: inline-block; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 4px 14px; border-radius: 20px; color: #fbbf24; font-size: 11.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">
@@ -1882,9 +1910,6 @@ elif st.session_state["smart_intelligence_mode"]:
                             st.query_params["pr_area"] = area_name
                             st.rerun()
     else:
-        if current_view != "Combined" and not check_authentication(current_view):
-            st.stop()
-
         if not is_area_direct_mode:
             if st.sidebar.button(
                 "⬅️  Back to PR Area Selector", use_container_width=True
@@ -2118,12 +2143,8 @@ elif st.session_state["smart_intelligence_mode"]:
         else:
             st.warning("No inventory records available for this area.")
 
-# --- LANDING PAGE (NALCO BRANDED) ---
-# --- LANDING PAGE (NALCO BRANDED) ---
+# --- VIEW 3: HOD MASTER LANDING PAGE (AREA TILES) ---
 elif st.session_state["selected_area"] is None:
-    if not check_hod_authentication():
-        st.stop()
-
     if os.path.exists(NALCO_LOGO_PATH):
         top_c1, top_c2 = st.columns([1, 6], vertical_alignment="center")
         with top_c1:
@@ -2175,12 +2196,10 @@ elif st.session_state["selected_area"] is None:
                     st.markdown(
                         "<div style='margin-bottom: 22px;'></div>", unsafe_allow_html=True
                     )
-# --- ACTIVE AREA DASHBOARD VIEW ---
+
+# --- VIEW 4: ACTIVE AREA DASHBOARD VIEW ---
 else:
     current_area = st.session_state["selected_area"]
-
-    if not check_authentication(current_area):
-        st.stop()
 
     if is_area_direct_mode:
         st.sidebar.markdown(f"**Current Area:** `{current_area}`")
