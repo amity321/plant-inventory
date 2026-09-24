@@ -1649,11 +1649,7 @@ active_tag = (
 )
 render_top_bar(status_text=active_tag)
 
-# --- SIDEBAR DESIGN (NALCO BRANDED) ---
-with st.sidebar:
-    if os.path.exists(NALCO_LOGO_PATH):
-        st.image(NALCO_LOGO_PATH, use_container_width=True)
-
+# --- SIDEBAR DESIGN (CLEAN CONTROL PANEL) ---
 st.sidebar.markdown(
     """
     <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 14px; border-radius: 10px; margin-bottom: 15px; text-align: center; border: 1px solid #334155;">
@@ -2108,7 +2104,6 @@ elif st.session_state["selected_area"] is None:
     if not check_hod_authentication():
         st.stop()
 
-    # NALCO Top Header Display
     if os.path.exists(NALCO_LOGO_PATH):
         top_c1, top_c2 = st.columns([1, 6], vertical_alignment="center")
         with top_c1:
@@ -2212,7 +2207,6 @@ else:
     zone_name = config.get("zone_type", "Refinery Process Area")
     theme_accent = config.get("color", "#0284c7")
 
-    # Area View Header with NALCO Logo integration
     if os.path.exists(NALCO_LOGO_PATH):
         h_col1, h_col2 = st.columns([1, 7], vertical_alignment="center")
         with h_col1:
