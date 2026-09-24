@@ -1717,7 +1717,7 @@ def on_sidebar_search():
         if not is_area_direct_mode and not st.session_state.get("pr_selected_view"):
             st.session_state["pr_selected_view"] = "Combined"
 
-st.sidebar.markdown('<div class="sidebar-section-title">🔍 Quick PR Search</div>', unsafe_allow_html=True)
+st.sidebar.markdown('<div class="sidebar-section-title">🔍 Quick Material Search</div>', unsafe_allow_html=True)
 st.sidebar.text_input(
     "Search Mat Code/ Text:",
     placeholder="e.g. 5040012 or RTD...",
