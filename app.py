@@ -733,7 +733,7 @@ def check_hod_authentication():
             if not matched_user:
                 st.error("❌ Unauthorized User ID / Personal No. for Master Dashboard.")
             elif matched_user["pin"] != user_input_pin:
-                st.error("❌ Incorrect PIN for this officer.")
+                st.error("❌ Incorrect PIN... Contact Amit, 9742900004.")
             else:
                 st.session_state["hod_auth_user"] = matched_user
                 st.success(f"✅ Welcome {matched_user['name']}!")
