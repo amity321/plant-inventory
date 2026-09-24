@@ -2121,32 +2121,31 @@ elif st.session_state["selected_area"] is None:
         st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
 
     hero_html = """
-<div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 34px 28px; border-radius: 18px; border: 1.5px solid #334155; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25); text-align: center; margin-bottom: 25px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-    <div style="display: inline-block; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 4px 14px; border-radius: 20px; color: #38bdf8; font-size: 11.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">
-        ⚙️ Instrumentation Spares &amp; Inventory Management 
+    <div style="background: #0f172a; padding: 18px 24px; border-radius: 12px; border: 1px solid #1e293b; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); margin-bottom: 22px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+                <h2 style="color: #ffffff !important; margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.3px;">
+                    CENTRAL C&amp;I SPARES PORTAL
+                </h2>
+                <p style="color: #94a3b8 !important; margin: 3px 0 0 0; font-size: 13px; font-weight: 500;">
+                    Centralized instrumentation inventory monitoring &amp; predictive PR scheduler.
+                </p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 5px 12px; border-radius: 8px; font-size: 12px; color: #cbd5e1;">
+                    <b style="color: #38bdf8;">8</b> Plant Zones
+                </div>
+                <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 5px 12px; border-radius: 8px; font-size: 12px; color: #cbd5e1;">
+                    <span style="color: #10b981;">●</span> Live Sync
+                </div>
+                <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 5px 12px; border-radius: 8px; font-size: 12px; color: #cbd5e1;">
+                    <b style="color: #fbbf24;">PR</b> Analytics
+                </div>
+            </div>
+        </div>
     </div>
-    <h1 style="color: #ffffff !important; margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.5px;">
-        CENTRAL C&amp;I SPARES PORTAL
-    </h1>
-    <p style="color: #94a3b8 !important; margin-top: 8px; font-size: 14.5px; font-weight: 500; max-width: 650px; margin-left: auto; margin-right: auto;">
-        Real-time spares monitoring, inter-area telemetry, and lead-time adjusted predictive requisition intelligence.
-    </p>
-    <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 22px;">
-        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 8px 18px; border-radius: 10px;">
-            <span style="color: #38bdf8; font-weight: 800; font-size: 16px;">8</span> 
-            <span style="color: #cbd5e1; font-size: 12.5px; font-weight: 600; margin-left: 4px;">Active Plant Zones</span>
-        </div>
-        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 8px 18px; border-radius: 10px;">
-            <span style="color: #10b981; font-weight: 800; font-size: 16px;">●</span> 
-            <span style="color: #cbd5e1; font-size: 12.5px; font-weight: 600; margin-left: 4px;">Live Telemetry Active</span>
-        </div>
-        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 8px 18px; border-radius: 10px;">
-            <span style="color: #f59e0b; font-weight: 800; font-size: 16px;">AI</span> 
-            <span style="color: #cbd5e1; font-size: 12.5px; font-weight: 600; margin-left: 4px;">Predictive PR Engine</span>
-        </div>
-    </div>
-</div>
-"""
+    """
+    st.html(hero_html)
     st.html(hero_html)
 
     areas = list(AREA_CONFIGS.keys())
