@@ -556,7 +556,7 @@ def show_team_modal():
       <path d="M 550 140 L 550 165" stroke="#0284c7" stroke-width="2" fill="none"/>
       <rect x="430" y="165" width="240" height="34" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
       <text x="550" y="187" fill="#b45309" font-size="13" font-weight="700" text-anchor="middle">⚡ Steam Power Plant (SPP)</text>
-      <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2" fill="none"/>
+      <path d="M 915 140 L 915 165" stroke="#0284c7" stroke-width="2.5" fill="none"/>
       <rect x="795" y="165" width="240" height="34" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
       <text x="915" y="187" fill="#15803d" font-size="13" font-weight="700" text-anchor="middle">📦 Inventory Store</text>
       <path d="M 185 199 L 185 220" stroke="#94a3b8" stroke-width="2" fill="none"/>
@@ -2105,8 +2105,7 @@ elif st.session_state["smart_intelligence_mode"]:
                 status_text = (
                     f"🚨 Showing {len(filtered_df)} Overdue / Urgent PR Items"
                     if only_urgent_pr
-                    else f"Analytics Results (items displayed- {len(filtered_df)}"
-                    " )"
+                    else f"Analytics Results (items displayed - {len(filtered_df)})"
                 )
                 st.markdown(f"### {status_text}")
 
@@ -2318,7 +2317,7 @@ else:
             df[NAME_COL].unique(), key=lambda x: str(x).lower()
         )
 
-        # Single Continuous Feed: Renders all items on one page
+        # Single Continuous Feed: Renders all items on one page without pagination controls
         for current_name in unique_names_ordered:
             sub_df = df[
                 df[NAME_COL].astype(str).str.strip() == str(current_name).strip()
