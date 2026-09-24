@@ -895,7 +895,7 @@ def show_broadcast_message_dialog(current_area_name):
     if msg_category == "📦 Material Spare Request":
         search_kw = st.text_input(
             "Type Material Code or Instrument Name:",
-            placeholder="e.g. 5040012 or RTD or Pressure Transmitter...",
+            placeholder="e.g. Mat. Code or Text",
             key="mat_matrix_search",
         ).strip()
 
