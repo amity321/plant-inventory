@@ -3,9 +3,10 @@ import json
 import os
 import time
 from datetime import datetime, timedelta
-import pandas as pdf
+import pandas as pd
 import requests
 import streamlit as st
+
 
 pd.set_option("display.max_rows", None)
 
