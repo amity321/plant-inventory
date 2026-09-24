@@ -2113,7 +2113,7 @@ elif st.session_state["selected_area"] is None:
                 """
                 <div style="margin-left: 5px;">
                     <h2 style="margin: 0; color: #0f172a; font-weight: 800; font-size: 26px;">NATIONAL ALUMINIUM COMPANY LIMITED</h2>
-                    <p style="margin: 2px 0 0 0; color: #475569; font-size: 14px; font-weight: 600;">Instrumentation Spares & Inventory Cell</p>
+                    <p style="margin: 2px 0 0 0; color: #475569; font-size: 14px; font-weight: 600;">Instrumentation Spares & Inventory Cell (C&I)</p>
                 </div>
                 """,
                 unsafe_allow_html=True,
