@@ -2100,6 +2100,7 @@ elif st.session_state["smart_intelligence_mode"]:
             st.warning("No inventory records available for this area.")
 
 # --- LANDING PAGE (NALCO BRANDED) ---
+# --- LANDING PAGE (NALCO BRANDED) ---
 elif st.session_state["selected_area"] is None:
     if not check_hod_authentication():
         st.stop()
@@ -2113,39 +2114,12 @@ elif st.session_state["selected_area"] is None:
                 """
                 <div style="margin-left: 5px;">
                     <h2 style="margin: 0; color: #0f172a; font-weight: 800; font-size: 26px;">NATIONAL ALUMINIUM COMPANY LIMITED</h2>
-                    <p style="margin: 2px 0 0 0; color: #475569; font-size: 14px; font-weight: 600;">Instrumentation Spares & Inventory Cell (C&I)</p>
+                    <p style="margin: 2px 0 0 0; color: #475569; font-size: 14px; font-weight: 600;">Instrumentation Spares &amp; Inventory Cell (C&amp;I)</p>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
-        st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
-
-    hero_html = """
-    <div style="background: #0f172a; padding: 18px 24px; border-radius: 12px; border: 1px solid #1e293b; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); margin-bottom: 22px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-            <div>
-                <h2 style="color: #ffffff !important; margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.3px;">
-                    CENTRAL C&amp;I SPARES PORTAL
-                </h2>
-                <p style="color: #94a3b8 !important; margin: 3px 0 0 0; font-size: 13px; font-weight: 500;">
-                    Centralized instrumentation inventory monitoring &amp; predictive PR scheduler.
-                </p>
-            </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 5px 12px; border-radius: 8px; font-size: 12px; color: #cbd5e1;">
-                    <b style="color: #38bdf8;">8</b> Plant Zones
-                </div>
-                <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 5px 12px; border-radius: 8px; font-size: 12px; color: #cbd5e1;">
-                    <span style="color: #10b981;">●</span> Live Sync
-                </div>
-                <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 5px 12px; border-radius: 8px; font-size: 12px; color: #cbd5e1;">
-                    <b style="color: #fbbf24;">PR</b> Analytics
-                </div>
-            </div>
-        </div>
-    </div>
-    """
-    st.html(hero_html)
+        st.markdown("<div style='margin-bottom: 25px;'></div>", unsafe_allow_html=True)
 
     areas = list(AREA_CONFIGS.keys())
     for i in range(0, len(areas), 3):
@@ -2182,7 +2156,6 @@ elif st.session_state["selected_area"] is None:
                     st.markdown(
                         "<div style='margin-bottom: 22px;'></div>", unsafe_allow_html=True
                     )
-
 # --- ACTIVE AREA DASHBOARD VIEW ---
 else:
     current_area = st.session_state["selected_area"]
