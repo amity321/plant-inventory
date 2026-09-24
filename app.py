@@ -2100,7 +2100,7 @@ elif st.session_state["selected_area"] is None:
     hero_html = """
 <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 34px 28px; border-radius: 18px; border: 1.5px solid #334155; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25); text-align: center; margin-bottom: 25px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
     <div style="display: inline-block; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 4px 14px; border-radius: 20px; color: #38bdf8; font-size: 11.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">
-        ⚙️ CENTRAL C&amp;I INSTRUMENTATION SUITE
+        ⚙️ CENTRAL C&I INSTRUMENTATION SUITE
     </div>
     <h1 style="color: #ffffff !important; margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.5px;">
         🏭 CENTRAL C&I SPARES PORTAL
