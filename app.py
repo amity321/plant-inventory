@@ -1434,13 +1434,13 @@ def inject_custom_css(hide_sidebar=False):
     }}
     
     .sidebar-section-title {{
-        font-size: 12px !important;
+        font-size: 11.5px !important;
         font-weight: 800 !important;
         color: #0f172a !important;
         text-transform: uppercase;
         letter-spacing: 0.8px;
-        margin-top: 15px;
-        margin-bottom: 8px;
+        margin-top: 10px;
+        margin-bottom: 6px;
         display: flex;
         align-items: center;
         gap: 6px;
@@ -1698,18 +1698,8 @@ active_tag = (
 )
 render_top_bar(status_text=active_tag)
 
-# --- SIDEBAR DESIGN (CLEAN CONTROL PANEL) ---
-st.sidebar.markdown(
-    """
-    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 14px; border-radius: 10px; margin-bottom: 15px; text-align: center; border: 1px solid #334155;">
-        <h4 style="margin:0; color:#38bdf8; font-size:14px; font-weight:800; letter-spacing:0.5px;">NALCO C&amp;I CONTROL PANEL</h4>
-        <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; font-weight:500;">Central Spares &amp; Inventory Suite</p>
-    </div>
-""",
-    unsafe_allow_html=True,
-)
 
-# --- GLOBAL SIDEBAR QUICK PR SEARCH ENGINE ---
+# --- GLOBAL SIDEBAR QUICK PR SEARCH ENGINE HANDLER ---
 def on_sidebar_search():
     if st.session_state.get("global_pr_search", "").strip():
         st.session_state["smart_intelligence_mode"] = True
@@ -1717,85 +1707,147 @@ def on_sidebar_search():
         if not is_area_direct_mode and not st.session_state.get("pr_selected_view"):
             st.session_state["pr_selected_view"] = "Combined"
 
-st.sidebar.markdown('<div class="sidebar-section-title">🔍 Quick Material Search</div>', unsafe_allow_html=True)
 
-st.sidebar.markdown("<div style='margin: 10px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
+# ==============================================================================
+# --- RESTRUCTURED STREAMLINED SIDEBAR ---
+# Sequence: 1. Branding -> 2. Navigation -> 3. Global Search -> 4. Parameters -> 5. User Profile
+# ==============================================================================
 
-# 1. DIRECT AREA USER MODE (SIDEBAR)
-if is_area_direct_mode:
-    st.sidebar.markdown(
-        '<div class="sidebar-section-title">📌 Area Dedicated Modules</div>',
+with st.sidebar:
+    # 1. BRANDING HEADER
+    st.markdown(
+        """
+        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 13px; border-radius: 10px; margin-bottom: 12px; text-align: center; border: 1px solid #334155;">
+            <h4 style="margin:0; color:#38bdf8; font-size:13.5px; font-weight:800; letter-spacing:0.5px;">NALCO C&amp;I CONTROL PANEL</h4>
+            <p style="margin:3px 0 0 0; color:#94a3b8; font-size:11px; font-weight:500;">Central Spares &amp; Inventory Suite</p>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
-    if not st.session_state["smart_intelligence_mode"]:
-        if st.sidebar.button("📈  Predictive PR Date", use_container_width=True):
-            st.session_state["smart_intelligence_mode"] = True
-            st.session_state["pr_selected_view"] = url_area
-            st.query_params["area"] = url_area
-            st.query_params["view"] = "pr"
-            st.rerun()
+
+    # 2. PRIMARY PORTAL NAVIGATION
+    if is_area_direct_mode:
+        st.markdown(
+            '<div class="sidebar-section-title">📌 Area Navigation</div>',
+            unsafe_allow_html=True,
+        )
+        if not st.session_state["smart_intelligence_mode"]:
+            if st.button("📈 Predictive PR Date", use_container_width=True):
+                st.session_state["smart_intelligence_mode"] = True
+                st.session_state["pr_selected_view"] = url_area
+                st.query_params["area"] = url_area
+                st.query_params["view"] = "pr"
+                st.rerun()
+        else:
+            if st.button("📦 Back to Area Stock", use_container_width=True):
+                st.session_state["smart_intelligence_mode"] = False
+                st.session_state["pr_selected_view"] = None
+                st.query_params["area"] = url_area
+                if "view" in st.query_params:
+                    del st.query_params["view"]
+                st.rerun()
     else:
-        if st.sidebar.button("📦  Back to Area Stock", use_container_width=True):
+        st.markdown(
+            '<div class="sidebar-section-title">🧭 Portal Navigation</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("🏠 Dashboard Home", use_container_width=True):
             st.session_state["smart_intelligence_mode"] = False
+            st.session_state["stock_matrix_mode"] = False
+            st.session_state["selected_area"] = None
             st.session_state["pr_selected_view"] = None
-            st.query_params["area"] = url_area
-            if "view" in st.query_params:
-                del st.query_params["view"]
+            st.query_params.clear()
             st.rerun()
 
-# 2. HOD / MASTER PORTAL MODE (SIDEBAR)
-else:
-    if st.session_state.get("hod_auth_user"):
-        u_info = st.session_state["hod_auth_user"]
-        st.sidebar.markdown(
+        if st.button("📈 Predictive PR Intelligence", use_container_width=True):
+            st.session_state["smart_intelligence_mode"] = True
+            st.session_state["stock_matrix_mode"] = False
+            st.session_state["selected_area"] = None
+            st.session_state["pr_selected_view"] = None
+            st.query_params["view"] = "pr"
+            st.rerun()
+
+        if st.button("📊 Areawise Stock Matrix", use_container_width=True):
+            st.session_state["stock_matrix_mode"] = True
+            st.session_state["smart_intelligence_mode"] = False
+            st.session_state["selected_area"] = None
+            st.session_state["pr_selected_view"] = None
+            st.query_params["view"] = "stock_matrix"
+            st.rerun()
+
+    st.markdown("<div style='margin: 10px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
+
+    # 3. GLOBAL SEARCH
+    st.markdown('<div class="sidebar-section-title">🔍 Quick Material Search</div>', unsafe_allow_html=True)
+    st.text_input(
+        "Search Mat Code/ Text:",
+        placeholder="e.g. 5040012 or RTD...",
+        key="global_pr_search",
+        on_change=on_sidebar_search,
+        label_visibility="collapsed",
+    )
+
+    # 4. VIEW-SPECIFIC PARAMETERS (Only visible when PR mode is active)
+    lead_time_months = 6
+    analysis_months = 12
+    if st.session_state.get("smart_intelligence_mode"):
+        st.markdown("<div style='margin: 10px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-section-title">⚙️ Analysis Parameters</div>', unsafe_allow_html=True)
+        lead_time_months = st.slider(
+            "Procurement Lead Time (Months):",
+            min_value=0,
+            max_value=12,
+            value=6,
+            help="Setting to 0 displays direct stock runout / exhaustion dates without lead-time subtraction.",
+        )
+        if lead_time_months == 0:
+            st.caption("⚡ Zero Lead Time: Showing direct runout dates.")
+
+        analysis_months = st.selectbox(
+            "Consumption Historical Span:", [6, 12, 24], index=1
+        )
+
+    # 5. USER SESSION & CONTROLS FOOTER
+    st.markdown("<div style='margin: 14px 0 10px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
+
+    if is_area_direct_mode:
+        curr_mgr = AREA_CONFIGS.get(url_area, {}).get("manager", "Area Officer")
+        st.markdown(
             f"""
-            <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px;">
-                <div style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Active Master Session</div>
-                <div style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-top: 2px;">👤 {u_info['name']}</div>
-                <div style="font-size: 11px; color: #0284c7; font-weight: 600;">{u_info['role']}</div>
+            <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 10px 12px; border-radius: 8px; margin-bottom: 10px;">
+                <div style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Area Active Session</div>
+                <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 2px;">📍 {url_area}</div>
+                <div style="font-size: 11px; color: #0284c7; font-weight: 600;">{curr_mgr}</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
+        c_p1, c_p2 = st.columns(2)
+        with c_p1:
+            if st.button("🔑 Password", use_container_width=True):
+                change_password_dialog(url_area)
+        with c_p2:
+            if st.button("🔒 Logout", use_container_width=True, key="area_logout"):
+                st.session_state["auth_status"][url_area] = False
+                st.rerun()
 
-        if st.sidebar.button("🔒 Logout", use_container_width=True):
-            st.session_state["hod_auth_user"] = None
-            st.rerun()
+    else:
+        if st.session_state.get("hod_auth_user"):
+            u_info = st.session_state["hod_auth_user"]
+            st.markdown(
+                f"""
+                <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 10px 12px; border-radius: 8px; margin-bottom: 10px;">
+                    <div style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Active Master Session</div>
+                    <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 2px;">👤 {u_info['name']}</div>
+                    <div style="font-size: 11px; color: #0284c7; font-weight: 600;">{u_info['role']}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            if st.button("🔒 Logout Session", use_container_width=True, key="master_logout"):
+                st.session_state["hod_auth_user"] = None
+                st.rerun()
 
-    st.sidebar.markdown(
-        '<div class="sidebar-section-title">🧭 Portal Navigation</div>',
-        unsafe_allow_html=True,
-    )
-    if st.sidebar.button("🏠  Dashboard Home", use_container_width=True):
-        st.session_state["smart_intelligence_mode"] = False
-        st.session_state["stock_matrix_mode"] = False
-        st.session_state["selected_area"] = None
-        st.session_state["pr_selected_view"] = None
-        st.query_params.clear()
-        st.rerun()
-
-    if st.sidebar.button(
-        "📈  Predictive PR Intelligence", use_container_width=True
-    ):
-        st.session_state["smart_intelligence_mode"] = True
-        st.session_state["stock_matrix_mode"] = False
-        st.session_state["selected_area"] = None
-        st.session_state["pr_selected_view"] = None
-        st.query_params["view"] = "pr"
-        st.rerun()
-
-    if st.sidebar.button("📊  Areawise Stock Matrix", use_container_width=True):
-        st.session_state["stock_matrix_mode"] = True
-        st.session_state["smart_intelligence_mode"] = False
-        st.session_state["selected_area"] = None
-        st.session_state["pr_selected_view"] = None
-        st.query_params["view"] = "stock_matrix"
-        st.rerun()
-
-st.sidebar.markdown(
-    "<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>",
-    unsafe_allow_html=True,
-)
 
 # ==============================================================================
 # --- MAIN APPLICATION VIEWS ---
@@ -1924,7 +1976,7 @@ elif st.session_state["smart_intelligence_mode"]:
     else:
         if not is_area_direct_mode:
             if st.sidebar.button(
-                "⬅️  Back to PR Area Selector", use_container_width=True
+                "⬅️ Back to PR Area Selector", use_container_width=True
             ):
                 st.session_state["pr_selected_view"] = None
                 st.query_params["view"] = "pr"
@@ -1946,24 +1998,6 @@ elif st.session_state["smart_intelligence_mode"]:
             </div>
             """,
             unsafe_allow_html=True,
-        )
-
-        st.sidebar.markdown(
-            '<div class="sidebar-section-title">⚙️ Analysis Parameters</div>',
-            unsafe_allow_html=True,
-        )
-        lead_time_months = st.sidebar.slider(
-            "Procurement Lead Time (Months):",
-            min_value=0,
-            max_value=12,
-            value=6,
-            help="Setting to 0 displays direct stock runout / exhaustion dates without lead-time subtraction.",
-        )
-        if lead_time_months == 0:
-            st.sidebar.caption("⚡ *Zero Lead Time mode: Showing direct stock exhaustion dates.*")
-
-        analysis_months = st.sidebar.selectbox(
-            "Consumption Historical Span:", [6, 12, 24], index=1
         )
 
         only_urgent_pr = st.session_state.get("urgent_pr_filter_state", False)
@@ -2079,7 +2113,6 @@ elif st.session_state["smart_intelligence_mode"]:
             if only_urgent_pr:
                 master_df = master_df[master_df["Is_Urgent"] == True]
 
-            # Direct Search Integration with Sidebar
             sidebar_val = st.session_state.get("global_pr_search", "").strip()
             local_search = st.text_input(
                 "🔍 Search (Enter Material Code or Instrument Description):", 
@@ -2238,17 +2271,6 @@ elif st.session_state["selected_area"] is None:
 # --- VIEW 4: ACTIVE AREA DASHBOARD VIEW ---
 else:
     current_area = st.session_state["selected_area"]
-
-    if is_area_direct_mode:
-        st.sidebar.markdown(f"**Current Area:** `{current_area}`")
-        if st.sidebar.button("🔑 Change Password", use_container_width=True):
-            change_password_dialog(current_area)
-
-        if st.sidebar.button("🔒 Logout", use_container_width=True):
-            st.session_state["auth_status"][current_area] = False
-            st.rerun()
-        st.sidebar.markdown("---")
-
     config = AREA_CONFIGS[current_area]
     manager_name = config.get("manager", "Lead Officer")
     zone_name = config.get("zone_type", "Refinery Process Area")
@@ -2377,7 +2399,7 @@ else:
         '<div class="sidebar-section-title">🔄 Database Control</div>',
         unsafe_allow_html=True,
     )
-    if st.sidebar.button("🔄  Sync Live Data Now", use_container_width=True):
+    if st.sidebar.button("🔄 Sync Live Data Now", use_container_width=True):
         st.cache_data.clear()
         st.session_state["data_timestamp"] = int(time.time())
         st.rerun()
