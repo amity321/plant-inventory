@@ -1751,7 +1751,7 @@ with st.sidebar:
             '<div class="sidebar-section-title">🧭 Portal Navigation</div>',
             unsafe_allow_html=True,
         )
-        if st.button("🏠 Dashboard Home", use_container_width=True):
+        if st.button("Dashboard Home", use_container_width=True):
             st.session_state["smart_intelligence_mode"] = False
             st.session_state["stock_matrix_mode"] = False
             st.session_state["selected_area"] = None
@@ -1759,7 +1759,7 @@ with st.sidebar:
             st.query_params.clear()
             st.rerun()
 
-        if st.button("📈 Predictive PR Intelligence", use_container_width=True):
+        if st.button("Predictive PR Intelligence", use_container_width=True):
             st.session_state["smart_intelligence_mode"] = True
             st.session_state["stock_matrix_mode"] = False
             st.session_state["selected_area"] = None
@@ -1767,7 +1767,7 @@ with st.sidebar:
             st.query_params["view"] = "pr"
             st.rerun()
 
-        if st.button("📊 Areawise Stock Matrix", use_container_width=True):
+        if st.button("Areawise Stock Matrix", use_container_width=True):
             st.session_state["stock_matrix_mode"] = True
             st.session_state["smart_intelligence_mode"] = False
             st.session_state["selected_area"] = None
