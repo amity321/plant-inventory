@@ -28,7 +28,11 @@ MASTER_AUTHORIZED_USERS = {
         "pin": "9742900004",
         "role": "Lead Administrator",
     },
-    "06505": {"name": "Er. S.K. Jain", "pin": "9437106841", "role": "HOD (C&I)"},
+    "06505": {
+         "name": "Er. S.K. Jain", 
+         "pin": "9437106841", 
+         "role": "HOD (C&I)"
+    },
     "08165": {
         "name": "Er. H. S. Behera",
         "pin": "9437006963",
@@ -696,7 +700,7 @@ def check_hod_authentication():
         """
         <div style="max-width: 480px; margin: 40px auto 20px auto; background: #ffffff; padding: 30px; border-radius: 14px; border: 1.5px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.04); text-align: center;">
             <div style="font-size: 38px; margin-bottom: 8px;">🏛️</div>
-            <h2 style="color: #0f172a; margin: 0; font-size: 22px; font-weight: 800;">Master Control Room Access</h2>
+            <h2 style="color: #0f172a; margin: 0; font-size: 22px; font-weight: 800;">Master Portal Access</h2>
             <p style="color: #64748b; font-size: 13.5px; margin-top: 6px;">Enter your Personal No. &amp; Secret PIN to unlock Master portal.</p>
         </div>
         """,
@@ -1686,7 +1690,7 @@ else:
             unsafe_allow_html=True,
         )
 
-        if st.sidebar.button("🔒 Logout Master", use_container_width=True):
+        if st.sidebar.button("🔒 Logout", use_container_width=True):
             st.session_state["hod_auth_user"] = None
             st.rerun()
 
