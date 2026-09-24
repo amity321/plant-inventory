@@ -702,8 +702,7 @@ def check_hod_authentication():
     if st.session_state.get("hod_auth_user") is not None:
         return True
 
-    # 3 Columns banakar center column me card aur inputs dono ko align karenge
-    col1, col2, col3 = st.columns([1, 1.4, 1])
+    col1, col2, col3 = st.columns([1, 1.35, 1])
 
     with col2:
         logo_html = (
@@ -714,21 +713,21 @@ def check_hod_authentication():
 
         st.markdown(
             f"""
-            <div style="width: 100%; background: #ffffff; padding: 24px 20px 20px 20px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05); text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 30px; margin-bottom: 20px; box-sizing: border-box;">
+            <div style="width: 100%; background: #ffffff; padding: 24px 20px 18px 20px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05); text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 30px; margin-bottom: 18px; box-sizing: border-box;">
                 <div style="display: flex; justify-content: center; margin-bottom: 12px;">
                     {logo_html}
                 </div>
-                <h3 style="color: #0f172a; margin: 0; font-size: 17.5px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.3;">
+                <h3 style="color: #0f172a; margin: 0; font-size: 17px; font-weight: 800; line-height: 1.35; text-align: center;">
                     NATIONAL ALUMINIUM COMPANY LIMITED
                 </h3>
-                <div style="color: #0284c7; font-size: 11.5px; font-weight: 700; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.5px;">
+                <div style="color: #0284c7; font-size: 12px; font-weight: 700; margin-top: 6px; text-transform: uppercase; text-align: center; letter-spacing: 0;">
                     Instrumentation Spares &amp; Inventory Cell (C&amp;I)
                 </div>
                 <div style="height: 1px; background: #e2e8f0; margin: 16px 0 14px 0;"></div>
-                <div style="font-size: 13.5px; font-weight: 700; color: #1e293b;">
+                <div style="font-size: 13.5px; font-weight: 700; color: #1e293b; text-align: center;">
                     Executive Portal Access
                 </div>
-                <p style="color: #64748b; font-size: 12px; margin: 3px 0 0 0;">
+                <p style="color: #64748b; font-size: 12px; margin: 3px 0 0 0; text-align: center;">
                     Please authenticate using your Personal No. &amp; PIN
                 </p>
             </div>
