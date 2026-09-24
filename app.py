@@ -878,7 +878,7 @@ def show_broadcast_message_dialog(current_area_name):
     with c_top2:
         priority_level = st.radio(
             "Priority:",
-            ["Normal", "🚨 Urgent Breakdown"],
+            ["Normal", " Urgent Breakdown"],
             horizontal=True,
             key="bc_priority_radio",
         )
@@ -1050,7 +1050,7 @@ def show_notifications_dialog(current_area_name):
             badge_html = """<span style="font-size: 11px; font-weight: 700; color: #4338ca; background: #e0e7ff; padding: 3px 10px; border-radius: 12px;">📍 DIRECT MESSAGE</span>"""
 
         if is_urg:
-            badge_html += """ <span style="font-size: 11px; font-weight: 700; color: #b91c1c; background: #fee2e2; padding: 3px 8px; border-radius: 12px; margin-left: 4px;">🚨 URGENT</span>"""
+            badge_html += """ <span style="font-size: 11px; font-weight: 700; color: #b91c1c; background: #fee2e2; padding: 3px 8px; border-radius: 12px; margin-left: 4px;"> URGENT</span>"""
 
         mat_block_html = ""
         if is_mat_req and mat_info:
@@ -1294,7 +1294,7 @@ def render_row(row, mapping, current_area_name):
 
     if shortfall_excess < 0:
         status_html = (
-            '<div class="status-badge status-shortfall">🚨 Shortfall'
+            '<div class="status-badge status-shortfall"> Shortfall'
             f" ({shortfall_excess})</div>"
         )
     elif shortfall_excess > 0:
@@ -1544,7 +1544,7 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
             )
         with c_mid:
             is_active = st.session_state["urgent_pr_filter_state"]
-            btn_label = "✅ Showing Overdue PR" if is_active else "🚨 Show Overdue PR Only"
+            btn_label = "✅ Showing Overdue PR" if is_active else " Show Overdue PR Only"
             if st.button(
                 btn_label,
                 key="urgent_pr_btn",
@@ -1781,7 +1781,7 @@ with st.sidebar:
     st.markdown('<div class="sidebar-section-title">🔍 Quick Material Search</div>', unsafe_allow_html=True)
     st.text_input(
         "Search Mat Code/ Text:",
-        placeholder="e.g. 5040012 or RTD...",
+        placeholder="e.g. 90521... or RTD...",
         key="global_pr_search",
         on_change=on_sidebar_search,
         label_visibility="collapsed",
@@ -2138,7 +2138,7 @@ elif st.session_state["smart_intelligence_mode"]:
 
             if not filtered_df.empty:
                 status_text = (
-                    f"🚨 Showing {len(filtered_df)} Overdue / Urgent PR Items"
+                    f"Showing {len(filtered_df)} Overdue / Urgent PR Items"
                     if only_urgent_pr
                     else f"Analytics Results (items displayed - {len(filtered_df)})"
                 )
@@ -2159,7 +2159,7 @@ elif st.session_state["smart_intelligence_mode"]:
                         badge_text = (
                             "⚠️ ZERO STOCK WARNING" 
                             if lead_time_months == 0 
-                            else "🚨 URGENT PR REQUIRED"
+                            else " URGENT PR REQUIRED"
                         )
                         urgency_badge = (
                             f'<span style="background-color: #fee2e2; color: #dc2626; padding:'
