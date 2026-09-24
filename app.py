@@ -698,43 +698,50 @@ def check_authentication(area_key):
 
 
 # --- HOD / MASTER LANDING PAGE CHECK ---
-
 def check_hod_authentication():
     if st.session_state.get("hod_auth_user") is not None:
         return True
 
-    # NALCO Corporate Authentication Card
-    st.markdown(
-        f"""
-        <div style="max-width: 440px; margin: 40px auto 18px auto; background: #ffffff; padding: 28px 24px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06); text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-            <div style="display: flex; justify-content: center; margin-bottom: 12px;">
-                {'<img src="data:image/png;base64,' + __import__('base64').b64encode(open(NALCO_LOGO_PATH, 'rb').read()).decode() + '" width="68"/>' if os.path.exists(NALCO_LOGO_PATH) else '<div style="font-size: 32px;">🏛️</div>'}
-            </div>
-            <h3 style="color: #0f172a; margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -0.3px;">
-                NATIONAL ALUMINIUM COMPANY LIMITED
-            </h3>
-            <div style="color: #0284c7; font-size: 12px; font-weight: 700; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.5px;">
-                Instrumentation Spares &amp; Inventory Cell (C&amp;I)
-            </div>
-            <div style="height: 1px; background: #e2e8f0; margin: 16px 0 14px 0;"></div>
-            <div style="font-size: 13.5px; font-weight: 700; color: #1e293b;">
-                Executive Portal Access
-            </div>
-            <p style="color: #64748b; font-size: 12px; margin: 3px 0 0 0;">
-                Please authenticate using your Personal No. &amp; PIN
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # 3 Columns banakar center column me card aur inputs dono ko align karenge
+    col1, col2, col3 = st.columns([1, 1.4, 1])
 
-    col1, col2, col3 = st.columns([1, 1.3, 1])
     with col2:
+        logo_html = (
+            f'<img src="data:image/png;base64,{__import__("base64").b64encode(open(NALCO_LOGO_PATH, "rb").read()).decode()}" width="65"/>'
+            if os.path.exists(NALCO_LOGO_PATH)
+            else '<div style="font-size: 32px;">🏛️</div>'
+        )
+
+        st.markdown(
+            f"""
+            <div style="width: 100%; background: #ffffff; padding: 24px 20px 20px 20px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05); text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 30px; margin-bottom: 20px; box-sizing: border-box;">
+                <div style="display: flex; justify-content: center; margin-bottom: 12px;">
+                    {logo_html}
+                </div>
+                <h3 style="color: #0f172a; margin: 0; font-size: 17.5px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.3;">
+                    NATIONAL ALUMINIUM COMPANY LIMITED
+                </h3>
+                <div style="color: #0284c7; font-size: 11.5px; font-weight: 700; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Instrumentation Spares &amp; Inventory Cell (C&amp;I)
+                </div>
+                <div style="height: 1px; background: #e2e8f0; margin: 16px 0 14px 0;"></div>
+                <div style="font-size: 13.5px; font-weight: 700; color: #1e293b;">
+                    Executive Portal Access
+                </div>
+                <p style="color: #64748b; font-size: 12px; margin: 3px 0 0 0;">
+                    Please authenticate using your Personal No. &amp; PIN
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         user_input_id = st.text_input(
             "Personal No. (P.No.)",
             placeholder="e.g. 10372",
             key="hod_user_id_input",
         ).strip()
+
         user_input_pin = st.text_input(
             "Security PIN",
             type="password",
