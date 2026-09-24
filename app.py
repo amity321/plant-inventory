@@ -2138,7 +2138,7 @@ elif st.session_state["smart_intelligence_mode"]:
 
             if not filtered_df.empty:
                 status_text = (
-                    f"Showing {len(filtered_df)} Overdue / Urgent PR Items"
+                    f"Showing {len(filtered_df)} Overdue PR Items"
                     if only_urgent_pr
                     else f"Analytics Results (items displayed - {len(filtered_df)})"
                 )
