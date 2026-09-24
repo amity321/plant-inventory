@@ -1718,12 +1718,7 @@ def on_sidebar_search():
             st.session_state["pr_selected_view"] = "Combined"
 
 st.sidebar.markdown('<div class="sidebar-section-title">🔍 Quick Material Search</div>', unsafe_allow_html=True)
-st.sidebar.text_input(
-    "Search Mat Code/ Text:",
-    placeholder="e.g. 5040012 or RTD...",
-    key="global_pr_search",
-    on_change=on_sidebar_search
-)
+
 st.sidebar.markdown("<div style='margin: 10px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
 
 # 1. DIRECT AREA USER MODE (SIDEBAR)
