@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 import time
 from datetime import datetime, timedelta
 import pandas as pd
@@ -8,9 +9,14 @@ import streamlit as st
 
 pd.set_option("display.max_rows", None)
 
+# --- NALCO BRANDING CONSTANTS ---
+NALCO_LOGO_PATH = "nalco_logo.png"
+
 # 1. Page Configuration
 st.set_page_config(
-    page_title="Master Instrumentation Dashboard", layout="wide", page_icon="🏭"
+    page_title="NALCO - Central C&I Spares Portal",
+    layout="wide",
+    page_icon=NALCO_LOGO_PATH if os.path.exists(NALCO_LOGO_PATH) else "⚙️",
 )
 
 # --- GOOGLE APPS SCRIPT AUTH & WEBHOOK URL ---
@@ -29,9 +35,9 @@ MASTER_AUTHORIZED_USERS = {
         "role": "Lead Administrator",
     },
     "06505": {
-         "name": "Er. S.K. Jain", 
-         "pin": "9437106841", 
-         "role": "HOD (C&I)"
+        "name": "Er. S.K. Jain",
+        "pin": "9437106841",
+        "role": "HOD (C&I)",
     },
     "08165": {
         "name": "Er. H. S. Behera",
@@ -984,7 +990,6 @@ def show_broadcast_message_dialog(current_area_name):
 
 
 # --- NOTIFICATIONS & INCOMING ALERTS MODAL ---
-# --- NOTIFICATIONS & INCOMING ALERTS MODAL ---
 @st.dialog("🔔 Notifications & Incoming Alerts", width="large")
 def show_notifications_dialog(current_area_name):
     active_messages = []
@@ -1196,6 +1201,8 @@ def show_notifications_dialog(current_area_name):
             "<div style='margin: 8px 0; border-bottom: 1px dashed #cbd5e1;'></div>",
             unsafe_allow_html=True,
         )
+
+
 # --- DYNAMIC THEMED ROW RENDERER ---
 def render_row(row, mapping, current_area_name):
     name_key = mapping["name"]
@@ -1638,16 +1645,20 @@ inject_custom_css()
 active_tag = (
     f"📍 Active Area: {st.session_state['selected_area']}"
     if st.session_state["selected_area"]
-    else "🏭 Master Control Room"
+    else "Master Control Room"
 )
 render_top_bar(status_text=active_tag)
 
-# --- SIDEBAR DESIGN ---
+# --- SIDEBAR DESIGN (NALCO BRANDED) ---
+with st.sidebar:
+    if os.path.exists(NALCO_LOGO_PATH):
+        st.image(NALCO_LOGO_PATH, use_container_width=True)
+
 st.sidebar.markdown(
     """
     <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 14px; border-radius: 10px; margin-bottom: 15px; text-align: center; border: 1px solid #334155;">
-        <h4 style="margin:0; color:#38bdf8; font-size:15px; font-weight:800; letter-spacing:0.5px;">⚙️ CONTROL PANEL</h4>
-        <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; font-weight:500;">CENTRAL C&I SPARES PORTAL</p>
+        <h4 style="margin:0; color:#38bdf8; font-size:14px; font-weight:800; letter-spacing:0.5px;">NALCO C&amp;I CONTROL PANEL</h4>
+        <p style="margin:4px 0 0 0; color:#94a3b8; font-size:11px; font-weight:500;">Central Spares &amp; Inventory Suite</p>
     </div>
 """,
     unsafe_allow_html=True,
@@ -1793,7 +1804,7 @@ elif st.session_state["smart_intelligence_mode"]:
         📈 PREDICTIVE REQUISITION INTELLIGENCE
     </div>
     <h1 style="color: #ffffff !important; margin: 0; font-size: 30px; font-weight: 800;">
-        📈 Spares Consumption &amp; PR Schedulers
+        Spares Consumption &amp; PR Schedulers
     </h1>
     <p style="color: #94a3b8 !important; margin-top: 8px; font-size: 14.5px;">
         Select an individual area or open the centralized <b>Combined Planning Cell</b> view.
@@ -2092,18 +2103,35 @@ elif st.session_state["smart_intelligence_mode"]:
         else:
             st.warning("No inventory records available for this area.")
 
-# --- LANDING PAGE ---
+# --- LANDING PAGE (NALCO BRANDED) ---
 elif st.session_state["selected_area"] is None:
     if not check_hod_authentication():
         st.stop()
 
+    # NALCO Top Header Display
+    if os.path.exists(NALCO_LOGO_PATH):
+        top_c1, top_c2 = st.columns([1, 6], vertical_alignment="center")
+        with top_c1:
+            st.image(NALCO_LOGO_PATH, width=120)
+        with top_c2:
+            st.markdown(
+                """
+                <div style="margin-left: 5px;">
+                    <h2 style="margin: 0; color: #0f172a; font-weight: 800; font-size: 26px;">NATIONAL ALUMINIUM COMPANY LIMITED</h2>
+                    <p style="margin: 2px 0 0 0; color: #475569; font-size: 14px; font-weight: 600;">Central Control &amp; Instrumentation (C&amp;I) Department</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
+
     hero_html = """
 <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 34px 28px; border-radius: 18px; border: 1.5px solid #334155; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25); text-align: center; margin-bottom: 25px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
     <div style="display: inline-block; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 4px 14px; border-radius: 20px; color: #38bdf8; font-size: 11.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">
-        ⚙️ Instrumentation Spares & Inventory Management 
+        ⚙️ Instrumentation Spares &amp; Inventory Management 
     </div>
     <h1 style="color: #ffffff !important; margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.5px;">
-        🏭 CENTRAL C&I SPARES PORTAL
+        CENTRAL C&amp;I SPARES PORTAL
     </h1>
     <p style="color: #94a3b8 !important; margin-top: 8px; font-size: 14.5px; font-weight: 500; max-width: 650px; margin-left: auto; margin-right: auto;">
         Real-time spares monitoring, inter-area telemetry, and lead-time adjusted predictive requisition intelligence.
@@ -2184,28 +2212,52 @@ else:
     zone_name = config.get("zone_type", "Refinery Process Area")
     theme_accent = config.get("color", "#0284c7")
 
-    area_header_html = f"""
-    <div style="background: #ffffff; padding: 22px 26px; border-radius: 14px; border: 1.5px solid #cbd5e1; border-top: 5px solid {theme_accent}; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-bottom: 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <div>
-                <span style="background: {theme_accent}15; color: {theme_accent}; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
-                    {zone_name}
-                </span>
-                <h1 style="color: #0f172a !important; margin: 4px 0 0 0; font-size: 24px; font-weight: 800;">
-                    🏭 {config['title']}
-                </h1>
-                <p style="color: #475569 !important; margin-4px 0 0 0; font-size: 13px; font-weight: 500;">
-                    Live Spares Tracking Sheet &bull; Managed by <span style="color: {theme_accent}; font-weight: 700;">{manager_name} (Inventory Team, C&I)</span>
-                </p>
-            </div>
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 10px; text-align: right;">
-                <div style="font-size: 10.5px; color: #64748b; font-weight: 700; text-transform: uppercase;">ZONE STATUS</div>
-                <div style="font-size: 13.5px; font-weight: 800; color: #10b981;">● Active &amp; Synced</div>
+    # Area View Header with NALCO Logo integration
+    if os.path.exists(NALCO_LOGO_PATH):
+        h_col1, h_col2 = st.columns([1, 7], vertical_alignment="center")
+        with h_col1:
+            st.image(NALCO_LOGO_PATH, width=95)
+        with h_col2:
+            st.markdown(
+                f"""
+                <div>
+                    <span style="background: {theme_accent}15; color: {theme_accent}; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; text-transform: uppercase;">
+                        {zone_name}
+                    </span>
+                    <h2 style="color: #0f172a !important; margin: 3px 0 0 0; font-size: 24px; font-weight: 800;">
+                        {config['title']}
+                    </h2>
+                    <p style="color: #475569 !important; margin: 2px 0 0 0; font-size: 13px; font-weight: 500;">
+                        Live Spares Tracking Sheet &bull; Managed by <span style="color: {theme_accent}; font-weight: 700;">{manager_name} (Inventory Team, C&amp;I)</span>
+                    </p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
+    else:
+        area_header_html = f"""
+        <div style="background: #ffffff; padding: 22px 26px; border-radius: 14px; border: 1.5px solid #cbd5e1; border-top: 5px solid {theme_accent}; box-shadow: 0 4px 15px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <span style="background: {theme_accent}15; color: {theme_accent}; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+                        {zone_name}
+                    </span>
+                    <h1 style="color: #0f172a !important; margin: 4px 0 0 0; font-size: 24px; font-weight: 800;">
+                        {config['title']}
+                    </h1>
+                    <p style="color: #475569 !important; margin-4px 0 0 0; font-size: 13px; font-weight: 500;">
+                        Live Spares Tracking Sheet &bull; Managed by <span style="color: {theme_accent}; font-weight: 700;">{manager_name} (Inventory Team, C&amp;I)</span>
+                    </p>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 10px; text-align: right;">
+                    <div style="font-size: 10.5px; color: #64748b; font-weight: 700; text-transform: uppercase;">ZONE STATUS</div>
+                    <div style="font-size: 13.5px; font-weight: 800; color: #10b981;">● Active &amp; Synced</div>
+                </div>
             </div>
         </div>
-    </div>
-    """
-    st.markdown(area_header_html, unsafe_allow_html=True)
+        """
+        st.markdown(area_header_html, unsafe_allow_html=True)
 
     try:
         df = fetch_data(config["sheet_url"], st.session_state["data_timestamp"])
