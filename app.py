@@ -3,7 +3,7 @@ import json
 import os
 import time
 from datetime import datetime, timedelta
-import pandas as pd
+import pandas as pdf
 import requests
 import streamlit as st
 
@@ -661,25 +661,55 @@ def check_authentication(area_key):
     ):
         return True
 
-    st.markdown(
-        f"""
-        <div style="max-width: 480px; margin: 40px auto; background: #ffffff; padding: 30px; border-radius: 14px; border: 1.5px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.04); text-align: center;">
-            <div style="font-size: 36px; margin-bottom: 8px;">🔒</div>
-            <h2 style="color: #0f172a; margin: 0; font-size: 22px; font-weight: 700;">Protected Area Access</h2>
-            <p style="color: #64748b; font-size: 13.5px; margin-top: 6px;">Enter password to view <b>{area_key}</b> data.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    area_cfg = AREA_CONFIGS.get(area_key, {})
+    zone_title = area_cfg.get("title", f"{area_key} Spares Inventory")
+    zone_mgr = area_cfg.get("manager", "Area Incharge")
+    zone_type = area_cfg.get("zone_type", "Refinery Process Area")
+    accent_col = area_cfg.get("color", "#0284c7")
+
+    logo_html = (
+        f'<img src="data:image/png;base64,{__import__("base64").b64encode(open(NALCO_LOGO_PATH, "rb").read()).decode()}" width="65"/>'
+        if os.path.exists(NALCO_LOGO_PATH)
+        else '<div style="font-size: 32px;">🏛️</div>'
     )
 
-    col1, col2, col3 = st.columns([1, 1.5, 1])
+    col1, col2, col3 = st.columns([1, 1.35, 1])
+
     with col2:
+        st.markdown(
+            f"""
+            <div style="width: 100%; background: #ffffff; padding: 24px 22px 18px 22px; border-radius: 14px; border: 1.5px solid #cbd5e1; border-top: 4px solid {accent_col}; box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06); text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 30px; margin-bottom: 18px; box-sizing: border-box;">
+                <div style="display: flex; justify-content: center; margin-bottom: 10px;">
+                    {logo_html}
+                </div>
+                <div style="color: #0f172a; margin: 0; font-size: 16.5px; font-weight: 800; line-height: 1.35;">
+                    NATIONAL ALUMINIUM COMPANY LIMITED
+                </div>
+                <div style="color: {accent_col}; font-size: 11.5px; font-weight: 700; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    {zone_type}
+                </div>
+                <div style="height: 1px; background: #e2e8f0; margin: 14px 0 12px 0;"></div>
+                <div style="font-size: 15px; font-weight: 800; color: #0f172a;">
+                    📍 {area_key} Security Gateway
+                </div>
+                <div style="font-size: 12px; color: #64748b; margin-top: 3px; font-weight: 600;">
+                    {zone_mgr}
+                </div>
+                <p style="color: #64748b; font-size: 11.5px; margin: 6px 0 0 0;">
+                    Enter the authorized area access key to unlock telemetry records.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         pwd = st.text_input(
-            "Password",
+            "Security Password",
             type="password",
             key=f"login_{area_key}",
-            placeholder="Enter password...",
+            placeholder="••••••••",
         )
+
         if st.button("Unlock Portal 🔓", use_container_width=True, type="primary"):
             c_pwd = pwd.strip()
             db = fetch_passwords_from_sheet()
@@ -689,12 +719,13 @@ def check_authentication(area_key):
 
             if is_valid:
                 st.session_state["auth_status"][area_key] = True
+                st.success(f"✅ Access Granted: {area_key}")
+                time.sleep(0.6)
                 st.rerun()
             else:
                 st.error("❌ Incorrect Password. Contact Lead Admin.")
+
     return False
-
-
 # --- HOD / MASTER LANDING PAGE CHECK ---
 def check_hod_authentication():
     if st.session_state.get("hod_auth_user") is not None:
