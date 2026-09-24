@@ -2103,7 +2103,7 @@ elif st.session_state["selected_area"] is None:
         ⚙️ CENTRAL C&amp;I INSTRUMENTATION SUITE
     </div>
     <h1 style="color: #ffffff !important; margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.5px;">
-        🏭 Master Instrumentation Portal
+        🏭 CENTRAL C&I SPARES PORTAL
     </h1>
     <p style="color: #94a3b8 !important; margin-top: 8px; font-size: 14.5px; font-weight: 500; max-width: 650px; margin-left: auto; margin-right: auto;">
         Real-time spares monitoring, inter-area telemetry, and lead-time adjusted predictive requisition intelligence.
