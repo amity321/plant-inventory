@@ -2106,7 +2106,7 @@ elif st.session_state["smart_intelligence_mode"]:
                     f"🚨 Showing {len(filtered_df)} Overdue / Urgent PR Items"
                     if only_urgent_pr
                     else f"🔎 Analytics Results ({len(filtered_df)} items displayed -"
-                    " Alphabetical A-Z)"
+                    " )"
                 )
                 st.markdown(f"### {status_text}")
 
