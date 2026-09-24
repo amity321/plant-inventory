@@ -719,7 +719,7 @@ def check_hod_authentication():
                     NATIONAL ALUMINIUM COMPANY LIMITED
                 </div>
                 <div style="color: #0284c7; font-size: 12px; font-weight: 700; margin-top: 6px; text-transform: uppercase; text-align: center; letter-spacing: 0;">
-                    Instrumentation Spares &amp; Inventory Cell (C&amp;I)
+                    Instrumentation Spares &amp; Inventory Cell
                 </div>
                 <div style="height: 1px; background: #e2e8f0; margin: 16px 0 14px 0;"></div>
                 <div style="font-size: 13.5px; font-weight: 700; color: #1e293b; text-align: center;">
