@@ -717,9 +717,9 @@ def check_hod_authentication():
                 <div style="display: flex; justify-content: center; margin-bottom: 12px;">
                     {logo_html}
                 </div>
-                <h3 style="color: #0f172a; margin: 0; font-size: 17px; font-weight: 800; line-height: 1.35; text-align: center;">
+                <div style="color: #0f172a; margin: 0; font-size: 17px; font-weight: 800; line-height: 1.35; text-align: center;">
                     NATIONAL ALUMINIUM COMPANY LIMITED
-                </h3>
+                </div>
                 <div style="color: #0284c7; font-size: 12px; font-weight: 700; margin-top: 6px; text-transform: uppercase; text-align: center; letter-spacing: 0;">
                     Instrumentation Spares &amp; Inventory Cell (C&amp;I)
                 </div>
@@ -772,7 +772,6 @@ def check_hod_authentication():
                 st.rerun()
 
     return False
-
 # --- SUB-STORE ITEMS MODAL ---
 @st.dialog("📦 Area Spares in C&I Sub Store", width="large")
 def show_substore_items_dialog(current_area_name):
