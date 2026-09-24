@@ -723,7 +723,7 @@ def check_hod_authentication():
                 </div>
                 <div style="height: 1px; background: #e2e8f0; margin: 16px 0 14px 0;"></div>
                 <div style="font-size: 13.5px; font-weight: 700; color: #1e293b; text-align: center;">
-                    HOD &amp; Planning Cell Master Access
+                    Planning Cell Master Access
                 </div>
                 <p style="color: #64748b; font-size: 12px; margin: 3px 0 0 0; text-align: center;">
                     Authorized for HOD (C&amp;I) &amp; Central Planning Officers
