@@ -2282,50 +2282,23 @@ else:
         selected_instrument = st.sidebar.selectbox(
             "Select Instrument Category:", all_instruments
         )
-
-        items_per_page = st.sidebar.selectbox(
-            "Items Per Page:", [10, 20, 30, 40, 50, 100], index=3
-        )
-        st.sidebar.markdown(
-            "<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>",
-            unsafe_allow_html=True,
-        )
-
         if selected_instrument != "All System Data":
             df = df[df[NAME_COL].str.strip() == selected_instrument]
 
         unique_names_ordered = sorted(
             df[NAME_COL].unique(), key=lambda x: str(x).lower()
         )
-        total_items = len(unique_names_ordered)
 
-        total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
+        # Direct single continuous feed - all items on one page
+        for current_name in unique_names_ordered:
+            sub_df = df[
+                df[NAME_COL].astype(str).str.strip() == str(current_name).strip()
+            ]
+            entry_count = len(sub_df)
+            # ... baki card rendering loop same rahega ...
+       
 
-        st.sidebar.markdown(
-            '<div class="sidebar-section-title">📄 Page Navigation</div>',
-            unsafe_allow_html=True,
-        )
-        page_number = st.sidebar.number_input(
-            "Select Page Number:",
-            min_value=1,
-            max_value=total_pages,
-            value=1,
-            step=1,
-        )
-        st.sidebar.caption(
-            f"Showing page {page_number} of {total_pages} (Total unique:"
-            f" {total_items} items)"
-        )
-        st.sidebar.markdown(
-            "<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>",
-            unsafe_allow_html=True,
-        )
-
-        start_idx = (page_number - 1) * items_per_page
-        end_idx = start_idx + items_per_page
-        paginated_names = unique_names_ordered[start_idx:end_idx]
-
-        for current_name in paginated_names:
+        
             sub_df = df[
                 df[NAME_COL].astype(str).str.strip() == str(current_name).strip()
             ]
