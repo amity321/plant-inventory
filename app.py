@@ -1739,7 +1739,7 @@ else:
             f"""
             <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px;">
                 <div style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Active Master Session</div>
-                <div style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-top: 2px;">👤 {u_info['name']}</div>
+                <div style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-top: 2px;">{u_info['name']}</div>
                 <div style="font-size: 11px; color: #0284c7; font-weight: 600;">{u_info['role']}</div>
             </div>
             """,
