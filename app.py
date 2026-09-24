@@ -895,7 +895,7 @@ def show_broadcast_message_dialog(current_area_name):
     if msg_category == "📦 Material Spare Request":
         search_kw = st.text_input(
             "Type Material Code or Instrument Name:",
-            placeholder="e.g. Mat. Code or Text",
+            placeholder="e.g. 5040012 or RTD or Pressure Transmitter...",
             key="mat_matrix_search",
         ).strip()
 
@@ -1958,8 +1958,15 @@ elif st.session_state["smart_intelligence_mode"]:
             unsafe_allow_html=True,
         )
         lead_time_months = st.sidebar.slider(
-            "Procurement Lead Time (Months):", min_value=1, max_value=12, value=6
+            "Procurement Lead Time (Months):",
+            min_value=0,
+            max_value=12,
+            value=6,
+            help="Setting to 0 displays direct stock runout / exhaustion dates without lead-time subtraction.",
         )
+        if lead_time_months == 0:
+            st.sidebar.caption("⚡ *Zero Lead Time mode: Showing direct stock exhaustion dates.*")
+
         analysis_months = st.sidebar.selectbox(
             "Consumption Historical Span:", [6, 12, 24], index=1
         )
@@ -2109,20 +2116,34 @@ elif st.session_state["smart_intelligence_mode"]:
                 )
                 st.markdown(f"### {status_text}")
 
+                date_box_title = (
+                    "ESTIMATED STOCK RUNOUT DATE" 
+                    if lead_time_months == 0 
+                    else "RECOMMENDED PR DATE"
+                )
+
                 for _, item in filtered_df.iterrows():
                     is_urgent = item["Is_Urgent"]
                     pr_date_str = item["PR_Date_Str"]
                     store_stock = item["Store Stock"]
 
-                    urgency_badge = (
-                        '<span style="background-color: #fee2e2; color: #dc2626; padding:'
-                        " 4px 10px; border-radius: 12px; font-weight: bold; font-size:"
-                        ' 11px;">🚨 URGENT PR REQUIRED</span>'
-                        if is_urgent
-                        else '<span style="background-color: #dcfce7; color: #16a34a;'
-                        " padding: 4px 10px; border-radius: 12px; font-weight: bold;"
-                        ' font-size: 11px;">✅ Stock Healthy</span>'
-                    )
+                    if is_urgent:
+                        badge_text = (
+                            "⚠️ ZERO STOCK WARNING" 
+                            if lead_time_months == 0 
+                            else "🚨 URGENT PR REQUIRED"
+                        )
+                        urgency_badge = (
+                            f'<span style="background-color: #fee2e2; color: #dc2626; padding:'
+                            f' 4px 10px; border-radius: 12px; font-weight: bold; font-size:'
+                            f' 11px;">{badge_text}</span>'
+                        )
+                    else:
+                        urgency_badge = (
+                            '<span style="background-color: #dcfce7; color: #16a34a;'
+                            ' padding: 4px 10px; border-radius: 12px; font-weight: bold;'
+                            ' font-size: 11px;">✅ Stock Healthy</span>'
+                        )
 
                     card_html = f"""
                     <div class="inventory-card">
@@ -2148,7 +2169,7 @@ elif st.session_state["smart_intelligence_mode"]:
                                 <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Replacement Cycle']} mos</div>
                             </div>
                             <div style="flex: 1.2; background: {'#fee2e2' if is_urgent else '#eff6ff'}; padding: 6px; border-radius: 6px; text-align: center; border: 1px solid {'#fca5a5' if is_urgent else '#bfdbfe'};">
-                                <div style="font-size: 10px; color: {'#b91c1c' if is_urgent else '#1e40af'}; font-weight: bold;">RECOMMENDED PR DATE</div>
+                                <div style="font-size: 10px; color: {'#b91c1c' if is_urgent else '#1e40af'}; font-weight: bold;">{date_box_title}</div>
                                 <div style="font-size: 14px; font-weight: 800; color: {'#991b1b' if is_urgent else '#1e3a8a'};">{pr_date_str}</div>
                             </div>
                         </div>
