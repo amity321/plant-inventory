@@ -723,10 +723,10 @@ def check_hod_authentication():
                 </div>
                 <div style="height: 1px; background: #e2e8f0; margin: 16px 0 14px 0;"></div>
                 <div style="font-size: 13.5px; font-weight: 700; color: #1e293b; text-align: center;">
-                    Master Portal Access
+                    HOD &amp; Planning Cell Master Access
                 </div>
                 <p style="color: #64748b; font-size: 12px; margin: 3px 0 0 0; text-align: center;">
-                    Please authenticate using your Personal No. &amp; PIN
+                    Authorized for HOD (C&amp;I) &amp; Central Planning Officers
                 </p>
             </div>
             """,
@@ -1709,6 +1709,23 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 
+# --- GLOBAL SIDEBAR QUICK PR SEARCH ENGINE ---
+def on_sidebar_search():
+    if st.session_state.get("global_pr_search", "").strip():
+        st.session_state["smart_intelligence_mode"] = True
+        st.session_state["stock_matrix_mode"] = False
+        if not is_area_direct_mode and not st.session_state.get("pr_selected_view"):
+            st.session_state["pr_selected_view"] = "Combined"
+
+st.sidebar.markdown('<div class="sidebar-section-title">🔍 Quick PR Search</div>', unsafe_allow_html=True)
+st.sidebar.text_input(
+    "Search Code / Instrument:",
+    placeholder="e.g. 5040012 or RTD...",
+    key="global_pr_search",
+    on_change=on_sidebar_search
+)
+st.sidebar.markdown("<div style='margin: 10px 0; border-top: 1.5px solid #cbd5e1;'></div>", unsafe_allow_html=True)
+
 # 1. DIRECT AREA USER MODE (SIDEBAR)
 if is_area_direct_mode:
     st.sidebar.markdown(
@@ -1739,7 +1756,7 @@ else:
             f"""
             <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px;">
                 <div style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">Active Master Session</div>
-                <div style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-top: 2px;">{u_info['name']}</div>
+                <div style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-top: 2px;">👤 {u_info['name']}</div>
                 <div style="font-size: 11px; color: #0284c7; font-weight: 600;">{u_info['role']}</div>
             </div>
             """,
@@ -1754,7 +1771,7 @@ else:
         '<div class="sidebar-section-title">🧭 Portal Navigation</div>',
         unsafe_allow_html=True,
     )
-    if st.sidebar.button("Home", use_container_width=True):
+    if st.sidebar.button("🏠  Dashboard Home", use_container_width=True):
         st.session_state["smart_intelligence_mode"] = False
         st.session_state["stock_matrix_mode"] = False
         st.session_state["selected_area"] = None
@@ -2060,9 +2077,15 @@ elif st.session_state["smart_intelligence_mode"]:
             if only_urgent_pr:
                 master_df = master_df[master_df["Is_Urgent"] == True]
 
-            search_query = st.text_input(
-                "🔍 Search (Enter Material Code or Instrument Description):", ""
+            # Direct Search Integration with Sidebar
+            sidebar_val = st.session_state.get("global_pr_search", "").strip()
+            local_search = st.text_input(
+                "🔍 Search (Enter Material Code or Instrument Description):", 
+                value=sidebar_val
             ).strip()
+
+            search_query = local_search or sidebar_val
+
             if search_query:
                 filtered_df = master_df[
                     master_df["Material Code"].str.contains(
@@ -2282,6 +2305,12 @@ else:
         selected_instrument = st.sidebar.selectbox(
             "Select Instrument Category:", all_instruments
         )
+
+        st.sidebar.markdown(
+            "<div style='margin: 15px 0; border-top: 1.5px solid #cbd5e1;'></div>",
+            unsafe_allow_html=True,
+        )
+
         if selected_instrument != "All System Data":
             df = df[df[NAME_COL].str.strip() == selected_instrument]
 
@@ -2289,16 +2318,8 @@ else:
             df[NAME_COL].unique(), key=lambda x: str(x).lower()
         )
 
-        # Direct single continuous feed - all items on one page
+        # Single Continuous Feed: Renders all items on one page
         for current_name in unique_names_ordered:
-            sub_df = df[
-                df[NAME_COL].astype(str).str.strip() == str(current_name).strip()
-            ]
-            entry_count = len(sub_df)
-            # ... baki card rendering loop same rahega ...
-       
-
-        
             sub_df = df[
                 df[NAME_COL].astype(str).str.strip() == str(current_name).strip()
             ]
