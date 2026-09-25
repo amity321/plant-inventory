@@ -2,11 +2,11 @@ import hashlib
 import json
 import os
 import time
+import urllib.parse
 from datetime import datetime, timedelta
 import pandas as pd
 import requests
 import streamlit as st
-
 
 pd.set_option("display.max_rows", None)
 
@@ -22,6 +22,11 @@ st.set_page_config(
 
 # --- GOOGLE APPS SCRIPT AUTH & WEBHOOK URL ---
 AUTH_API_URL = "https://script.google.com/macros/s/AKfycbwnf2s_JeEKydIm4xZE5Lc4MTj3D_A30hKIDOBqJa-ykjDbhgCkvL6YaTqG4myn2I52/exec"
+
+# --- GOOGLE FORM PRE-FILL CONFIGURATION ---
+GOOGLE_FORM_BASE_URL = "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform"
+FORM_ENTRY_TRANSACTION = "entry.1572263064"
+FORM_ENTRY_INSTRUMENT = "entry.661617527"
 
 
 def hash_pass(pwd: str) -> str:
@@ -655,6 +660,112 @@ def change_password_dialog(area_key):
                     st.error(f"❌ Failed to update password: {msg}")
 
 
+# --- SMART GOOGLE FORM FAST-ENTRY MODAL (PRE-FILLED SEARCHABLE PORTAL) ---
+@st.dialog("📝 Store-Room Inventory Log (Fast Entry)", width="large")
+def show_entry_form_dialog():
+    st.markdown("### ⚡ Fast Smart Spares Entry")
+    st.caption(
+        "Select Transaction and search Spare by Material Code or Name. "
+        "Form will open pre-filled with your selection directly at the next section."
+    )
+
+    # 1. Transaction Type
+    tx_type = st.radio(
+        "Item Transaction *",
+        options=[
+            "Added in Store-Room Inventory",
+            "Removed from Store-Room Inventory",
+        ],
+        horizontal=True,
+        key="fast_entry_tx_type",
+    )
+
+    # 2. Material Code / Instrument Name Search Bar
+    kw = st.text_input(
+        "🔍 Type Material Code or Instrument Name:",
+        placeholder="e.g. 1004521 or Pressure or Flow or pH...",
+        key="fast_entry_search_box",
+    ).strip()
+
+    chosen_inst_type = None
+    chosen_mat_code = "N/A"
+
+    if kw:
+        matches = search_stock_matrix_catalog(
+            kw, st.session_state["data_timestamp"]
+        )
+        if matches:
+            st.caption(f"Found {len(matches)} matching instruments:")
+            labels = [m["label"] for m in matches]
+            selected_idx = st.selectbox(
+                "Select Matching Instrument:",
+                range(len(matches)),
+                format_func=lambda i: labels[i],
+                key="fast_entry_chosen_idx",
+            )
+            item = matches[selected_idx]
+            chosen_inst_type = item["description"]
+            chosen_mat_code = item["mat_code"]
+        else:
+            st.warning(f"No catalog item matches '{kw}'. Try another keyword.")
+
+    # Fallback direct type list if technician wants to choose category directly
+    if not chosen_inst_type:
+        common_types = [
+            "Pressure Transmitter",
+            "Flow Transmitter",
+            "Flow Element",
+            "Density Transmitter",
+            "PH Transmitter",
+            "pH Electrode",
+            "Conductivity Transmitter",
+            "Conductivity Cell",
+            "Level Transmitter",
+            "Temperature Transmitter",
+            "Control Valve",
+            "Positioner",
+            "Solenoid Valve",
+            "Limit Switch",
+            "Load Cell",
+        ]
+        chosen_inst_type = st.selectbox(
+            "Or Pick Standard Type from List:",
+            common_types,
+            key="fast_entry_fallback_select",
+        )
+
+    if chosen_inst_type:
+        st.markdown(
+            f"""
+            <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-left: 4px solid #0284c7; padding: 10px 14px; border-radius: 8px; margin: 10px 0; font-size: 13px;">
+                <b>Transaction:</b> <span style="color:#0284c7; font-weight:700;">{tx_type}</span><br>
+                <b>Instrument:</b> <span style="font-weight:700;">{chosen_inst_type}</span> | <b>Mat Code:</b> <code>{chosen_mat_code}</code>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        q_txn = urllib.parse.quote_plus(tx_type)
+        q_inst = urllib.parse.quote_plus(chosen_inst_type)
+        prefilled_url = (
+            f"{GOOGLE_FORM_BASE_URL}?usp=pp_url&"
+            f"{FORM_ENTRY_TRANSACTION}={q_txn}&"
+            f"{FORM_ENTRY_INSTRUMENT}={q_inst}"
+        )
+
+        st.link_button(
+            "🚀 Open Full Screen Form (New Tab)",
+            prefilled_url,
+            use_container_width=True,
+        )
+
+        st.markdown("---")
+        st.caption(
+            "💡 Both options are already pre-selected! Click **Next** below to fill specific specs/serial no:"
+        )
+        st.components.v1.iframe(prefilled_url, height=750, scrolling=True)
+
+
 # --- AREA ACCESS CHECK ---
 def check_authentication(area_key):
     if not is_area_direct_mode or st.session_state.get("auth_status", {}).get(
@@ -727,6 +838,8 @@ def check_authentication(area_key):
                 st.error("❌ Incorrect Password. Contact Lead Admin.")
 
     return False
+
+
 # --- HOD / MASTER LANDING PAGE CHECK ---
 def check_hod_authentication():
     if st.session_state.get("hod_auth_user") is not None:
@@ -1110,7 +1223,7 @@ def show_notifications_dialog(current_area_name):
                         <span style="font-size: 12px; font-weight: 800; color: {stock_badge_col}; background: #f0fdf4; padding: 2px 8px; border-radius: 6px; border: 1px solid #bbf7d0; margin-left: 4px;">Your Stock: {area_stock} Nos</span>
                     </div>
                 </div>
-                <div style="font-size: 12px; color: #475569; line-height: 1.6;">
+                <div style="font-size: 12px; color: #475569; line-6: 1.6;">
                     <b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{mat_info.get('material_code', 'N/A')}</span>{purpose_line}
                 </div>
             </div>
@@ -1408,7 +1521,8 @@ def inject_custom_css(hide_sidebar=False):
     button[key="urgent_pr_btn"],
     button[key="substore_items_btn"],
     button[key="broadcast_btn"],
-    button[key="notify_btn"] {{
+    button[key="notify_btn"],
+    button[key="fast_entry_btn"] {{
         height: 42px !important;
         min-height: 42px !important;
         max-height: 42px !important;
@@ -1423,6 +1537,13 @@ def inject_custom_css(hide_sidebar=False):
         justify-content: center !important;
         box-sizing: border-box !important;
         transition: all 0.2s ease-in-out !important;
+    }}
+
+    button[key="fast_entry_btn"] {{
+        background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+        color: #ffffff !important;
+        border: 2px solid #60a5fa !important;
+        box-shadow: 0 2px 10px rgba(37, 99, 235, 0.3) !important;
     }}
 
     button[key="team_btn"] {{
@@ -1562,8 +1683,8 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     )
 
     if is_pr_active:
-        c_left, c_mid, c_right = st.columns(
-            [4.0, 3.5, 2.5], vertical_alignment="center"
+        c_left, c_entry, c_mid, c_right = st.columns(
+            [3.2, 1.8, 3.2, 1.8], vertical_alignment="center"
         )
         with c_left:
             st.markdown(
@@ -1574,6 +1695,14 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                 """,
                 unsafe_allow_html=True,
             )
+        with c_entry:
+            if st.button(
+                "📝 Fast Entry",
+                key="fast_entry_btn",
+                type="primary",
+                use_container_width=True,
+            ):
+                show_entry_form_dialog()
         with c_mid:
             is_active = st.session_state["urgent_pr_filter_state"]
             btn_label = "✅ Showing Overdue PR" if is_active else " Show Overdue PR Only"
@@ -1587,7 +1716,7 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                 st.rerun()
         with c_right:
             if st.button(
-                "👥 Inventory Team",
+                "👥 Team",
                 key="team_btn",
                 type="primary",
                 use_container_width=True,
@@ -1596,8 +1725,8 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     else:
         if current_area and current_area in AREA_CONFIGS:
             if current_area != "C&I Sub Store":
-                c_left, c_sub, c_bc, c_not, c_team = st.columns(
-                    [3.2, 2.0, 1.8, 1.8, 1.6], vertical_alignment="center"
+                c_left, c_entry, c_sub, c_bc, c_not, c_team = st.columns(
+                    [2.6, 1.6, 1.6, 1.5, 1.5, 1.2], vertical_alignment="center"
                 )
                 with c_left:
                     st.markdown(
@@ -1608,6 +1737,14 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                         """,
                         unsafe_allow_html=True,
                     )
+                with c_entry:
+                    if st.button(
+                        "📝 Fast Entry",
+                        key="fast_entry_btn",
+                        type="primary",
+                        use_container_width=True,
+                    ):
+                        show_entry_form_dialog()
                 with c_sub:
                     if st.button(
                         "📦 In Sub-Store",
@@ -1641,8 +1778,8 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                     ):
                         show_team_modal()
             else:
-                c_left, c_bc, c_not, c_team = st.columns(
-                    [4.5, 2.0, 2.0, 1.5], vertical_alignment="center"
+                c_left, c_entry, c_bc, c_not, c_team = st.columns(
+                    [3.5, 1.8, 1.6, 1.6, 1.5], vertical_alignment="center"
                 )
                 with c_left:
                     st.markdown(
@@ -1653,6 +1790,14 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                         """,
                         unsafe_allow_html=True,
                     )
+                with c_entry:
+                    if st.button(
+                        "📝 Fast Entry",
+                        key="fast_entry_btn",
+                        type="primary",
+                        use_container_width=True,
+                    ):
+                        show_entry_form_dialog()
                 with c_bc:
                     if st.button(
                         "📢 Message",
@@ -1678,7 +1823,9 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                     ):
                         show_team_modal()
         else:
-            c_left, c_team = st.columns([8.0, 2.0], vertical_alignment="center")
+            c_left, c_entry, c_team = st.columns(
+                [6.2, 2.0, 1.8], vertical_alignment="center"
+            )
             with c_left:
                 st.markdown(
                     f"""
@@ -1688,6 +1835,14 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                     """,
                     unsafe_allow_html=True,
                 )
+            with c_entry:
+                if st.button(
+                    "📝 Fast Entry",
+                    key="fast_entry_btn",
+                    type="primary",
+                    use_container_width=True,
+                ):
+                    show_entry_form_dialog()
             with c_team:
                 if st.button(
                     "👥 Inventory Team",
@@ -1763,6 +1918,9 @@ with st.sidebar:
             '<div class="sidebar-section-title">📌 Area Navigation</div>',
             unsafe_allow_html=True,
         )
+        if st.button("📝 Log Spares Entry", use_container_width=True):
+            show_entry_form_dialog()
+
         if not st.session_state["smart_intelligence_mode"]:
             if st.button("📈 Predictive PR Date", use_container_width=True):
                 st.session_state["smart_intelligence_mode"] = True
@@ -1790,6 +1948,9 @@ with st.sidebar:
             st.session_state["pr_selected_view"] = None
             st.query_params.clear()
             st.rerun()
+
+        if st.button("📝 Log Spares Entry", use_container_width=True):
+            show_entry_form_dialog()
 
         if st.button("Predictive PR Intelligence", use_container_width=True):
             st.session_state["smart_intelligence_mode"] = True
@@ -2341,7 +2502,7 @@ else:
                     <h1 style="color: #0f172a !important; margin: 4px 0 0 0; font-size: 24px; font-weight: 800;">
                         {config['title']}
                     </h1>
-                    <p style="color: #475569 !important; margin-4px 0 0 0; font-size: 13px; font-weight: 500;">
+                    <p style="color: #475569 !important; margin-top: 4px 0 0 0; font-size: 13px; font-weight: 500;">
                         Live Spares Tracking Sheet &bull; Managed by <span style="color: {theme_accent}; font-weight: 700;">{manager_name} (Inventory Team, C&amp;I)</span>
                     </p>
                 </div>
