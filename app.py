@@ -1513,7 +1513,6 @@ def render_row(row, mapping, current_area_name):
     """
   st.markdown(card_html, unsafe_allow_html=True)
 
-
 def inject_custom_css(hide_sidebar=False):
   sidebar_hide_css = ""
   if hide_sidebar:
@@ -1573,11 +1572,24 @@ def inject_custom_css(hide_sidebar=False):
         transition: all 0.2s ease-in-out !important;
     }}
 
+    /* HIGH-VISIBILITY SPOTLIGHT BUTTON */
     button[key="stock_action_btn"] {{
-        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+        background: linear-gradient(135deg, #059669 0%, #0284c7 100%) !important;
         color: #ffffff !important;
-        border: 2px solid #38bdf8 !important;
-        box-shadow: 0 2px 10px rgba(14, 165, 233, 0.35) !important;
+        border: 2.2px solid #38bdf8 !important;
+        font-size: 13px !important;
+        font-weight: 900 !important;
+        letter-spacing: 0.4px !important;
+        box-shadow: 0 0 16px rgba(2, 132, 199, 0.55), 0 4px 10px rgba(5, 150, 105, 0.35) !important;
+        transform: scale(1.02) !important;
+        transition: all 0.25s ease-in-out !important;
+    }}
+
+    button[key="stock_action_btn"]:hover {{
+        background: linear-gradient(135deg, #10b981 0%, #0284c7 100%) !important;
+        box-shadow: 0 0 24px rgba(16, 185, 129, 0.75), 0 6px 14px rgba(2, 132, 199, 0.45) !important;
+        transform: scale(1.06) !important;
+        border-color: #67e8f9 !important;
     }}
 
     button[key="team_btn"] {{
@@ -1687,6 +1699,193 @@ def inject_custom_css(hide_sidebar=False):
     </style>
     """
   st.markdown(css, unsafe_allow_html=True)
+
+
+# --- TOP BAR ---
+def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
+  is_pr_active = st.session_state.get("smart_intelligence_mode", False)
+  current_area = st.session_state.get("selected_area") or url_area
+
+  pending_count = 0
+  for m in GLOBAL_MESSAGES:
+    if not current_area or m.get("from_area") == current_area:
+      continue
+
+    is_target = m["to_area"] == current_area or m["to_area"] == "ALL"
+    seen_list = (
+        m.get("seen_by")
+        if isinstance(m.get("seen_by"), list)
+        else ([m.get("seen_by")] if m.get("seen_by") else [])
+    )
+    is_not_seen = current_area not in seen_list
+
+    if is_target and is_not_seen:
+      pending_count += 1
+
+  notify_label = (
+      f"🔔 Alerts ({pending_count})"
+      if pending_count > 0
+      else "🔔 Notifications"
+  )
+
+  if is_pr_active:
+    c_left, c_mid, c_right = st.columns(
+        [4.0, 3.5, 2.5], vertical_alignment="center"
+    )
+    with c_left:
+      st.markdown(
+          f"""
+                <div class="header-pill">
+                    <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
+                </div>
+                """,
+          unsafe_allow_html=True,
+      )
+    with c_mid:
+      is_active = st.session_state["urgent_pr_filter_state"]
+      btn_label = (
+          "✅ Showing Overdue PR" if is_active else " Show Overdue PR Only"
+      )
+      if st.button(
+          btn_label,
+          key="urgent_pr_btn",
+          type="primary",
+          use_container_width=True,
+      ):
+        st.session_state["urgent_pr_filter_state"] = not is_active
+        st.rerun()
+    with c_right:
+      if st.button(
+          "👥 Inventory Team",
+          key="team_btn",
+          type="primary",
+          use_container_width=True,
+      ):
+        show_team_modal()
+  else:
+    if current_area and current_area in AREA_CONFIGS:
+      if current_area != "C&I Sub Store":
+        c_left, c_action, c_sub, c_bc, c_not, c_team = st.columns(
+            [2.6, 2.1, 1.8, 1.6, 1.6, 1.3], vertical_alignment="center"
+        )
+        with c_left:
+          st.markdown(
+              f"""
+                        <div class="header-pill">
+                            <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
+                        </div>
+                        """,
+              unsafe_allow_html=True,
+          )
+        with c_action:
+          if st.button(
+              "📦 INWARD / ISSUE",
+              key="stock_action_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_stock_action_dialog(current_area)
+        with c_sub:
+          if st.button(
+              "📦 In Sub-Store",
+              key="substore_items_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_substore_items_dialog(current_area)
+        with c_bc:
+          if st.button(
+              "📢 Message",
+              key="broadcast_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_broadcast_message_dialog(current_area)
+        with c_not:
+          if st.button(
+              notify_label,
+              key="notify_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_notifications_dialog(current_area)
+        with c_team:
+          if st.button(
+              "👥 Team",
+              key="team_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_team_modal()
+      else:
+        c_left, c_action, c_bc, c_not, c_team = st.columns(
+            [3.6, 2.2, 1.8, 1.8, 1.4], vertical_alignment="center"
+        )
+        with c_left:
+          st.markdown(
+              f"""
+                        <div class="header-pill">
+                            <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
+                        </div>
+                        """,
+              unsafe_allow_html=True,
+          )
+        with c_action:
+          if st.button(
+              "📦 INWARD / ISSUE",
+              key="stock_action_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_stock_action_dialog(current_area)
+        with c_bc:
+          if st.button(
+              "📢 Message",
+              key="broadcast_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_broadcast_message_dialog(current_area)
+        with c_not:
+          if st.button(
+              notify_label,
+              key="notify_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_notifications_dialog(current_area)
+        with c_team:
+          if st.button(
+              "👥 Team",
+              key="team_btn",
+              type="primary",
+              use_container_width=True,
+          ):
+            show_team_modal()
+    else:
+      c_left, c_team = st.columns([8.0, 2.0], vertical_alignment="center")
+      with c_left:
+        st.markdown(
+            f"""
+                <div class="header-pill">
+                    <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
+                </div>
+                """,
+            unsafe_allow_html=True,
+        )
+      with c_team:
+        if st.button(
+            "👥 Inventory Team",
+            key="team_btn",
+            type="primary",
+            use_container_width=True,
+        ):
+          show_team_modal()
+
+  st.markdown(
+      "<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True
+  )
+
 
 
 # --- TOP BAR ---
