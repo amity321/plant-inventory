@@ -1,0 +1,31 @@
+import requests
+
+phone_number_id = "1379466298573038"
+access_token = "EAAhI9acSo9QBSuGnluxJ6ex8YzP706NqeZCEqvwuCfHw3VQEH1yHsdBF3jwyfvxtvhTSLA3a2axFw4qNmZC0G7FHIDL6SaQKNZAIxdw4ZAJyFSlVvRbttaVmc4mYcZAQ8vZA5QXx77lOVZCgTeTZAzpvZA6FUkiHVk7blaj8zGOzcg3qCpghIZCfZAWZAV7CiBJKiq2aK7HZALI7S0ZCLlzrwl7PTbkkZBMbgZBeZA8RFNTcbiqMMmB2IVQcTwYoZCpFUhFZCe2tF50Qm6fZBALwjCsGoHzeLfYbfEB0"
+
+# Apna verified mobile number yahan daalo (country code 91 ke saath, bina '+' sign ke)
+recipient_number = "91XXXXXXXXXX"
+
+url = f"https://graph.facebook.com/v19.0/{phone_number_id}/messages"
+
+headers = {
+    "Authorization": f"Bearer {access_token}",
+    "Content-Type": "application/json"
+}
+
+payload = {
+    "messaging_product": "whatsapp",
+    "to": recipient_number,
+    "type": "template",
+    "template": {
+        "name": "hello_world",
+        "language": {
+            "code": "en_US"
+        }
+    }
+}
+
+response = requests.post(url, headers=headers, json=payload)
+
+print("Status Code:", response.status_code)
+print("Response:", response.json())
