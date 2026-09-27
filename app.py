@@ -807,6 +807,7 @@ def change_password_dialog(area_key):
 
 
 # --- AREA ACCESS CHECK ---
+# --- AREA ACCESS CHECK (WITH ENTER-KEY LOGIN) ---
 def check_authentication(area_key):
   if not is_area_direct_mode or st.session_state.get("auth_status", {}).get(
       area_key, False
@@ -856,32 +857,39 @@ def check_authentication(area_key):
         unsafe_allow_html=True,
     )
 
-    pwd = st.text_input(
-        "Security Password",
-        type="password",
-        key=f"login_{area_key}",
-        placeholder="••••••••",
-    )
+    # st.form enables automatic Enter-key submission
+    with st.form(key=f"area_login_form_{area_key}", clear_on_submit=False):
+      pwd = st.text_input(
+          "Security Password",
+          type="password",
+          key=f"login_{area_key}",
+          placeholder="••••••••",
+      )
 
-    if st.button("Unlock Portal 🔓", use_container_width=True, type="primary"):
-      c_pwd = pwd.strip()
-      db = fetch_passwords()
-      stored_hash = str(db.get(area_key, "")).strip().lower()
+      submit_clicked = st.form_submit_button(
+          "Unlock Portal 🔓", use_container_width=True, type="primary"
+      )
 
-      is_valid = bool(stored_hash and hash_pass(c_pwd).lower() == stored_hash)
+      if submit_clicked:
+        c_pwd = pwd.strip()
+        db = fetch_passwords()
+        stored_hash = str(db.get(area_key, "")).strip().lower()
 
-      if is_valid:
-        st.session_state["auth_status"][area_key] = True
-        st.success(f"✅ Access Granted: {area_key}")
-        time.sleep(0.6)
-        st.rerun()
-      else:
-        st.error("❌ Incorrect Password. Contact Lead Admin.")
+        is_valid = bool(stored_hash and hash_pass(c_pwd).lower() == stored_hash)
+
+        if is_valid:
+          st.session_state["auth_status"][area_key] = True
+          st.success(f"✅ Access Granted: {area_key}")
+          time.sleep(0.6)
+          st.rerun()
+        else:
+          st.error("❌ Incorrect Password. Contact Lead Admin.")
 
   return False
 
 
 # --- HOD / MASTER LANDING PAGE CHECK ---
+# --- HOD / MASTER LANDING PAGE CHECK (WITH ENTER-KEY LOGIN) ---
 def check_hod_authentication():
   if st.session_state.get("hod_auth_user") is not None:
     return True
@@ -920,44 +928,47 @@ def check_hod_authentication():
         unsafe_allow_html=True,
     )
 
-    user_input_id = st.text_input(
-        "Personal No. (P.No.)",
-        placeholder="e.g. 06505",
-        key="hod_user_id_input",
-    ).strip()
+    # st.form enables automatic Enter-key submission for both P.No. & PIN
+    with st.form(key="hod_login_form", clear_on_submit=False):
+      user_input_id = st.text_input(
+          "Personal No. (P.No.)",
+          placeholder="e.g. 06505",
+          key="hod_user_id_input",
+      ).strip()
 
-    user_input_pin = st.text_input(
-        "Security PIN",
-        type="password",
-        placeholder="••••••••",
-        key="hod_pin_input",
-    ).strip()
+      user_input_pin = st.text_input(
+          "Security PIN",
+          type="password",
+          placeholder="••••••••",
+          key="hod_pin_input",
+      ).strip()
 
-    if st.button(
-        "Authenticate & Enter", use_container_width=True, type="primary"
-    ):
-      clean_id = user_input_id.lstrip("0")
-      matched_user = None
-      for uid, udata in MASTER_AUTHORIZED_USERS.items():
-        if (
-            uid.lstrip("0") == clean_id
-            or uid.lower() == user_input_id.lower()
-        ):
-          matched_user = udata
-          break
+      submit_clicked = st.form_submit_button(
+          "Authenticate & Enter", use_container_width=True, type="primary"
+      )
 
-      if not matched_user:
-        st.error("❌ Unauthorized Personal No. for Master Dashboard.")
-      elif matched_user["pin"] != user_input_pin:
-        st.error("❌ Incorrect password. Please contact admin, 9742900004")
-      else:
-        st.session_state["hod_auth_user"] = matched_user
-        st.success(f"✅ Authenticated: {matched_user['name']}")
-        time.sleep(0.8)
-        st.rerun()
+      if submit_clicked:
+        clean_id = user_input_id.lstrip("0")
+        matched_user = None
+        for uid, udata in MASTER_AUTHORIZED_USERS.items():
+          if (
+              uid.lstrip("0") == clean_id
+              or uid.lower() == user_input_id.lower()
+          ):
+            matched_user = udata
+            break
+
+        if not matched_user:
+          st.error("❌ Unauthorized Personal No. for Master Dashboard.")
+        elif matched_user["pin"] != user_input_pin:
+          st.error("❌ Incorrect password. Please contact admin, 9742900004")
+        else:
+          st.session_state["hod_auth_user"] = matched_user
+          st.success(f"✅ Authenticated: {matched_user['name']}")
+          time.sleep(0.8)
+          st.rerun()
 
   return False
-
 
 # --- SUB-STORE ITEMS MODAL ---
 @st.dialog("📦 Area Spares in C&I Sub Store", width="large")
