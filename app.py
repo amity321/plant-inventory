@@ -334,7 +334,7 @@ def fetch_data(url, timestamp):
 
 
 # --- STOCK TRANSACTION DIALOG (METHOD-1 ROW CLONING VIA APPS SCRIPT) ---
-# --- STOCK TRANSACTION DIALOG (METHOD-1 ROW CLONING VIA APPS SCRIPT) ---
+# --- STOCK TRANSACTION DIALOG (BULLETPROOF GOOGLE FORM INWARD / ISSUE) ---
 @st.dialog("📦 Store-Room Inward / Issue (Live Stock Entry)", width="large")
 def show_stock_action_dialog(current_area_name):
   st.markdown(f"**Operating Area:** 📍 `{current_area_name}`")
@@ -360,7 +360,7 @@ def show_stock_action_dialog(current_area_name):
       else "Removed from Store-Room Inventory"
   )
 
-  # Populate instruments solely from current area
+  # Only current area instruments
   items_list = []
   for idx, r in df_area.iterrows():
     m_code = clean_material_code(r.get(mapping["material"], "N/A"))
@@ -419,51 +419,35 @@ def show_stock_action_dialog(current_area_name):
   btn_label = f"🚀 Confirm & Submit {'Inward' if is_inward else 'Issue'}"
 
   if st.button(btn_label, use_container_width=True, type="primary"):
-    with st.spinner("Recording entry and updating live stock..."):
+    with st.spinner("Pushing update directly to Google Sheet..."):
       try:
-        payload = {
-            "action": "APPEND_EXISTING_STOCK_ENTRY",
-            "data": {
-                "txn_type": form_txn_string,
-                "mat_code": matched_item["mat_code"],
-                "inst_name": matched_item["name"],
-                "quantity": int(qty_val),
-                "location": loc_val.strip(),
-            },
+        # Exact Google Form payload with mandatory routing parameters
+        form_payload = {
+            "entry.1572263064": form_txn_string,
+            "entry.661617527": matched_item["name"],
+            "entry.191549278": str(int(qty_val)),
+            "entry.1384140902": (
+                f"[{matched_item['mat_code']}] {loc_val.strip()}"
+            ),
+            "pageHistory": "0,1,2",  # Bypasses form branching stops
         }
 
-        # Send raw string data to prevent CORS preflight & header stripping
-        res = requests.post(
-            AUTH_API_URL,
-            data=json.dumps(payload),
-            headers={"Content-Type": "text/plain;charset=utf-8"},
-            timeout=25,
-            allow_redirects=True,
+        # Form direct submit
+        resp = requests.post(
+            GOOGLE_FORM_SUBMIT_URL, data=form_payload, timeout=12
         )
 
-        try:
-          resp_data = res.json()
-        except Exception:
-          resp_data = {}
-
-        if resp_data.get("status") == "SUCCESS" or "SUCCESS" in res.text:
-          st.success("✅ Stock recorded & updated successfully in sheet!")
+        if resp.status_code in [200, 302]:
+          st.success("✅ Stock transaction logged successfully!")
           st.cache_data.clear()
           st.session_state["data_timestamp"] = int(time.time())
           time.sleep(1.2)
           st.rerun()
-        elif resp_data.get("status") == "NOT_FOUND":
-          st.error(f"⚠️ {resp_data.get('message')}")
         else:
-          err_msg = (
-              resp_data.get("message")
-              or resp_data.get("status")
-              or res.text[:200]
-          )
-          st.error(f"❌ Server Response: {err_msg}")
+          st.error(f"❌ Submission returned HTTP status: {resp.status_code}")
 
       except Exception as err:
-        st.error(f"❌ Request Error: {err}")
+        st.error(f"❌ Connection Error: {err}")
 
 # --- INVENTORY TEAM HIERARCHY MODAL ---
 @st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
