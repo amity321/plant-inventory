@@ -7,8 +7,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 import streamlit as st
-from dotenv 
-import load_dotenv
+from dotenv import load_dotenv
 
 load_dotenv()
 
