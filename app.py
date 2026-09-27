@@ -431,36 +431,31 @@ def show_stock_action_dialog(current_area_name):
             },
         }
 
+        # text/plain payload avoids Google Apps Script CORS preflight and JSON header drops
         res = requests.post(
             AUTH_API_URL,
-            json=payload,
-            timeout=20,
+            data=json.dumps(payload),
+            headers={"Content-Type": "text/plain;charset=utf-8"},
+            timeout=25,
             allow_redirects=True,
-            headers={"Content-Type": "application/json"},
         )
 
-        if res.status_code == 200:
-          try:
-            resp_data = res.json()
-            if resp_data.get("status") == "SUCCESS":
-              st.success("✅ Stock recorded & updated successfully in sheet!")
-              st.cache_data.clear()
-              st.session_state["data_timestamp"] = int(time.time())
-              time.sleep(1.2)
-              st.rerun()
-            else:
-              st.error(f"❌ Script Error: {resp_data.get('message')}")
-          except Exception:
-            if "SUCCESS" in res.text or "OK" in res.text:
-              st.success("✅ Stock recorded & updated successfully in sheet!")
-              st.cache_data.clear()
-              st.session_state["data_timestamp"] = int(time.time())
-              time.sleep(1.2)
-              st.rerun()
-            else:
-              st.error(f"❌ Unexpected Server Response: {res.text[:200]}")
+        try:
+          resp_data = res.json()
+        except Exception:
+          resp_data = {}
+
+        if resp_data.get("status") == "SUCCESS" or "SUCCESS" in res.text:
+          st.success("✅ Stock recorded & updated successfully in sheet!")
+          st.cache_data.clear()
+          st.session_state["data_timestamp"] = int(time.time())
+          time.sleep(1.2)
+          st.rerun()
+        elif resp_data.get("status") == "NOT_FOUND":
+          st.error(f"⚠️ {resp_data.get('message')}")
         else:
-          st.error(f"❌ Server Error: HTTP {res.status_code} - {res.text}")
+          err_msg = resp_data.get("message") or res.text[:200]
+          st.error(f"❌ Server Response: {err_msg}")
 
       except Exception as err:
         st.error(f"❌ Request Error: {err}")
