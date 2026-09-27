@@ -19,12 +19,6 @@ st.set_page_config(
     page_icon=NALCO_LOGO_PATH if os.path.exists(NALCO_LOGO_PATH) else "⚙️",
 )
 
-# --- GOOGLE FORM RESPONSE URL & FIELD CONSTANTS ---
-GOOGLE_FORM_SUBMIT_URL = (
-    "https://docs.google.com/forms/d/e/"
-    "1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/formResponse"
-)
-
 # --- GOOGLE APPS SCRIPT AUTH & WEBHOOK URL ---
 AUTH_API_URL = "https://script.google.com/macros/s/AKfycbwnf2s_JeEKydIm4xZE5Lc4MTj3D_A30hKIDOBqJa-ykjDbhgCkvL6YaTqG4myn2I52/exec"
 
@@ -339,7 +333,7 @@ def fetch_data(url, timestamp):
   return df
 
 
-# --- STOCK TRANSACTION DIALOG (INWARD / ISSUE) ---
+# --- STOCK TRANSACTION DIALOG (METHOD-1 ROW CLONING VIA APPS SCRIPT) ---
 @st.dialog("📦 Store-Room Inward / Issue (Live Stock Entry)", width="large")
 def show_stock_action_dialog(current_area_name):
   st.markdown(f"**Operating Area:** 📍 `{current_area_name}`")
@@ -353,21 +347,19 @@ def show_stock_action_dialog(current_area_name):
   df_area.columns = df_area.columns.str.strip()
   mapping = resolve_columns(df_area)
 
-  c_act, c_mode = st.columns([1.5, 1])
-  with c_act:
-    txn_choice = st.radio(
-        "Select Operation:",
-        ["➕ Add to Store-Room", "➖ Issue / Remove from Store-Room"],
-        horizontal=True,
-    )
-    is_inward = "Add" in txn_choice
-    form_txn_string = (
-        "Added in Store-Room Inventory"
-        if is_inward
-        else "Removed from Store-Room Inventory"
-    )
+  txn_choice = st.radio(
+      "Select Operation:",
+      ["➕ Add to Store-Room", "➖ Issue / Remove from Store-Room"],
+      horizontal=True,
+  )
+  is_inward = "Add" in txn_choice
+  form_txn_string = (
+      "Added in Store-Room Inventory"
+      if is_inward
+      else "Removed from Store-Room Inventory"
+  )
 
-  # Fetch only items belonging strictly to this area
+  # Current area ke hi items aayenge dropdown me
   items_list = []
   for idx, r in df_area.iterrows():
     m_code = clean_material_code(r.get(mapping["material"], "N/A"))
@@ -382,204 +374,85 @@ def show_stock_action_dialog(current_area_name):
           "name": i_name,
           "specs": s_specs,
           "stock": c_stock,
-          "raw_row": r.to_dict(),
       })
 
-  option_labels = ["➕ Add Brand New Instrument (Not in List)"] + [
-      it["label"] for it in items_list
-  ]
+  if not items_list:
+    st.warning("⚠️ No instruments found in this area database.")
+    return
 
+  option_labels = [it["label"] for it in items_list]
   selected_label = st.selectbox(
       f"Select Instrument in {current_area_name}:",
       option_labels,
       key="stock_item_select",
   )
-  is_new_item = selected_label == option_labels[0]
 
-  payload = {}
-  payload["entry.1572263064"] = form_txn_string
+  matched_item = next(
+      (it for it in items_list if it["label"] == selected_label), items_list[0]
+  )
 
-  if not is_new_item:
-    # Auto-fill from existing item
-    matched_item = next(
-        (it for it in items_list if it["label"] == selected_label), None
-    )
-
-    st.markdown(
-        f"""
-        <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 12px 14px; border-radius: 8px; margin-bottom: 12px; font-size: 13px;">
+  st.markdown(
+      f"""
+        <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 12px 14px; border-radius: 8px; margin: 10px 0; font-size: 13px;">
             <b>Instrument Name:</b> {matched_item['name']}<br>
             <b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{matched_item['mat_code']}</span> | 
-            <b>Store-Room Stock:</b> <span style="font-weight:700;">{matched_item['stock']} Nos</span><br>
+            <b>Current Store Stock:</b> <span style="font-weight:700;">{matched_item['stock']} Nos</span><br>
             <b>Specifications:</b> <span style="color:#475569;">{matched_item['specs']}</span>
         </div>
         """,
-        unsafe_allow_html=True,
+      unsafe_allow_html=True,
+  )
+
+  c_q, c_loc = st.columns([1, 2])
+  with c_q:
+    qty_val = st.number_input(
+        "Quantity (Nos):", min_value=1, max_value=500, value=1, step=1
     )
-
-    c_q, c_loc = st.columns([1, 2])
-    with c_q:
-      qty_val = st.number_input(
-          "Quantity (Nos):", min_value=1, max_value=500, value=1, step=1
-      )
-    with c_loc:
-      loc_val = st.text_input(
-          "Plant Location / Tag / Remarks:",
-          placeholder="e.g. Ball Mill #2 Breakdown, PO Inward, etc.",
-      )
-
-    # Base payload with existing technical specs mapped
-    payload["entry.661617527"] = matched_item["name"]
-    payload["entry.191549278"] = str(qty_val)
-    payload["entry.1384140902"] = loc_val.strip()
-
-  else:
-    # Full Google Form Route for Brand New Item
-    st.info(
-        "💡 Enter full technical specifications for this new catalog entry."
-    )
-
-    c_mcode, c_cat = st.columns([1, 1.5])
-    with c_mcode:
-      new_mcode = st.text_input(
-          "New Material Code:", placeholder="e.g. 865013..."
-      ).strip()
-    with c_cat:
-      inst_category = st.selectbox(
-          "Select Instrument Category:",
-          [
-              "Pressure Transmitter",
-              "Control Valve",
-              "Level Transmitter",
-              "Temperature (RTD / TC)",
-              "Solenoid Valve",
-              "Flow Meter / Gauges",
-              "Other / General",
-          ],
-      )
-
-    payload["entry.661617527"] = inst_category
-
-    if inst_category == "Pressure Transmitter":
-      c1, c2, c3 = st.columns(3)
-      with c1:
-        payload["entry.946430362"] = st.selectbox(
-            "Transmitter Type:",
-            [
-                "Gauge Pressure Transmitter",
-                "Differential Pressure Transmitter (DP)",
-                "Absolute Pressure Transmitter",
-            ],
-        )
-      with c2:
-        payload["entry.1200770147"] = st.selectbox(
-            "Mounting:", ["Direct Mounted", "Flange Mounted", "2-Way Manifold"]
-        )
-      with c3:
-        payload["entry.1638498663"] = st.selectbox(
-            "Process Conn:", ['1/2" NPT(F)', '1/4" NPT(F)', 'Flange 3" ANSI 150']
-        )
-
-      c4, c5 = st.columns(2)
-      with c4:
-        payload["entry.949162960"] = st.text_input(
-            "Calibration Range:", placeholder="e.g. 0 to 10"
-        )
-      with c5:
-        payload["entry.755677111"] = st.selectbox(
-            "Unit:", ["bar", "kg/cm²", "mmH2O", "Pa ( Pascal )"]
-        )
-
-    elif inst_category == "Control Valve":
-      c1, c2, c3 = st.columns(3)
-      with c1:
-        payload["entry.124029813"] = st.selectbox(
-            "Valve Body Type:", ["Globe", "Rotary Plug", "Butterfly"]
-        )
-      with c2:
-        payload["entry.1242455796"] = st.selectbox(
-            "Valve Size:", ['1"', '2"', '3"', '4"', '6"', '8"']
-        )
-      with c3:
-        payload["entry.1146146782"] = st.selectbox(
-            "Actuator Type:", ["Pneumatic", "Motorized / Electric"]
-        )
-
-    elif inst_category == "Level Transmitter":
-      c1, c2 = st.columns(2)
-      with c1:
-        payload["entry.1416991200"] = st.selectbox(
-            "Technology:",
-            ["Radar", "Ultrasonic", "Displacer", "DP Level Transmitter"],
-        )
-      with c2:
-        payload["entry.791417156"] = st.selectbox(
-            "Output Signal:", ["4-20mA (Continuous)", "HART", "Relay Contact"]
-        )
-
-    elif inst_category == "Temperature (RTD / TC)":
-      c1, c2, c3 = st.columns(3)
-      with c1:
-        payload["entry.1090884474"] = st.selectbox(
-            "Sensor Element:", ["PT100", "Type K", "Type J", "Type R"]
-        )
-      with c2:
-        payload["entry.1219233820"] = st.selectbox(
-            "Duplex / Simplex:", ["Simplex", "Duplex"]
-        )
-      with c3:
-        payload["entry.1707711511"] = st.text_input(
-            "Immersion Length (mm):", placeholder="e.g. 225 mm"
-        )
-
-    c_make, c_pwr = st.columns(2)
-    with c_make:
-      payload["entry.696374156"] = st.text_input(
-          "Make / Manufacturer:", placeholder="e.g. ABB, Rosemount, Krohne..."
-      )
-    with c_pwr:
-      payload["entry.250683342"] = st.selectbox(
-          "Power Supply:", ["24V DC", "230V AC", "110V AC", "Loop Powered"]
-      )
-
-    c_q, c_loc = st.columns([1, 2])
-    with c_q:
-      qty_val = st.number_input(
-          "Quantity (Nos):", min_value=1, max_value=500, value=1, step=1
-      )
-    with c_loc:
-      loc_val = st.text_input(
-          "Plant Location / Tag / Purpose:",
-          placeholder="e.g. Ball Mill #2, PO Inward...",
-      )
-
-    payload["entry.191549278"] = str(qty_val)
-    payload["entry.1384140902"] = (
-        f"[{new_mcode}] {loc_val.strip()}" if new_mcode else loc_val.strip()
+  with c_loc:
+    loc_val = st.text_input(
+        "Plant Location / Tag / Remarks:",
+        placeholder="e.g. Ball Mill #2 Breakdown, PO Inward...",
     )
 
   st.markdown("<br>", unsafe_allow_html=True)
-  btn_label = (
-      f"🚀 Confirm & Submit {'Inward' if is_inward else 'Issue'} to Sheet"
-  )
+  btn_label = f"🚀 Confirm & Submit {'Inward' if is_inward else 'Issue'}"
+
   if st.button(btn_label, use_container_width=True, type="primary"):
-    with st.spinner("Pushing transaction to Google Form responses..."):
+    with st.spinner("Recording entry and updating live stock..."):
       try:
-        response = requests.post(
-            GOOGLE_FORM_SUBMIT_URL, data=payload, timeout=12
+        payload = {
+            "action": "APPEND_EXISTING_STOCK_ENTRY",
+            "data": {
+                "txn_type": form_txn_string,
+                "mat_code": matched_item["mat_code"],
+                "inst_name": matched_item["name"],
+                "quantity": int(qty_val),
+                "location": loc_val.strip(),
+            },
+        }
+
+        res = requests.post(
+            AUTH_API_URL,
+            json=payload,
+            timeout=15,
+            headers={"Content-Type": "application/json"},
         )
-        if response.status_code in [200, 302]:
-          st.success("✅ Recorded successfully! Response sheet updated.")
-          st.cache_data.clear()
-          st.session_state["data_timestamp"] = int(time.time())
-          time.sleep(1.2)
-          st.rerun()
+
+        if res.status_code == 200:
+          resp_data = res.json()
+          if resp_data.get("status") == "SUCCESS":
+            st.success("✅ Stock recorded & updated successfully in sheet!")
+            st.cache_data.clear()
+            st.session_state["data_timestamp"] = int(time.time())
+            time.sleep(1.2)
+            st.rerun()
+          else:
+            st.error(f"❌ Script Error: {resp_data.get('message')}")
         else:
-          st.error(
-              f"Submission returned status {response.status_code}. Retrying..."
-          )
+          st.error(f"❌ Server Error: HTTP {res.status_code} - {res.text}")
+
       except Exception as err:
-        st.error(f"Error submitting entry: {err}")
+        st.error(f"❌ Request Error: {err}")
 
 
 # --- INVENTORY TEAM HIERARCHY MODAL ---
@@ -1124,7 +997,6 @@ def show_notifications_dialog(current_area_name):
     m_time = m["timestamp"]
     is_urg = m.get("priority") == "URGENT"
     is_mat_req = m.get("msg_type") == "MATERIAL_REQUEST"
-    mat_info = m.get("material_details")
 
     border_col = (
         "#ef4444" if is_urg else ("#16a34a" if is_mat_req else "#0284c7")
@@ -1443,7 +1315,7 @@ def inject_custom_css(hide_sidebar=False):
   st.markdown(css, unsafe_allow_html=True)
 
 
-# --- TOP BAR WITH BUTTON IN SUB-STORE KE LEFT ME ---
+# --- TOP BAR ---
 def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
   is_pr_active = st.session_state.get("smart_intelligence_mode", False)
   current_area = st.session_state.get("selected_area") or url_area
@@ -1504,7 +1376,7 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
   else:
     if current_area and current_area in AREA_CONFIGS:
       if current_area != "C&I Sub Store":
-        # 6 columns: Action Button is placed immediately LEFT of Sub-Store button
+        # Action button placed immediately LEFT of Sub-Store button
         c_left, c_action, c_sub, c_bc, c_not, c_team = st.columns(
             [2.8, 1.9, 1.8, 1.6, 1.6, 1.4], vertical_alignment="center"
         )
