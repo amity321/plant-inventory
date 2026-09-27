@@ -580,7 +580,7 @@ def show_stock_action_dialog(current_area_name):
   )
   search_kw = st.text_input(
       "🔍 Search Instrument in this Area (Type Material Code or Name):",
-      placeholder="e.g. 50400... or Pressure Transmitter...",
+      placeholder="e.g. 86037... or Pressure Transmitter...",
       key="stock_lookup_input",
   ).strip()
 
@@ -623,26 +623,17 @@ def show_stock_action_dialog(current_area_name):
         unsafe_allow_html=True,
     )
 
-    c_q, c_loc = st.columns([1, 2])
-    with c_q:
-      qty_val = st.number_input(
-          "Quantity (Nos):", min_value=1, max_value=500, value=1, step=1
-      )
-    with c_loc:
-      loc_val = st.text_input(
-          "Plant Location / Tag / Remarks:",
-          placeholder="e.g. Ball Mill #2, Boiler Area, PO Inward...",
-      )
+    qty_val = st.number_input(
+        "Quantity (Nos):", min_value=1, max_value=500, value=1, step=1
+    )
 
-    # --- VERIFIED ENTRY IDs PRE-FILLED URL ---
-    combined_remarks = f"[{selected_item['mat_code']}] {loc_val.strip()}".strip()
-
+    # --- PURE PRE-FILLED URL (NO BRACKETS) ---
     form_params = {
         "usp": "pp_url",
         "entry.1572263064": action_title,
         "entry.661617527": selected_item["name"],
         "entry.641089374": str(int(qty_val)),
-        "entry.1774724484": combined_remarks,
+        "entry.1774724484": str(selected_item["mat_code"]).strip(),
     }
 
     base_form_url = "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform"
@@ -683,7 +674,6 @@ def show_stock_action_dialog(current_area_name):
         use_container_width=True,
         type="primary",
     )
-
 
 # --- INVENTORY TEAM HIERARCHY MODAL ---
 @st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
