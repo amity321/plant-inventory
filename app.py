@@ -7,9 +7,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 import streamlit as st
-from dotenv import load_dotenv
 
-load_dotenv()
 
 pd.set_option("display.max_rows", None)
 
