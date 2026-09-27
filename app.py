@@ -334,6 +334,7 @@ def fetch_data(url, timestamp):
 
 
 # --- STOCK TRANSACTION DIALOG (METHOD-1 ROW CLONING VIA APPS SCRIPT) ---
+# --- STOCK TRANSACTION DIALOG (METHOD-1 ROW CLONING VIA APPS SCRIPT) ---
 @st.dialog("📦 Store-Room Inward / Issue (Live Stock Entry)", width="large")
 def show_stock_action_dialog(current_area_name):
   st.markdown(f"**Operating Area:** 📍 `{current_area_name}`")
@@ -359,7 +360,7 @@ def show_stock_action_dialog(current_area_name):
       else "Removed from Store-Room Inventory"
   )
 
-  # Only instruments for the current active area are populated
+  # Current area ke instruments dropdown me filter honge
   items_list = []
   for idx, r in df_area.iterrows():
     m_code = clean_material_code(r.get(mapping["material"], "N/A"))
@@ -431,9 +432,10 @@ def show_stock_action_dialog(current_area_name):
             },
         }
 
-        # text/plain payload avoids Google Apps Script CORS preflight and JSON header drops
+        # Query param + raw text payload ensures zero loss during redirects
+        target_url = f"{AUTH_API_URL}?action=APPEND_EXISTING_STOCK_ENTRY"
         res = requests.post(
-            AUTH_API_URL,
+            target_url,
             data=json.dumps(payload),
             headers={"Content-Type": "text/plain;charset=utf-8"},
             timeout=25,
@@ -454,12 +456,15 @@ def show_stock_action_dialog(current_area_name):
         elif resp_data.get("status") == "NOT_FOUND":
           st.error(f"⚠️ {resp_data.get('message')}")
         else:
-          err_msg = resp_data.get("message") or res.text[:200]
+          err_msg = (
+              resp_data.get("message")
+              or resp_data.get("status")
+              or res.text[:200]
+          )
           st.error(f"❌ Server Response: {err_msg}")
 
       except Exception as err:
         st.error(f"❌ Request Error: {err}")
-
 
 # --- INVENTORY TEAM HIERARCHY MODAL ---
 @st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
