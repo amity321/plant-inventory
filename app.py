@@ -360,7 +360,7 @@ def show_stock_action_dialog(current_area_name):
       else "Removed from Store-Room Inventory"
   )
 
-  # Current area ke instruments dropdown me filter honge
+  # Populate instruments solely from current area
   items_list = []
   for idx, r in df_area.iterrows():
     m_code = clean_material_code(r.get(mapping["material"], "N/A"))
@@ -432,10 +432,9 @@ def show_stock_action_dialog(current_area_name):
             },
         }
 
-        # Query param + raw text payload ensures zero loss during redirects
-        target_url = f"{AUTH_API_URL}?action=APPEND_EXISTING_STOCK_ENTRY"
+        # Send raw string data to prevent CORS preflight & header stripping
         res = requests.post(
-            target_url,
+            AUTH_API_URL,
             data=json.dumps(payload),
             headers={"Content-Type": "text/plain;charset=utf-8"},
             timeout=25,
