@@ -22,7 +22,7 @@ st.set_page_config(
 
 # --- GOOGLE APPS SCRIPT AUTH & WEBHOOK URL ---
 AUTH_API_URL = "https://script.google.com/macros/s/AKfycbwnf2s_JeEKydIm4xZE5Lc4MTj3D_A30hKIDOBqJa-ykjDbhgCkvL6YaTqG4myn2I52/exec"
-GOOGLE_FORM_ENTRY_URL = "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform"
+DEFAULT_FORM_ENTRY_URL = "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform"
 
 
 def hash_pass(pwd: str) -> str:
@@ -100,6 +100,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzwW4otIA4Y7xUj3HvrB9Nx0D-rQMqXOMMzK9L8uxVm60X3q3IxZ9D_NsJyU-THMS8O8B5_C-KhbN/pub?gid=1345118798&single=true&output=csv"
         ),
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
     },
     "Area 04/05": {
         "title": "Area 04/05 Instrumentation Inventory",
@@ -113,6 +114,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZopDMRgkBThhmBF8NAXoBERx24tj7Ae2y6HlvimEHUhahXEWY8tmXoNDSM_MNlkDB7TfGpHB9I2H_/pub?gid=1951924870&single=true&output=csv"
         ),
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
     },
     "Area 06/07": {
         "title": "Area 06/07 Instrumentation Inventory",
@@ -126,6 +128,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vStPdBa-nm7i9eHjSxpyrIOyyu5VJZo77E4KF3tk2R9ewp0hK58RDVYBKiW5UsRD2DxBTrafX-CfJry/pub?gid=1371227319&single=true&output=csv"
         ),
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
     },
     "Area 08": {
         "title": "Area 08 Instrumentation Inventory",
@@ -139,6 +142,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMj_W_6-T0duFQ_XS8Yf9xTQPQvguuQP9P_aUwkKuiOZeT8BXSkAHeQspMlhXebcmz0ff-VZRdya-M/pub?gid=260669801&single=true&output=csv"
         ),
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
     },
     "Area 09/10": {
         "title": "Area 09/10 Instrumentation Inventory",
@@ -152,6 +156,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7NvVXAcew2ZWcA_kSTmCQJk6OVq3RQfqGqCZ08jGKosNmTYWprvR4JUMC3-vXI28wF6HJ1B_Wk1uo/pub?gid=1187023151&single=true&output=csv"
         ),
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
     },
     "SPP TG": {
         "title": "SPP TG Instrumentation Inventory",
@@ -165,6 +170,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPmgZl9jEQaGMQbxeOu0Xr_GtQ2P4_twAx2qNxUOjoYSvSW27vJsUgRtQB7XtIcU-bcCulPJLX3PLA/pub?gid=900388666&single=true&output=csv"
         ),
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
     },
     "SPP Boiler": {
         "title": "SPP Boiler Instrumentation Inventory",
@@ -178,6 +184,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVTH56rybWjsWYThgCiTWzafjabniWhqHUUuXoVdqexuWIjrmvh65AtimfDlFNB5V4StSi5G4BWuKf/pub?gid=223018013&single=true&output=csv"
         ),
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
     },
     "C&I Sub Store": {
         "title": "C&I Sub Store Instrumentation Inventory",
@@ -191,6 +198,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJUMrlU1bWLUsOt0tL-4xsBpsO2kt70Rq4am-OpMb7hsZZxe69JzLwBqT1EOLZtuU-PGkY-mx4EuZ/pub?gid=158170506&single=true&output=csv"
         ),
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
     },
 }
 
@@ -597,6 +605,8 @@ def show_stock_action_dialog(current_area_name):
   else:
     matched_suggestions = all_items
 
+  base_form_url = cfg.get("form_url", DEFAULT_FORM_ENTRY_URL)
+
   if matched_suggestions:
     st.caption(
         f"✅ Found {len(matched_suggestions)} matching instrument(s) in"
@@ -627,7 +637,7 @@ def show_stock_action_dialog(current_area_name):
         "Quantity (Nos):", min_value=1, max_value=500, value=1, step=1
     )
 
-    # --- PURE PRE-FILLED URL (NO BRACKETS) ---
+    # --- PURE MATERIAL CODE (NO BRACKETS) PRE-FILLED URL ---
     form_params = {
         "usp": "pp_url",
         "entry.1572263064": action_title,
@@ -636,7 +646,6 @@ def show_stock_action_dialog(current_area_name):
         "entry.1774724484": str(selected_item["mat_code"]).strip(),
     }
 
-    base_form_url = "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform"
     prefilled_form_url = (
         f"{base_form_url}?{urllib.parse.urlencode(form_params)}"
     )
@@ -669,11 +678,12 @@ def show_stock_action_dialog(current_area_name):
         unsafe_allow_html=True,
     )
     st.link_button(
-        "✨ Register New Instrument via Google Form ➔",
-        "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
+        f"✨ Register New Instrument in {current_area_name} ➔",
+        base_form_url,
         use_container_width=True,
         type="primary",
     )
+
 
 # --- INVENTORY TEAM HIERARCHY MODAL ---
 @st.dialog("🏢 C&I Inventory & Spares Team Hierarchy", width="large")
@@ -1394,7 +1404,7 @@ def show_notifications_dialog(current_area_name):
             st.rerun()
 
     st.markdown(
-        "<div style='margin: 8px 0; border-bottom: 1px dashed #cbd5e1;'></div>",
+        "<div style='margin 8px 0; border-bottom: 1px dashed #cbd5e1;'></div>",
         unsafe_allow_html=True,
     )
 
@@ -1573,11 +1583,24 @@ def inject_custom_css(hide_sidebar=False):
         transition: all 0.2s ease-in-out !important;
     }}
 
+    /* HIGH-VISIBILITY SPOTLIGHT STORE IN / FIELD OUT BUTTON */
     button[key="stock_action_btn"] {{
-        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+        background: linear-gradient(135deg, #059669 0%, #0284c7 100%) !important;
         color: #ffffff !important;
-        border: 2px solid #38bdf8 !important;
-        box-shadow: 0 2px 10px rgba(14, 165, 233, 0.35) !important;
+        border: 2.2px solid #38bdf8 !important;
+        font-size: 12.5px !important;
+        font-weight: 900 !important;
+        letter-spacing: 0.3px !important;
+        box-shadow: 0 0 16px rgba(2, 132, 199, 0.55), 0 4px 10px rgba(5, 150, 105, 0.35) !important;
+        transform: scale(1.02) !important;
+        transition: all 0.25s ease-in-out !important;
+    }}
+
+    button[key="stock_action_btn"]:hover {{
+        background: linear-gradient(135deg, #10b981 0%, #0284c7 100%) !important;
+        box-shadow: 0 0 24px rgba(16, 185, 129, 0.75), 0 6px 14px rgba(2, 132, 199, 0.45) !important;
+        transform: scale(1.06) !important;
+        border-color: #67e8f9 !important;
     }}
 
     button[key="team_btn"] {{
@@ -1755,7 +1778,7 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
       if current_area != "C&I Sub Store":
         # Action button placed immediately LEFT of Sub-Store button
         c_left, c_action, c_sub, c_bc, c_not, c_team = st.columns(
-            [2.8, 1.9, 1.8, 1.6, 1.6, 1.4], vertical_alignment="center"
+            [2.5, 2.3, 1.7, 1.5, 1.5, 1.3], vertical_alignment="center"
         )
         with c_left:
           st.markdown(
@@ -1768,7 +1791,7 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
           )
         with c_action:
           if st.button(
-              "🔄 STORE IN / FIELD OUT",
+              "📦 STORE IN / FIELD OUT",
               key="stock_action_btn",
               type="primary",
               use_container_width=True,
@@ -1808,7 +1831,7 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
             show_team_modal()
       else:
         c_left, c_action, c_bc, c_not, c_team = st.columns(
-            [3.8, 2.0, 1.8, 1.8, 1.4], vertical_alignment="center"
+            [3.4, 2.4, 1.8, 1.8, 1.4], vertical_alignment="center"
         )
         with c_left:
           st.markdown(
@@ -1821,7 +1844,7 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
           )
         with c_action:
           if st.button(
-              "🔄 STORE IN / FIELD OUT",
+              "📦 STORE IN / FIELD OUT",
               key="stock_action_btn",
               type="primary",
               use_container_width=True,
@@ -2408,7 +2431,7 @@ elif st.session_state["smart_intelligence_mode"]:
                             </div>
                             <div>{urgency_badge}</div>
                         </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        <div style="display: flex; flex-wrap: gap: 15px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                             <div style="flex: 2;"><b>Material Code:</b> <span style="color: #0284c7; font-weight: 600;">{item['Material Code']}</span><br><b>Specs:</b> {item['Specs']}</div>
                             <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
                                 <div style="font-size: 10px; color: #64748b; font-weight: bold;">INSTALLED / STORE</div>
