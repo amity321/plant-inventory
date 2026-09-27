@@ -7,6 +7,10 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 import streamlit as st
+from dotenv 
+import load_dotenv
+
+load_dotenv()
 
 pd.set_option("display.max_rows", None)
 
@@ -19,15 +23,15 @@ st.set_page_config(
     layout="wide",
     page_icon=NALCO_LOGO_PATH if os.path.exists(NALCO_LOGO_PATH) else "⚙️",
 )
+
 # --- WHATSAPP CLOUD API CONFIGURATION ---
 WA_PHONE_NUMBER_ID = os.getenv("WA_PHONE_NUMBER_ID", "1379466298573038")
 WA_ACCESS_TOKEN = os.getenv("WA_ACCESS_TOKEN", "EAAhI9acSo9QBSuGnluxJ6ex8YzP706NqeZCEqvwuCfHw3VQEH1yHsdBF3jwyfvxtvhTSLA3a2axFw4qNmZC0G7FHIDL6SaQKNZAIxdw4ZAJyFSlVvRbttaVmc4mYcZAQ8vZA5QXx77lOVZCgTeTZAzpvZA6FUkiHVk7blaj8zGOzcg3qCpghIZCfZAWZAV7CiBJKiq2aK7HZALI7S0ZCLlzrwl7PTbkkZBMbgZBeZA8RFNTcbiqMMmB2IVQcTwYoZCpFUhFZCe2tF50Qm6fZBALwjCsGoHzeLfYbfEB0")
 
-# Har Area ke Incharge ka WhatsApp Number (Format: 91XXXXXXXXXX)
-# Testing ke liye abhi sabhi areas me wahi number rakho jo Meta portal par OTP verify kiya hai
+# Testing ke liye sabhi areas me wahi number rakho jo Meta portal par OTP verify kiya hai
 AREA_PHONE_BOOK = {
-    "Area 02/03": "919742900004",   # Er. Amit Jangra
-    "Area 04/05": "919742900004",   # Testing ke liye apna verified number
+    "Area 02/03": "919742900004",
+    "Area 04/05": "919742900004",
     "Area 06/07": "919742900004",
     "Area 08": "919742900004",
     "Area 09/10": "919742900004",
@@ -38,7 +42,7 @@ AREA_PHONE_BOOK = {
 
 def send_whatsapp_cloud_alert(recipient_number, template_name="hello_world"):
     """Sends background WhatsApp message using Meta Cloud API"""
-    if not recipient_number or "XXXX" in recipient_number:
+    if not recipient_number or "XXXX" in str(recipient_number):
         return False
     url = f"https://graph.facebook.com/v19.0/{WA_PHONE_NUMBER_ID}/messages"
     headers = {
@@ -47,7 +51,7 @@ def send_whatsapp_cloud_alert(recipient_number, template_name="hello_world"):
     }
     payload = {
         "messaging_product": "whatsapp",
-        "to": recipient_number,
+        "to": str(recipient_number).strip(),
         "type": "template",
         "template": {
             "name": template_name,
@@ -56,9 +60,10 @@ def send_whatsapp_cloud_alert(recipient_number, template_name="hello_world"):
     }
     try:
         res = requests.post(url, headers=headers, json=payload, timeout=6)
-        return res.status_code == 200
+        return res.status_code in [200, 201]
     except Exception:
         return False
+
 # --- GOOGLE APPS SCRIPT AUTH & WEBHOOK URL ---
 AUTH_API_URL = "https://script.google.com/macros/s/AKfycbwnf2s_JeEKydIm4xZE5Lc4MTj3D_A30hKIDOBqJa-ykjDbhgCkvL6YaTqG4myn2I52/exec"
 DEFAULT_FORM_ENTRY_URL = "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform"
