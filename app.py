@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import time
+import urllib.parse
 from datetime import datetime, timedelta
 import pandas as pd
 import requests
@@ -633,19 +634,34 @@ def show_stock_action_dialog(current_area_name):
           placeholder="e.g. Ball Mill #2, Boiler Area, PO Inward...",
       )
 
+    # --- VERIFIED ENTRY IDs PRE-FILLED URL ---
+    combined_remarks = f"[{selected_item['mat_code']}] {loc_val.strip()}".strip()
+
+    form_params = {
+        "usp": "pp_url",
+        "entry.1572263064": action_title,
+        "entry.661617527": selected_item["name"],
+        "entry.641089374": str(int(qty_val)),
+        "entry.1774724484": combined_remarks,
+    }
+
+    base_form_url = "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform"
+    prefilled_form_url = (
+        f"{base_form_url}?{urllib.parse.urlencode(form_params)}"
+    )
+
     st.markdown("<br>", unsafe_allow_html=True)
     c_btn1, c_btn2 = st.columns([1.5, 1])
     with c_btn1:
-      # Opens pre-filled form in a new tab smoothly
       st.link_button(
-          f"📝 Open Form for {'Inward' if is_inward else 'Issue'} (Direct Update)",
-          GOOGLE_FORM_ENTRY_URL,
+          f"📝 Open Pre-filled Form ({'Inward' if is_inward else 'Issue'}) ➔",
+          prefilled_form_url,
           use_container_width=True,
           type="primary",
       )
     with c_btn2:
       st.link_button(
-          "🔗 Open Blank Form", GOOGLE_FORM_ENTRY_URL, use_container_width=True
+          "🔗 Open Blank Form", base_form_url, use_container_width=True
       )
 
   else:
@@ -663,7 +679,7 @@ def show_stock_action_dialog(current_area_name):
     )
     st.link_button(
         "✨ Register New Instrument via Google Form ➔",
-        GOOGLE_FORM_ENTRY_URL,
+        "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
         use_container_width=True,
         type="primary",
     )
@@ -2616,7 +2632,9 @@ else:
             render_row(row, mapping, current_area)
 
   except Exception as e:
-    st.error(f"Error accessing Google Sheets Database for {current_area}: {e}")
+    st.error(
+        f"Error accessing Google Sheets Database for {current_area}: {e}"
+    )
 
   st.sidebar.markdown(
       '<div class="sidebar-section-title">🔄 Database Control</div>',
