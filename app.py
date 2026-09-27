@@ -359,7 +359,7 @@ def show_stock_action_dialog(current_area_name):
       else "Removed from Store-Room Inventory"
   )
 
-  # Current area ke hi items aayenge dropdown me
+  # Only instruments for the current active area are populated
   items_list = []
   for idx, r in df_area.iterrows():
     m_code = clean_material_code(r.get(mapping["material"], "N/A"))
@@ -434,20 +434,31 @@ def show_stock_action_dialog(current_area_name):
         res = requests.post(
             AUTH_API_URL,
             json=payload,
-            timeout=15,
+            timeout=20,
+            allow_redirects=True,
             headers={"Content-Type": "application/json"},
         )
 
         if res.status_code == 200:
-          resp_data = res.json()
-          if resp_data.get("status") == "SUCCESS":
-            st.success("✅ Stock recorded & updated successfully in sheet!")
-            st.cache_data.clear()
-            st.session_state["data_timestamp"] = int(time.time())
-            time.sleep(1.2)
-            st.rerun()
-          else:
-            st.error(f"❌ Script Error: {resp_data.get('message')}")
+          try:
+            resp_data = res.json()
+            if resp_data.get("status") == "SUCCESS":
+              st.success("✅ Stock recorded & updated successfully in sheet!")
+              st.cache_data.clear()
+              st.session_state["data_timestamp"] = int(time.time())
+              time.sleep(1.2)
+              st.rerun()
+            else:
+              st.error(f"❌ Script Error: {resp_data.get('message')}")
+          except Exception:
+            if "SUCCESS" in res.text or "OK" in res.text:
+              st.success("✅ Stock recorded & updated successfully in sheet!")
+              st.cache_data.clear()
+              st.session_state["data_timestamp"] = int(time.time())
+              time.sleep(1.2)
+              st.rerun()
+            else:
+              st.error(f"❌ Unexpected Server Response: {res.text[:200]}")
         else:
           st.error(f"❌ Server Error: HTTP {res.status_code} - {res.text}")
 
