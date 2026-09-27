@@ -1821,7 +1821,7 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
           )
         with c_action:
           if st.button(
-              "🔄 Inward / Issue",
+              "🔄 STORE IN / FIELD OUT",
               key="stock_action_btn",
               type="primary",
               use_container_width=True,
