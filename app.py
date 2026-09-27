@@ -114,7 +114,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZopDMRgkBThhmBF8NAXoBERx24tj7Ae2y6HlvimEHUhahXEWY8tmXoNDSM_MNlkDB7TfGpHB9I2H_/pub?gid=1951924870&single=true&output=csv"
         ),
-        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSeSKLKJuSyVzMYnv4GFjOsqCWewaSRHcN5Kfahte6c3e3k8HQ/viewform?usp=header",
     },
     "Area 06/07": {
         "title": "Area 06/07 Instrumentation Inventory",
@@ -128,7 +128,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vStPdBa-nm7i9eHjSxpyrIOyyu5VJZo77E4KF3tk2R9ewp0hK58RDVYBKiW5UsRD2DxBTrafX-CfJry/pub?gid=1371227319&single=true&output=csv"
         ),
-        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSdUYCNrBD4MSWjiBA0yXMpMs1m1U4ci29qanw1No44abzZY1Q/viewform?usp=header",
     },
     "Area 08": {
         "title": "Area 08 Instrumentation Inventory",
@@ -142,7 +142,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vRMj_W_6-T0duFQ_XS8Yf9xTQPQvguuQP9P_aUwkKuiOZeT8BXSkAHeQspMlhXebcmz0ff-VZRdya-M/pub?gid=260669801&single=true&output=csv"
         ),
-        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSev0OgaXuWrjr4Bk2gCIS9hb5AVZCjZCWDVGsnxaMCh44O7uA/viewform?usp=header",
     },
     "Area 09/10": {
         "title": "Area 09/10 Instrumentation Inventory",
@@ -156,7 +156,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7NvVXAcew2ZWcA_kSTmCQJk6OVq3RQfqGqCZ08jGKosNmTYWprvR4JUMC3-vXI28wF6HJ1B_Wk1uo/pub?gid=1187023151&single=true&output=csv"
         ),
-        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSdOKksLID4rmEzMXqo7YpdJpFBUQRjkNavtTU__kqdf9BNPMQ/viewform?usp=header",
     },
     "SPP TG": {
         "title": "SPP TG Instrumentation Inventory",
@@ -170,7 +170,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPmgZl9jEQaGMQbxeOu0Xr_GtQ2P4_twAx2qNxUOjoYSvSW27vJsUgRtQB7XtIcU-bcCulPJLX3PLA/pub?gid=900388666&single=true&output=csv"
         ),
-        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSfpwJRI38yEKEh964FJds-YLW6VbRmVZuBWySrTIhRXXZJHXw/viewform?usp=header",
     },
     "SPP Boiler": {
         "title": "SPP Boiler Instrumentation Inventory",
@@ -184,7 +184,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVTH56rybWjsWYThgCiTWzafjabniWhqHUUuXoVdqexuWIjrmvh65AtimfDlFNB5V4StSi5G4BWuKf/pub?gid=223018013&single=true&output=csv"
         ),
-        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSdC6hzMKmaaHUAd2v2erjkGBNwX4iOv6eI8dj_NNGKvFkLjNQ/viewform?usp=header",
     },
     "C&I Sub Store": {
         "title": "C&I Sub Store Instrumentation Inventory",
@@ -198,7 +198,7 @@ AREA_CONFIGS = {
         "removal_url": (
             "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJUMrlU1bWLUsOt0tL-4xsBpsO2kt70Rq4am-OpMb7hsZZxe69JzLwBqT1EOLZtuU-PGkY-mx4EuZ/pub?gid=158170506&single=true&output=csv"
         ),
-        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform",
+        "form_url": "https://docs.google.com/forms/d/e/1FAIpQLSfjZv33kphrRPlj0vUkgGyi0Kx0g2wjn7ebgRs3x1Bh2ynfGQ/viewform?usp=header",
     },
 }
 
