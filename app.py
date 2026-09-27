@@ -37,8 +37,8 @@ AREA_PHONE_BOOK = {
     "C&I Sub Store": "919742900004"
 }
 
-def send_whatsapp_cloud_alert(recipient_number, template_name="hello_world"):
-    """Sends background WhatsApp message using Meta Cloud API"""
+def send_plant_whatsapp_alert(recipient_number, from_area, alert_type, details, receiver_stock_text, priority):
+    """Sends custom formatted plant alert with receiver's stock visibility"""
     if not recipient_number or "XXXX" in str(recipient_number):
         return False
     url = f"https://graph.facebook.com/v19.0/{WA_PHONE_NUMBER_ID}/messages"
@@ -51,8 +51,20 @@ def send_whatsapp_cloud_alert(recipient_number, template_name="hello_world"):
         "to": str(recipient_number).strip(),
         "type": "template",
         "template": {
-            "name": template_name,
-            "language": {"code": "en_US"}
+            "name": "plant_spare_alert",  # Agar template ka naam yahi rakha hai
+            "language": {"code": "en_US"},
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": str(from_area)},
+                        {"type": "text", "text": str(alert_type)},
+                        {"type": "text", "text": str(details)},
+                        {"type": "text", "text": str(receiver_stock_text)},
+                        {"type": "text", "text": str(priority)}
+                    ]
+                }
+            ]
         }
     }
     try:
@@ -60,7 +72,6 @@ def send_whatsapp_cloud_alert(recipient_number, template_name="hello_world"):
         return res.status_code in [200, 201]
     except Exception:
         return False
-
 # --- GOOGLE APPS SCRIPT AUTH & WEBHOOK URL ---
 AUTH_API_URL = "https://script.google.com/macros/s/AKfycbwnf2s_JeEKydIm4xZE5Lc4MTj3D_A30hKIDOBqJa-ykjDbhgCkvL6YaTqG4myn2I52/exec"
 DEFAULT_FORM_ENTRY_URL = "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform"
@@ -1090,7 +1101,7 @@ def show_substore_items_dialog(current_area_name):
   st.dataframe(df_display, use_container_width=True, hide_index=True)
 
 
-# --- SENDER MODAL: STREAMLINED BROADCAST & MATERIAL REQUEST ---
+
 # --- SENDER MODAL: STREAMLINED BROADCAST & MATERIAL REQUEST WITH WHATSAPP ALERT ---
 @st.dialog("📢 Inter-Area Dispatch & Material Request", width="large")
 def show_broadcast_message_dialog(current_area_name):
@@ -1226,22 +1237,45 @@ def show_broadcast_message_dialog(current_area_name):
             "seen_by": [],
         }
 
-        # 1. Local feed me add karo
+        # 1. Local feed update
         GLOBAL_MESSAGES.append(broadcast_record)
 
-        # 2. Target area ke incharge ko WhatsApp send karo
-        target_numbers = []
-        if target_area == "ALL":
-            target_numbers = list(set(AREA_PHONE_BOOK.values()))
-        elif target_area in AREA_PHONE_BOOK:
-            target_numbers = [AREA_PHONE_BOOK[target_area]]
+        # 2. Target area live stock & message details formatting
+        if msg_category == "📦 Material Spare Request" and selected_material_payload:
+            item_details_text = f"Req: {selected_material_payload['requested_qty']} Nos - {selected_material_payload['instrument_name']}"
+            alert_type_text = "Material Spare Request"
+        else:
+            item_details_text = msg_body
+            alert_type_text = "Plant Broadcast"
 
+        # 3. WhatsApp dispatch
+        target_areas = list(AREA_PHONE_BOOK.keys()) if target_area == "ALL" else [target_area]
         wa_sent = False
-        for num in target_numbers:
-            if send_whatsapp_cloud_alert(num, template_name="hello_world"):
+
+        for a_name in target_areas:
+            num = AREA_PHONE_BOOK.get(a_name)
+            if not num:
+                continue
+
+            # Har receiver area ke hisaab se uska live stock calculate hoga
+            if msg_category == "📦 Material Spare Request" and selected_material_payload:
+                raw_r = selected_material_payload.get("_raw_row", {})
+                current_stock = extract_area_stock_from_row(raw_r, a_name)
+                stock_text = f"{current_stock} Nos available in your store"
+            else:
+                stock_text = "N/A"
+
+            if send_plant_whatsapp_alert(
+                recipient_number=num,
+                from_area=current_area_name,
+                alert_type=alert_type_text,
+                details=item_details_text,
+                receiver_stock_text=stock_text,
+                priority="URGENT" if is_urgent else "NORMAL"
+            ):
                 wa_sent = True
 
-        # 3. Google Sheet Webhook Sync
+        # 4. Sheet Webhook Sync
         try:
             requests.post(
                 AUTH_API_URL,
