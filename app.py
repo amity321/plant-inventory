@@ -19,7 +19,46 @@ st.set_page_config(
     layout="wide",
     page_icon=NALCO_LOGO_PATH if os.path.exists(NALCO_LOGO_PATH) else "⚙️",
 )
+# --- WHATSAPP CLOUD API CONFIGURATION ---
+WA_PHONE_NUMBER_ID = os.getenv("WA_PHONE_NUMBER_ID", "1379466298573038")
+WA_ACCESS_TOKEN = os.getenv("WA_ACCESS_TOKEN", "EAAhI9acSo9QBSuGnluxJ6ex8YzP706NqeZCEqvwuCfHw3VQEH1yHsdBF3jwyfvxtvhTSLA3a2axFw4qNmZC0G7FHIDL6SaQKNZAIxdw4ZAJyFSlVvRbttaVmc4mYcZAQ8vZA5QXx77lOVZCgTeTZAzpvZA6FUkiHVk7blaj8zGOzcg3qCpghIZCfZAWZAV7CiBJKiq2aK7HZALI7S0ZCLlzrwl7PTbkkZBMbgZBeZA8RFNTcbiqMMmB2IVQcTwYoZCpFUhFZCe2tF50Qm6fZBALwjCsGoHzeLfYbfEB0")
 
+# Har Area ke Incharge ka WhatsApp Number (Format: 91XXXXXXXXXX)
+# Testing ke liye abhi sabhi areas me wahi number rakho jo Meta portal par OTP verify kiya hai
+AREA_PHONE_BOOK = {
+    "Area 02/03": "919742900004",   # Er. Amit Jangra
+    "Area 04/05": "919742900004",   # Testing ke liye apna verified number
+    "Area 06/07": "919742900004",
+    "Area 08": "919742900004",
+    "Area 09/10": "919742900004",
+    "SPP TG": "919742900004",
+    "SPP Boiler": "919742900004",
+    "C&I Sub Store": "919742900004"
+}
+
+def send_whatsapp_cloud_alert(recipient_number, template_name="hello_world"):
+    """Sends background WhatsApp message using Meta Cloud API"""
+    if not recipient_number or "XXXX" in recipient_number:
+        return False
+    url = f"https://graph.facebook.com/v19.0/{WA_PHONE_NUMBER_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {WA_ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": recipient_number,
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {"code": "en_US"}
+        }
+    }
+    try:
+        res = requests.post(url, headers=headers, json=payload, timeout=6)
+        return res.status_code == 200
+    except Exception:
+        return False
 # --- GOOGLE APPS SCRIPT AUTH & WEBHOOK URL ---
 AUTH_API_URL = "https://script.google.com/macros/s/AKfycbwnf2s_JeEKydIm4xZE5Lc4MTj3D_A30hKIDOBqJa-ykjDbhgCkvL6YaTqG4myn2I52/exec"
 DEFAULT_FORM_ENTRY_URL = "https://docs.google.com/forms/d/e/1FAIpQLSd8B94YMCCRyh8dMHnJIe5eCb9cj_rzQbj7XAb54O_nsWFs8g/viewform"
@@ -1050,160 +1089,173 @@ def show_substore_items_dialog(current_area_name):
 
 
 # --- SENDER MODAL: STREAMLINED BROADCAST & MATERIAL REQUEST ---
+# --- SENDER MODAL: STREAMLINED BROADCAST & MATERIAL REQUEST WITH WHATSAPP ALERT ---
 @st.dialog("📢 Inter-Area Dispatch & Material Request", width="large")
 def show_broadcast_message_dialog(current_area_name):
-  st.markdown(f"**Originating Area:** 📍 `{current_area_name}`")
+    st.markdown(f"**Originating Area:** 📍 `{current_area_name}`")
 
-  msg_category = st.radio(
-      "Select Operation Mode:",
-      ["📢 General Message / Announcement", "📦 Material Spare Request"],
-      horizontal=True,
-  )
-
-  other_areas = [a for a in AREA_CONFIGS.keys() if a != current_area_name]
-  target_options = ["📢 ALL AREAS (Plant-wide Broadcast)"] + other_areas
-
-  c_top1, c_top2 = st.columns([1.5, 1])
-  with c_top1:
-    selected_target_opt = st.selectbox(
-        "Send Request / Message To:",
-        target_options,
-        key="bc_unified_target_select",
-    )
-  with c_top2:
-    priority_level = st.radio(
-        "Priority:",
-        ["Normal", " Urgent Breakdown"],
+    msg_category = st.radio(
+        "Select Operation Mode:",
+        ["📢 General Message / Announcement", "📦 Material Spare Request"],
         horizontal=True,
-        key="bc_priority_radio",
     )
 
-  target_area = (
-      "ALL"
-      if "ALL AREAS" in selected_target_opt
-      else selected_target_opt.replace("📍 ", "").strip()
-  )
+    other_areas = [a for a in AREA_CONFIGS.keys() if a != current_area_name]
+    target_options = ["📢 ALL AREAS (Plant-wide Broadcast)"] + other_areas
 
-  selected_material_payload = None
-  msg_body = ""
-
-  if msg_category == "📦 Material Spare Request":
-    search_kw = st.text_input(
-        "Type Material Code or Instrument Name:",
-        placeholder="e.g. 5040012 or RTD or Pressure Transmitter...",
-        key="mat_matrix_search",
-    ).strip()
-
-    if search_kw:
-      matching_items = search_stock_matrix_catalog(
-          search_kw, st.session_state["data_timestamp"]
-      )
-      if matching_items:
-        st.caption(f"Found {len(matching_items)} catalog matches:")
-        labels = [item["label"] for item in matching_items]
-        chosen_idx = st.selectbox(
-            "Select Matching Instrument:",
-            range(len(matching_items)),
-            format_func=lambda x: labels[x],
-            key="mat_matrix_chosen_idx",
+    c_top1, c_top2 = st.columns([1.5, 1])
+    with c_top1:
+        selected_target_opt = st.selectbox(
+            "Send Request / Message To:",
+            target_options,
+            key="bc_unified_target_select",
         )
-        selected_item = matching_items[chosen_idx]
+    with c_top2:
+        priority_level = st.radio(
+            "Priority:",
+            ["Normal", " Urgent Breakdown"],
+            horizontal=True,
+            key="bc_priority_radio",
+        )
 
-        st.markdown(
-            f"""
+    target_area = (
+        "ALL"
+        if "ALL AREAS" in selected_target_opt
+        else selected_target_opt.replace("📍 ", "").strip()
+    )
+
+    selected_material_payload = None
+    msg_body = ""
+
+    if msg_category == "📦 Material Spare Request":
+        search_kw = st.text_input(
+            "Type Material Code or Instrument Name:",
+            placeholder="e.g. 5040012 or RTD or Pressure Transmitter...",
+            key="mat_matrix_search",
+        ).strip()
+
+        if search_kw:
+            matching_items = search_stock_matrix_catalog(
+                search_kw, st.session_state["data_timestamp"]
+            )
+            if matching_items:
+                st.caption(f"Found {len(matching_items)} catalog matches:")
+                labels = [item["label"] for item in matching_items]
+                chosen_idx = st.selectbox(
+                    "Select Matching Instrument:",
+                    range(len(matching_items)),
+                    format_func=lambda x: labels[x],
+                    key="mat_matrix_chosen_idx",
+                )
+                selected_item = matching_items[chosen_idx]
+
+                st.markdown(
+                    f"""
                     <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-left: 4px solid #0284c7; padding: 9px 13px; border-radius: 6px; font-size: 12.5px; margin-bottom: 10px;">
                         <b>Selected Instrument:</b> {selected_item['description']}<br>
                         <b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{selected_item['mat_code']}</span>
                     </div>
                     """,
-            unsafe_allow_html=True,
+                    unsafe_allow_html=True,
+                )
+
+                c_qty, c_purp = st.columns([1, 2.5])
+                with c_qty:
+                    req_qty = st.number_input(
+                        "Required Quantity (Nos):", min_value=1, max_value=50, value=1
+                    )
+                with c_purp:
+                    req_purpose = st.text_input(
+                        "Tag No. / Plant Location / Purpose:",
+                        placeholder="e.g. Breakdown replacement at Ball Mill #2",
+                    )
+
+                selected_material_payload = {
+                    "material_code": selected_item["mat_code"],
+                    "instrument_name": selected_item["description"],
+                    "requested_qty": int(req_qty),
+                    "purpose": req_purpose.strip(),
+                    "_raw_row": selected_item.get("_raw_row", {}),
+                }
+            else:
+                st.warning(
+                    f"⚠️ No catalog item found for '{search_kw}'. Try another keyword."
+                )
+
+    else:
+        msg_body = st.text_area(
+            "Message Content:",
+            placeholder="Type plant broadcast, shutdown update, or inter-area query...",
+            height=100,
+            key="bc_body_text",
+        ).strip()
+
+    if st.button("🚀 Dispatch Request", type="primary", use_container_width=True):
+        if (
+            msg_category == "📦 Material Spare Request"
+            and not selected_material_payload
+        ):
+            st.error("❌ Please search and select an instrument from the catalog list first!")
+            return
+
+        if msg_category == "📢 General Message / Announcement" and not msg_body:
+            st.error("❌ Message cannot be empty!")
+            return
+
+        is_urgent = "Urgent" in priority_level
+        sender_label = AREA_CONFIGS.get(current_area_name, {}).get(
+            "manager", f"{current_area_name} Incharge"
         )
 
-        c_qty, c_purp = st.columns([1, 2.5])
-        with c_qty:
-          req_qty = st.number_input(
-              "Required Quantity (Nos):", min_value=1, max_value=50, value=1
-          )
-        with c_purp:
-          req_purpose = st.text_input(
-              "Tag No. / Plant Location / Purpose:",
-              placeholder="e.g. Breakdown replacement at Ball Mill #2",
-          )
-
-        selected_material_payload = {
-            "material_code": selected_item["mat_code"],
-            "instrument_name": selected_item["description"],
-            "requested_qty": int(req_qty),
-            "purpose": req_purpose.strip(),
-            "_raw_row": selected_item.get("_raw_row", {}),
+        broadcast_record = {
+            "msg_id": f"MSG-{int(time.time())}",
+            "msg_type": (
+                "MATERIAL_REQUEST"
+                if msg_category == "📦 Material Spare Request"
+                else "ANNOUNCEMENT"
+            ),
+            "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
+            "from_area": current_area_name,
+            "to_area": target_area,
+            "sender_officer": sender_label,
+            "priority": "URGENT" if is_urgent else "NORMAL",
+            "message": msg_body,
+            "material_details": selected_material_payload,
+            "seen_by": [],
         }
-      else:
-        st.warning(
-            f"⚠️ No catalog item found for '{search_kw}'. Try another keyword."
-        )
 
-  else:
-    msg_body = st.text_area(
-        "Message Content:",
-        placeholder=(
-            "Type plant broadcast, shutdown update, or inter-area query..."
-        ),
-        height=100,
-        key="bc_body_text",
-    ).strip()
+        # 1. Local feed me add karo
+        GLOBAL_MESSAGES.append(broadcast_record)
 
-  if st.button("🚀 Dispatch Request", type="primary", use_container_width=True):
-    if (
-        msg_category == "📦 Material Spare Request"
-        and not selected_material_payload
-    ):
-      st.error(
-          "❌ Please search and select an instrument from the catalog list"
-          " first!"
-      )
-      return
+        # 2. Target area ke incharge ko WhatsApp send karo
+        target_numbers = []
+        if target_area == "ALL":
+            target_numbers = list(set(AREA_PHONE_BOOK.values()))
+        elif target_area in AREA_PHONE_BOOK:
+            target_numbers = [AREA_PHONE_BOOK[target_area]]
 
-    if msg_category == "📢 General Message / Announcement" and not msg_body:
-      st.error("❌ Message cannot be empty!")
-      return
+        wa_sent = False
+        for num in target_numbers:
+            if send_whatsapp_cloud_alert(num, template_name="hello_world"):
+                wa_sent = True
 
-    is_urgent = "Urgent" in priority_level
-    sender_label = AREA_CONFIGS.get(current_area_name, {}).get(
-        "manager", f"{current_area_name} Incharge"
-    )
+        # 3. Google Sheet Webhook Sync
+        try:
+            requests.post(
+                AUTH_API_URL,
+                json={"action": "INTERAREA_BROADCAST", "data": broadcast_record},
+                timeout=3,
+            )
+        except Exception:
+            pass
 
-    broadcast_record = {
-        "msg_id": f"MSG-{int(time.time())}",
-        "msg_type": (
-            "MATERIAL_REQUEST"
-            if msg_category == "📦 Material Spare Request"
-            else "ANNOUNCEMENT"
-        ),
-        "timestamp": datetime.now().strftime("%d-%b-%Y %H:%M:%S"),
-        "from_area": current_area_name,
-        "to_area": target_area,
-        "sender_officer": sender_label,
-        "priority": "URGENT" if is_urgent else "NORMAL",
-        "message": msg_body,
-        "material_details": selected_material_payload,
-        "seen_by": [],
-    }
+        if wa_sent:
+            st.success(f"✅ Dispatched to `{target_area}` & WhatsApp Alert sent to Incharge!")
+        else:
+            st.success(f"✅ Dispatched successfully to `{target_area}`!")
 
-    GLOBAL_MESSAGES.append(broadcast_record)
-    try:
-      requests.post(
-          AUTH_API_URL,
-          json={"action": "INTERAREA_BROADCAST", "data": broadcast_record},
-          timeout=3,
-      )
-    except Exception:
-      pass
-
-    st.success(f"✅ Dispatched successfully to `{target_area}`!")
-    time.sleep(1.0)
-    st.rerun()
-
-
+        time.sleep(1.0)
+        st.rerun()
 # --- NOTIFICATIONS & INCOMING ALERTS MODAL ---
 @st.dialog("🔔 Notifications & Incoming Alerts", width="large")
 def show_notifications_dialog(current_area_name):
