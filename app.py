@@ -1120,7 +1120,7 @@ def show_substore_items_dialog(current_area_name):
 # --- SENDER MODAL: STREAMLINED BROADCAST & MATERIAL REQUEST WITH WHATSAPP ALERT ---
 @st.dialog("📢 Inter-Area Dispatch & Material Request", width="large")
 def show_broadcast_message_dialog(current_area_name):
-    st.markdown(f"**Originating Area:** 📍 `{current_area_name}`")
+    st.markdown(f"**Originating Node:** 📍 `{current_area_name}`")
 
     msg_category = st.radio(
         "Select Operation Mode:",
@@ -1128,8 +1128,10 @@ def show_broadcast_message_dialog(current_area_name):
         horizontal=True,
     )
 
-    other_areas = [a for a in AREA_CONFIGS.keys() if a != current_area_name]
-    target_options = ["📢 ALL AREAS (Plant-wide Broadcast)"] + other_areas
+    # Available targets including Planning Cell
+    all_possible_targets = list(AREA_CONFIGS.keys()) + ["Planning Cell"]
+    other_targets = [a for a in all_possible_targets if a != current_area_name]
+    target_options = ["📢 ALL AREAS (Plant-wide Broadcast)"] + other_targets
 
     c_top1, c_top2 = st.columns([1.5, 1])
     with c_top1:
@@ -1141,7 +1143,7 @@ def show_broadcast_message_dialog(current_area_name):
     with c_top2:
         priority_level = st.radio(
             "Priority:",
-            ["Normal", " Urgent Breakdown"],
+            ["Normal", "🚨 Urgent Breakdown"],
             horizontal=True,
             key="bc_priority_radio",
         )
@@ -1151,6 +1153,17 @@ def show_broadcast_message_dialog(current_area_name):
         if "ALL AREAS" in selected_target_opt
         else selected_target_opt.replace("📍 ", "").strip()
     )
+
+    # Sender officer identification
+    if current_area_name == "Planning Cell":
+        hod_info = st.session_state.get("hod_auth_user") or {}
+        sender_label = f"{hod_info.get('name', 'Planning Officer')} ({hod_info.get('role', 'Planning Cell')})"
+    else:
+        sender_label = AREA_CONFIGS.get(current_area_name, {}).get(
+            "manager", f"{current_area_name} Incharge"
+        )
+
+    # ... (baaki ka item search aur form inputs same rahenge)
 
     selected_material_payload = None
     msg_body = ""
@@ -1861,8 +1874,18 @@ def inject_custom_css(hide_sidebar=False):
 # --- TOP BAR ---
 def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     is_pr_active = st.session_state.get("smart_intelligence_mode", False)
-    current_area = st.session_state.get("selected_area") or url_area
+    
+    # Identify active node: agar area nahi hai toh Master Dashboard / Planning Cell session
+    if st.session_state.get("selected_area"):
+        current_area = st.session_state["selected_area"]
+    elif url_area:
+        current_area = url_area
+    elif st.session_state.get("hod_auth_user"):
+        current_area = "Planning Cell"
+    else:
+        current_area = None
 
+    # Calculate pending incoming notifications
     pending_count = 0
     for m in GLOBAL_MESSAGES:
         if not current_area or m.get("from_area") == current_area:
@@ -1886,39 +1909,30 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     )
 
     if is_pr_active:
-        c_left, c_mid, c_right = st.columns(
-            [4.0, 3.5, 2.5], vertical_alignment="center"
+        c_left, c_mid, c_bc, c_not, c_team = st.columns(
+            [3.2, 2.5, 1.5, 1.5, 1.3], vertical_alignment="center"
         )
         with c_left:
             st.markdown(
-                f"""
-                <div class="header-pill">
-                    <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
-                </div>
-                """,
+                f"""<div class="header-pill"><span style="color: #10b981; font-size: 15px;">●</span> {status_text}</div>""",
                 unsafe_allow_html=True,
             )
         with c_mid:
             is_active = st.session_state["urgent_pr_filter_state"]
-            btn_label = (
-                "✅ Showing Overdue PR" if is_active else " Show Overdue PR Only"
-            )
-            if st.button(
-                btn_label,
-                key="urgent_pr_btn",
-                type="primary",
-                use_container_width=True,
-            ):
+            btn_label = "✅ Showing Overdue PR" if is_active else "🚨 Show Overdue PR Only"
+            if st.button(btn_label, key="urgent_pr_btn", type="primary", use_container_width=True):
                 st.session_state["urgent_pr_filter_state"] = not is_active
                 st.rerun()
-        with c_right:
-            if st.button(
-                "👥 Inventory Team",
-                key="team_btn",
-                type="primary",
-                use_container_width=True,
-            ):
+        with c_bc:
+            if st.button("📢 Message", key="broadcast_btn_pr", type="primary", use_container_width=True):
+                show_broadcast_message_dialog(current_area or "Planning Cell")
+        with c_not:
+            if st.button(notify_label, key="notify_btn_pr", type="primary", use_container_width=True):
+                show_notifications_dialog(current_area or "Planning Cell")
+        with c_team:
+            if st.button("👥 Team", key="team_btn", type="primary", use_container_width=True):
                 show_team_modal()
+
     else:
         if current_area and current_area in AREA_CONFIGS:
             if current_area != "C&I Sub Store":
@@ -1926,121 +1940,57 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                     [2.5, 2.3, 1.7, 1.5, 1.5, 1.3], vertical_alignment="center"
                 )
                 with c_left:
-                    st.markdown(
-                        f"""
-                        <div class="header-pill">
-                            <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
+                    st.markdown(f"""<div class="header-pill"><span style="color: #10b981; font-size: 15px;">●</span> {status_text}</div>""", unsafe_allow_html=True)
                 with c_action:
-                    if st.button(
-                        "🔄 STORE IN / FIELD OUT",
-                        key="stock_action_btn",
-                        type="primary",
-                        use_container_width=True,
-                    ):
+                    if st.button("🔄 STORE IN / FIELD OUT", key="stock_action_btn", type="primary", use_container_width=True):
                         show_stock_action_dialog(current_area)
                 with c_sub:
-                    if st.button(
-                        "📦 In Sub-Store",
-                        key="substore_items_btn",
-                        type="primary",
-                        use_container_width=True,
-                    ):
+                    if st.button("📦 In Sub-Store", key="substore_items_btn", type="primary", use_container_width=True):
                         show_substore_items_dialog(current_area)
                 with c_bc:
-                    if st.button(
-                        "📢 Message",
-                        key="broadcast_btn",
-                        type="primary",
-                        use_container_width=True,
-                    ):
+                    if st.button("📢 Message", key="broadcast_btn", type="primary", use_container_width=True):
                         show_broadcast_message_dialog(current_area)
                 with c_not:
-                    if st.button(
-                        notify_label,
-                        key="notify_btn",
-                        type="primary",
-                        use_container_width=True,
-                    ):
+                    if st.button(notify_label, key="notify_btn", type="primary", use_container_width=True):
                         show_notifications_dialog(current_area)
                 with c_team:
-                    if st.button(
-                        "👥 Team",
-                        key="team_btn",
-                        type="primary",
-                        use_container_width=True,
-                    ):
+                    if st.button("👥 Team", key="team_btn", type="primary", use_container_width=True):
                         show_team_modal()
             else:
                 c_left, c_action, c_bc, c_not, c_team = st.columns(
                     [3.4, 2.4, 1.8, 1.8, 1.4], vertical_alignment="center"
                 )
                 with c_left:
-                    st.markdown(
-                        f"""
-                        <div class="header-pill">
-                            <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
+                    st.markdown(f"""<div class="header-pill"><span style="color: #10b981; font-size: 15px;">●</span> {status_text}</div>""", unsafe_allow_html=True)
                 with c_action:
-                    if st.button(
-                        "🔄 STORE IN / FIELD OUT",
-                        key="stock_action_btn",
-                        type="primary",
-                        use_container_width=True,
-                    ):
+                    if st.button("🔄 STORE IN / FIELD OUT", key="stock_action_btn", type="primary", use_container_width=True):
                         show_stock_action_dialog(current_area)
                 with c_bc:
-                    if st.button(
-                        "📢 Message",
-                        key="broadcast_btn",
-                        type="primary",
-                        use_container_width=True,
-                    ):
+                    if st.button("📢 Message", key="broadcast_btn", type="primary", use_container_width=True):
                         show_broadcast_message_dialog(current_area)
                 with c_not:
-                    if st.button(
-                        notify_label,
-                        key="notify_btn",
-                        type="primary",
-                        use_container_width=True,
-                    ):
+                    if st.button(notify_label, key="notify_btn", type="primary", use_container_width=True):
                         show_notifications_dialog(current_area)
                 with c_team:
-                    if st.button(
-                        "👥 Team",
-                        key="team_btn",
-                        type="primary",
-                        use_container_width=True,
-                    ):
+                    if st.button("👥 Team", key="team_btn", type="primary", use_container_width=True):
                         show_team_modal()
+
         else:
-            c_left, c_team = st.columns([8.0, 2.0], vertical_alignment="center")
+            # Master Dashboard Landing View
+            c_left, c_bc, c_not, c_team = st.columns([5.0, 1.7, 1.8, 1.5], vertical_alignment="center")
             with c_left:
-                st.markdown(
-                    f"""
-                    <div class="header-pill">
-                        <span style="color: #10b981; font-size: 15px;">●</span> {status_text}
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                st.markdown(f"""<div class="header-pill"><span style="color: #10b981; font-size: 15px;">●</span> {status_text}</div>""", unsafe_allow_html=True)
+            with c_bc:
+                if st.button("📢 Message", key="broadcast_btn_master", type="primary", use_container_width=True):
+                    show_broadcast_message_dialog("Planning Cell")
+            with c_not:
+                if st.button(notify_label, key="notify_btn_master", type="primary", use_container_width=True):
+                    show_notifications_dialog("Planning Cell")
             with c_team:
-                if st.button(
-                    "👥 Inventory Team",
-                    key="team_btn",
-                    type="primary",
-                    use_container_width=True,
-                ):
+                if st.button("👥 Team", key="team_btn", type="primary", use_container_width=True):
                     show_team_modal()
 
-    st.markdown(
-        "<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True
+    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
     )
 
 
