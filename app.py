@@ -29,14 +29,14 @@ WA_ACCESS_TOKEN = os.getenv(
 
 # Area wise registered contact directory
 AREA_PHONE_BOOK = {
-    "Area 02/03": "919742900004",
-    "Area 04/05": "917008041565",
-    "Area 06/07": "917008041565",
-    "Area 08": "919742900004",
-    "Area 09/10": "917008041565",
-    "SPP TG": "919742900004",
-    "SPP Boiler": "917008041565",
-    "C&I Sub Store": "919742900004",
+    "Area 02/03": "919742900004",      # otp verified
+    "Area 04/05": "917855801470",       # 
+    "Area 06/07": "919654898469",        # otp verified
+    "Area 08": "919766137589",             # 
+    "Area 09/10": "919437563878",            # 
+    "SPP TG": "917978335366",                  # 
+    "SPP Boiler": "918114963663",                # 
+    "C&I Sub Store": "918989190471",               # 
 }
 
 
