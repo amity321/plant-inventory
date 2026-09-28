@@ -1991,7 +1991,7 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                     show_team_modal()
 
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
-    )
+    
 
 
 # ==============================================================================
