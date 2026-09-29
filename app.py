@@ -59,8 +59,8 @@ def send_plant_whatsapp_alert(
         "to": str(recipient_number).strip(),
         "type": "template",
         "template": {
-            "name": "plant_spare_alert_v2",
-            "language": {"code": "en_US"},
+            "name": "plant_spare_alert_v1",
+            "language": {"code": "en"},
             "components": [
                 {
                     "type": "body",
