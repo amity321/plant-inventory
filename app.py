@@ -31,22 +31,22 @@ WA_ACCESS_TOKEN = os.getenv(
 AREA_PHONE_BOOK = {
     "Area 02/03": "919742900004",      # otp verified
     "Area 04/05": "917855801470",       # 
-    "Area 06/07": "919654898469",        # otp verified
-    "Area 08": "919766137589",             # 
-    "Area 09/10": "919437563878",            # 
-    "SPP TG": "917978335366",                  # 
-    "SPP Boiler": "918114963663",                # 
-    "C&I Sub Store": "918989190471",               # 
+    "Area 06/07": "919654898469",       # otp verified
+    "Area 08": "919766137589",          # 
+    "Area 09/10": "919437563878",       # 
+    "SPP TG": "917978335366",           # 
+    "SPP Boiler": "918114963663",       # 
+    "C&I Sub Store": "918989190471",    # 
 }
 
 
 def send_plant_whatsapp_alert(
     recipient_number,
     from_area,
-    alert_type,
-    details,
-    receiver_stock_text,
-    priority,
+    msg_type,  # "MATERIAL_REQUEST" ya "ANNOUNCEMENT"
+    message_text="",  # General announcement text
+    material_payload=None,  # Material spare details
+    receiver_stock_text="0 Nos available in your store",
 ):
     url = f"https://graph.facebook.com/v20.0/{WA_PHONE_NUMBER_ID}/messages"
     headers = {
@@ -54,32 +54,55 @@ def send_plant_whatsapp_alert(
         "Content-Type": "application/json",
     }
 
+    if msg_type == "MATERIAL_REQUEST" and material_payload:
+        # Template 1: Material Request (Exact 6 Parameters)
+        template_name = "plant_spare_request_v1"
+        parameters = [
+            {"type": "text", "text": str(from_area)},  # {{1}} From Area
+            {
+                "type": "text",
+                "text": str(material_payload.get("instrument_name", "N/A")),
+            },  # {{2}} Instrument Name
+            {
+                "type": "text",
+                "text": str(material_payload.get("material_code", "N/A")),
+            },  # {{3}} Material Code
+            {
+                "type": "text",
+                "text": str(
+                    material_payload.get("specs", "Standard Technical Specs")
+                )[:80],
+            },  # {{4}} Specs
+            {
+                "type": "text",
+                "text": str(material_payload.get("requested_qty", 1)),
+            },  # {{5}} Req Qty
+            {"type": "text", "text": str(receiver_stock_text)},  # {{6}} Store Stock
+        ]
+    else:
+        # Template 2: General Broadcast (Exact 2 Parameters)
+        template_name = "plant_inventory_broadcast_v1"
+        parameters = [
+            {"type": "text", "text": str(from_area)},  # {{1}} From Area
+            {"type": "text", "text": str(message_text)},  # {{2}} Broadcast Message
+        ]
+
     payload = {
         "messaging_product": "whatsapp",
         "to": str(recipient_number).strip(),
         "type": "template",
         "template": {
-            "name": "plant_spare_alert_v1",
+            "name": template_name,
             "language": {"code": "en"},
-            "components": [
-                {
-                    "type": "body",
-                    "parameters": [
-                        {"type": "text", "text": str(from_area)},
-                        {"type": "text", "text": str(alert_type)},
-                        {"type": "text", "text": str(details)},
-                        {"type": "text", "text": str(receiver_stock_text)},
-                        {"type": "text", "text": str(priority)},
-                    ],
-                }
-            ],
+            "components": [{"type": "body", "parameters": parameters}],
         },
     }
 
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=8)
         return response.status_code in [200, 201]
-    except Exception:
+    except Exception as e:
+        print(f"WhatsApp API Error: {e}")
         return False
 
 
@@ -1128,7 +1151,6 @@ def show_broadcast_message_dialog(current_area_name):
         horizontal=True,
     )
 
-    # Available targets including Planning Cell
     all_possible_targets = list(AREA_CONFIGS.keys()) + ["Planning Cell"]
     other_targets = [a for a in all_possible_targets if a != current_area_name]
     target_options = ["📢 ALL AREAS (Plant-wide Broadcast)"] + other_targets
@@ -1154,7 +1176,6 @@ def show_broadcast_message_dialog(current_area_name):
         else selected_target_opt.replace("📍 ", "").strip()
     )
 
-    # Sender officer identification
     if current_area_name == "Planning Cell":
         hod_info = st.session_state.get("hod_auth_user") or {}
         sender_label = f"{hod_info.get('name', 'Planning Officer')} ({hod_info.get('role', 'Planning Cell')})"
@@ -1162,8 +1183,6 @@ def show_broadcast_message_dialog(current_area_name):
         sender_label = AREA_CONFIGS.get(current_area_name, {}).get(
             "manager", f"{current_area_name} Incharge"
         )
-
-    # ... (baaki ka item search aur form inputs same rahenge)
 
     selected_material_payload = None
     msg_body = ""
@@ -1219,6 +1238,10 @@ def show_broadcast_message_dialog(current_area_name):
                 selected_material_payload = {
                     "material_code": selected_item["mat_code"],
                     "instrument_name": selected_item["description"],
+                    "specs": selected_item.get(
+                        "specs",
+                        selected_item.get("_raw_row", {}).get("Specs", "N/A"),
+                    ),
                     "requested_qty": int(req_qty),
                     "purpose": req_purpose.strip(),
                     "_raw_row": selected_item.get("_raw_row", {}),
@@ -1277,35 +1300,20 @@ def show_broadcast_message_dialog(current_area_name):
 
         GLOBAL_MESSAGES.append(broadcast_record)
 
-        if (
-            msg_category == "📦 Material Spare Request"
-            and selected_material_payload
-        ):
-            item_details_text = (
-                f"Req: {selected_material_payload['requested_qty']} Nos -"
-                f" {selected_material_payload['instrument_name']}"
-            )
-            alert_type_text = "Material Spare Request"
-        else:
-            item_details_text = msg_body
-            alert_type_text = "Plant Broadcast"
-
         target_areas = (
             list(AREA_PHONE_BOOK.keys())
             if target_area == "ALL"
             else [target_area]
         )
         wa_sent = False
+        is_mat_req = msg_category == "📦 Material Spare Request"
 
         for a_name in target_areas:
             num = AREA_PHONE_BOOK.get(a_name)
             if not num:
                 continue
 
-            if (
-                msg_category == "📦 Material Spare Request"
-                and selected_material_payload
-            ):
+            if is_mat_req and selected_material_payload:
                 raw_r = selected_material_payload.get("_raw_row", {})
                 current_stock = extract_area_stock_from_row(raw_r, a_name)
                 stock_text = f"{current_stock} Nos available in your store"
@@ -1315,10 +1323,10 @@ def show_broadcast_message_dialog(current_area_name):
             if send_plant_whatsapp_alert(
                 recipient_number=num,
                 from_area=current_area_name,
-                alert_type=alert_type_text,
-                details=item_details_text,
+                msg_type="MATERIAL_REQUEST" if is_mat_req else "ANNOUNCEMENT",
+                message_text=msg_body,
+                material_payload=selected_material_payload,
                 receiver_stock_text=stock_text,
-                priority="URGENT" if is_urgent else "NORMAL",
             ):
                 wa_sent = True
 
@@ -1875,7 +1883,6 @@ def inject_custom_css(hide_sidebar=False):
 def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     is_pr_active = st.session_state.get("smart_intelligence_mode", False)
     
-    # Identify active node: agar area nahi hai toh Master Dashboard / Planning Cell session
     if st.session_state.get("selected_area"):
         current_area = st.session_state["selected_area"]
     elif url_area:
@@ -1885,7 +1892,6 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     else:
         current_area = None
 
-    # Calculate pending incoming notifications
     pending_count = 0
     for m in GLOBAL_MESSAGES:
         if not current_area or m.get("from_area") == current_area:
@@ -1976,7 +1982,6 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                         show_team_modal()
 
         else:
-            # Master Dashboard Landing View
             c_left, c_bc, c_not, c_team = st.columns([5.0, 1.7, 1.8, 1.5], vertical_alignment="center")
             with c_left:
                 st.markdown(f"""<div class="header-pill"><span style="color: #10b981; font-size: 15px;">●</span> {status_text}</div>""", unsafe_allow_html=True)
@@ -1991,7 +1996,6 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                     show_team_modal()
 
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
-    
 
 
 # ==============================================================================
