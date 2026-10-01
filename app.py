@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import re
 import time
 import urllib.parse
 from datetime import datetime, timedelta
@@ -29,23 +30,23 @@ WA_ACCESS_TOKEN = os.getenv(
 
 # Area wise registered contact directory
 AREA_PHONE_BOOK = {
-    "Area 02/03": "919742900004",      # otp verified
-    "Area 04/05": "917855801470",       # 
-    "Area 06/07": "919654898469",       # otp verified
-    "Area 08": "919766137589",          # 
-    "Area 09/10": "919437563878",       # 
-    "SPP TG": "917978335366",           # 
-    "SPP Boiler": "918114963663",       # 
-    "C&I Sub Store": "918989190471",    # 
+    "Area 02/03": "919742900004",  # otp verified
+    "Area 04/05": "917855801470",
+    "Area 06/07": "919654898469",  # otp verified
+    "Area 08": "919766137589",
+    "Area 09/10": "919437563878",
+    "SPP TG": "917978335366",
+    "SPP Boiler": "918114963663",
+    "C&I Sub Store": "918989190471",
 }
 
 
 def send_plant_whatsapp_alert(
     recipient_number,
     from_area,
-    msg_type,  # "MATERIAL_REQUEST" ya "ANNOUNCEMENT"
-    message_text="",  # General announcement text
-    material_payload=None,  # Material spare details
+    msg_type,
+    message_text="",
+    material_payload=None,
     receiver_stock_text="0 Nos available in your store",
 ):
     url = f"https://graph.facebook.com/v20.0/{WA_PHONE_NUMBER_ID}/messages"
@@ -55,36 +56,34 @@ def send_plant_whatsapp_alert(
     }
 
     if msg_type == "MATERIAL_REQUEST" and material_payload:
-        # Template 1: Material Request (Exact 6 Parameters)
         template_name = "plant_spare_request_v1"
         parameters = [
-            {"type": "text", "text": str(from_area)},  # {{1}} From Area
+            {"type": "text", "text": str(from_area)},
             {
                 "type": "text",
                 "text": str(material_payload.get("instrument_name", "N/A")),
-            },  # {{2}} Instrument Name
+            },
             {
                 "type": "text",
                 "text": str(material_payload.get("material_code", "N/A")),
-            },  # {{3}} Material Code
+            },
             {
                 "type": "text",
                 "text": str(
                     material_payload.get("specs", "Standard Technical Specs")
                 )[:80],
-            },  # {{4}} Specs
+            },
             {
                 "type": "text",
                 "text": str(material_payload.get("requested_qty", 1)),
-            },  # {{5}} Req Qty
-            {"type": "text", "text": str(receiver_stock_text)},  # {{6}} Store Stock
+            },
+            {"type": "text", "text": str(receiver_stock_text)},
         ]
     else:
-        # Template 2: General Broadcast (Exact 2 Parameters)
         template_name = "plant_inventory_broadcast_v1"
         parameters = [
-            {"type": "text", "text": str(from_area)},  # {{1}} From Area
-            {"type": "text", "text": str(message_text)},  # {{2}} Broadcast Message
+            {"type": "text", "text": str(from_area)},
+            {"type": "text", "text": str(message_text)},
         ]
 
     payload = {
@@ -338,6 +337,9 @@ if "data_timestamp" not in st.session_state:
 
 if "urgent_pr_filter_state" not in st.session_state:
     st.session_state["urgent_pr_filter_state"] = False
+
+if "pr_tracker_data" not in st.session_state:
+    st.session_state["pr_tracker_data"] = {}
 
 
 @st.cache_resource
@@ -902,7 +904,6 @@ def check_authentication(area_key):
         return True
 
     area_cfg = AREA_CONFIGS.get(area_key, {})
-    zone_title = area_cfg.get("title", f"{area_key} Spares Inventory")
     zone_mgr = area_cfg.get("manager", "Area Incharge")
     zone_type = area_cfg.get("zone_type", "Refinery Process Area")
     accent_col = area_cfg.get("color", "#0284c7")
@@ -911,7 +912,7 @@ def check_authentication(area_key):
         f'<img src="data:image/png;base64,{__import__("base64").b64encode(open(NALCO_LOGO_PATH, "rb").read()).decode()}"'
         ' width="65"/>'
         if os.path.exists(NALCO_LOGO_PATH)
-        else '<div style="font-size: 32px;">🏛️</div>'
+        else '<div style="font-size: 32px;">🏛️️</div>'
     )
 
     col1, col2, col3 = st.columns([1, 1.35, 1])
@@ -1360,8 +1361,6 @@ def show_notifications_dialog(current_area_name):
     active_messages = []
     for m in GLOBAL_MESSAGES:
         is_target = m["to_area"] == current_area_name or m["to_area"] == "ALL"
-        not_self = m.get("from_area") != current_area_name
-
         seen_list = (
             m.get("seen_by")
             if isinstance(m.get("seen_by"), list)
@@ -1723,86 +1722,34 @@ def inject_custom_css(hide_sidebar=False):
         box-shadow: 0 2px 5px rgba(0,0,0,0.03);
     }}
 
-    div[data-testid="column"] {{
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }}
-
-    button[key="team_btn"],
-    button[key="urgent_pr_btn"],
-    button[key="substore_items_btn"],
-    button[key="stock_action_btn"],
-    button[key="broadcast_btn"],
-    button[key="notify_btn"] {{
+    .st-key-team_btn button,
+    .st-key-urgent_pr_btn button,
+    .st-key-substore_items_btn button,
+    .st-key-stock_action_btn button,
+    .st-key-broadcast_btn button,
+    .st-key-broadcast_btn_pr button,
+    .st-key-broadcast_btn_master button,
+    .st-key-notify_btn button,
+    .st-key-notify_btn_pr button,
+    .st-key-notify_btn_master button {{
         height: 42px !important;
         min-height: 42px !important;
-        max-height: 42px !important;
         line-height: 42px !important;
-        padding: 0px 14px !important;
-        margin: 0 !important;
         border-radius: 24px !important;
         font-weight: 800 !important;
         font-size: 12.5px !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        box-sizing: border-box !important;
-        transition: all 0.2s ease-in-out !important;
     }}
 
-    button[key="stock_action_btn"] {{
+    .st-key-stock_action_btn button {{
         background: linear-gradient(135deg, #059669 0%, #0284c7 100%) !important;
         color: #ffffff !important;
-        border: 2.2px solid #38bdf8 !important;
-        font-size: 12.5px !important;
-        font-weight: 900 !important;
-        letter-spacing: 0.3px !important;
-        box-shadow: 0 0 16px rgba(2, 132, 199, 0.55), 0 4px 10px rgba(5, 150, 105, 0.35) !important;
-        transform: scale(1.02) !important;
-        transition: all 0.25s ease-in-out !important;
-    }}
-
-    button[key="stock_action_btn"]:hover {{
-        background: linear-gradient(135deg, #10b981 0%, #0284c7 100%) !important;
-        box-shadow: 0 0 24px rgba(16, 185, 129, 0.75), 0 6px 14px rgba(2, 132, 199, 0.45) !important;
-        transform: scale(1.06) !important;
-        border-color: #67e8f9 !important;
-    }}
-
-    button[key="team_btn"] {{
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-        color: #ffffff !important;
         border: 2px solid #38bdf8 !important;
-        box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4) !important;
     }}
 
-    button[key="substore_items_btn"] {{
-        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-        color: #ffffff !important;
-        border: 2px solid #34d399 !important;
-        box-shadow: 0 2px 10px rgba(5, 150, 105, 0.3) !important;
-    }}
-
-    button[key="broadcast_btn"] {{
-        background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
-        color: #ffffff !important;
-        border: 2px solid #a78bfa !important;
-        box-shadow: 0 2px 10px rgba(124, 58, 237, 0.3) !important;
-    }}
-
-    button[key="notify_btn"] {{
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
-        color: #ffffff !important;
-        border: 2px solid #fcd34d !important;
-        box-shadow: 0 2px 10px rgba(217, 119, 6, 0.3) !important;
-    }}
-
-    button[key="urgent_pr_btn"] {{
+    .st-key-urgent_pr_btn button {{
         background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
         color: #ffffff !important;
-        border: 2.5px solid #f87171 !important;
-        box-shadow: 0 0 16px rgba(239, 68, 68, 0.6), 0 4px 12px rgba(220, 38, 38, 0.2) !important;
+        border: 2px solid #f87171 !important;
     }}
 
     section[data-testid="stSidebar"] {{
@@ -1830,11 +1777,6 @@ def inject_custom_css(hide_sidebar=False):
         box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
         border: 1px solid #e2e8f0; 
         margin-bottom: 12px; 
-        transition: all 0.15s ease-in-out;
-    }}
-    .inventory-card:hover {{ 
-        border-color: #cbd5e1; 
-        box-shadow: 0 6px 16px rgba(0,0,0,0.05); 
     }}
     .metric-box {{ 
         text-align: center; 
@@ -1874,6 +1816,15 @@ def inject_custom_css(hide_sidebar=False):
         font-size: 11.5px; 
         color: #334155; 
     }}
+
+    .pr-action-panel {{
+        background: #f8fafc;
+        border: 1.5px solid #e2e8f0;
+        border-left: 4px solid #0284c7;
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-top: 10px;
+    }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -1882,7 +1833,7 @@ def inject_custom_css(hide_sidebar=False):
 # --- TOP BAR ---
 def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     is_pr_active = st.session_state.get("smart_intelligence_mode", False)
-    
+
     if st.session_state.get("selected_area"):
         current_area = st.session_state["selected_area"]
     elif url_area:
@@ -1925,18 +1876,40 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
             )
         with c_mid:
             is_active = st.session_state["urgent_pr_filter_state"]
-            btn_label = "✅ Showing Overdue PR" if is_active else "🚨 Show Overdue PR Only"
-            if st.button(btn_label, key="urgent_pr_btn", type="primary", use_container_width=True):
+            btn_label = (
+                "✅ Showing Overdue PR" if is_active else "🚨 Show Overdue PR Only"
+            )
+            if st.button(
+                btn_label,
+                key="urgent_pr_btn",
+                type="primary",
+                use_container_width=True,
+            ):
                 st.session_state["urgent_pr_filter_state"] = not is_active
                 st.rerun()
         with c_bc:
-            if st.button("📢 Message", key="broadcast_btn_pr", type="primary", use_container_width=True):
+            if st.button(
+                "📢 Message",
+                key="broadcast_btn_pr",
+                type="primary",
+                use_container_width=True,
+            ):
                 show_broadcast_message_dialog(current_area or "Planning Cell")
         with c_not:
-            if st.button(notify_label, key="notify_btn_pr", type="primary", use_container_width=True):
+            if st.button(
+                notify_label,
+                key="notify_btn_pr",
+                type="primary",
+                use_container_width=True,
+            ):
                 show_notifications_dialog(current_area or "Planning Cell")
         with c_team:
-            if st.button("👥 Team", key="team_btn", type="primary", use_container_width=True):
+            if st.button(
+                "👥 Team",
+                key="team_btn",
+                type="primary",
+                use_container_width=True,
+            ):
                 show_team_modal()
 
     else:
@@ -1946,53 +1919,124 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
                     [2.5, 2.3, 1.7, 1.5, 1.5, 1.3], vertical_alignment="center"
                 )
                 with c_left:
-                    st.markdown(f"""<div class="header-pill"><span style="color: #10b981; font-size: 15px;">●</span> {status_text}</div>""", unsafe_allow_html=True)
+                    st.markdown(
+                        f"""<div class="header-pill"><span style="color: #10b981; font-size: 15px;">●</span> {status_text}</div>""",
+                        unsafe_allow_html=True,
+                    )
                 with c_action:
-                    if st.button("🔄 STORE IN / FIELD OUT", key="stock_action_btn", type="primary", use_container_width=True):
+                    if st.button(
+                        "🔄 STORE IN / FIELD OUT",
+                        key="stock_action_btn",
+                        type="primary",
+                        use_container_width=True,
+                    ):
                         show_stock_action_dialog(current_area)
                 with c_sub:
-                    if st.button("📦 In Sub-Store", key="substore_items_btn", type="primary", use_container_width=True):
+                    if st.button(
+                        "📦 In Sub-Store",
+                        key="substore_items_btn",
+                        type="primary",
+                        use_container_width=True,
+                    ):
                         show_substore_items_dialog(current_area)
                 with c_bc:
-                    if st.button("📢 Message", key="broadcast_btn", type="primary", use_container_width=True):
+                    if st.button(
+                        "📢 Message",
+                        key="broadcast_btn",
+                        type="primary",
+                        use_container_width=True,
+                    ):
                         show_broadcast_message_dialog(current_area)
                 with c_not:
-                    if st.button(notify_label, key="notify_btn", type="primary", use_container_width=True):
+                    if st.button(
+                        notify_label,
+                        key="notify_btn",
+                        type="primary",
+                        use_container_width=True,
+                    ):
                         show_notifications_dialog(current_area)
                 with c_team:
-                    if st.button("👥 Team", key="team_btn", type="primary", use_container_width=True):
+                    if st.button(
+                        "👥 Team",
+                        key="team_btn",
+                        type="primary",
+                        use_container_width=True,
+                    ):
                         show_team_modal()
             else:
                 c_left, c_action, c_bc, c_not, c_team = st.columns(
                     [3.4, 2.4, 1.8, 1.8, 1.4], vertical_alignment="center"
                 )
                 with c_left:
-                    st.markdown(f"""<div class="header-pill"><span style="color: #10b981; font-size: 15px;">●</span> {status_text}</div>""", unsafe_allow_html=True)
+                    st.markdown(
+                        f"""<div class="header-pill"><span style="color: #10b981; font-size: 15px;">●</span> {status_text}</div>""",
+                        unsafe_allow_html=True,
+                    )
                 with c_action:
-                    if st.button("🔄 STORE IN / FIELD OUT", key="stock_action_btn", type="primary", use_container_width=True):
+                    if st.button(
+                        "🔄 STORE IN / FIELD OUT",
+                        key="stock_action_btn",
+                        type="primary",
+                        use_container_width=True,
+                    ):
                         show_stock_action_dialog(current_area)
                 with c_bc:
-                    if st.button("📢 Message", key="broadcast_btn", type="primary", use_container_width=True):
+                    if st.button(
+                        "📢 Message",
+                        key="broadcast_btn",
+                        type="primary",
+                        use_container_width=True,
+                    ):
                         show_broadcast_message_dialog(current_area)
                 with c_not:
-                    if st.button(notify_label, key="notify_btn", type="primary", use_container_width=True):
+                    if st.button(
+                        notify_label,
+                        key="notify_btn",
+                        type="primary",
+                        use_container_width=True,
+                    ):
                         show_notifications_dialog(current_area)
                 with c_team:
-                    if st.button("👥 Team", key="team_btn", type="primary", use_container_width=True):
+                    if st.button(
+                        "👥 Team",
+                        key="team_btn",
+                        type="primary",
+                        use_container_width=True,
+                    ):
                         show_team_modal()
 
         else:
-            c_left, c_bc, c_not, c_team = st.columns([5.0, 1.7, 1.8, 1.5], vertical_alignment="center")
+            c_left, c_bc, c_not, c_team = st.columns(
+                [5.0, 1.7, 1.8, 1.5], vertical_alignment="center"
+            )
             with c_left:
-                st.markdown(f"""<div class="header-pill"><span style="color: #10b981; font-size: 15px;">●</span> {status_text}</div>""", unsafe_allow_html=True)
+                st.markdown(
+                    f"""<div class="header-pill"><span style="color: #10b981; font-size: 15px;">●</span> {status_text}</div>""",
+                    unsafe_allow_html=True,
+                )
             with c_bc:
-                if st.button("📢 Message", key="broadcast_btn_master", type="primary", use_container_width=True):
+                if st.button(
+                    "📢 Message",
+                    key="broadcast_btn_master",
+                    type="primary",
+                    use_container_width=True,
+                ):
                     show_broadcast_message_dialog("Planning Cell")
             with c_not:
-                if st.button(notify_label, key="notify_btn_master", type="primary", use_container_width=True):
+                if st.button(
+                    notify_label,
+                    key="notify_btn_master",
+                    type="primary",
+                    use_container_width=True,
+                ):
                     show_notifications_dialog("Planning Cell")
             with c_team:
-                if st.button("👥 Team", key="team_btn", type="primary", use_container_width=True):
+                if st.button(
+                    "👥 Team",
+                    key="team_btn",
+                    type="primary",
+                    use_container_width=True,
+                ):
                     show_team_modal()
 
     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
@@ -2496,61 +2540,108 @@ elif st.session_state["smart_intelligence_mode"]:
                 )
 
                 for _, item in filtered_df.iterrows():
+                    mat_code = item["Material Code"]
+                    area_name = item["Area"]
+                    inst_name = item["Instrument Name"]
                     is_urgent = item["Is_Urgent"]
                     pr_date_str = item["PR_Date_Str"]
                     store_stock = item["Store Stock"]
 
-                    if is_urgent:
+                    clean_key_part = re.sub(r"[^a-zA-Z0-9_]", "_", f"{area_name}_{mat_code}")
+                    saved_state = st.session_state["pr_tracker_data"].get(
+                        clean_key_part, {"done": False, "delivery_date": None}
+                    )
+
+                    is_pr_done = saved_state["done"]
+                    expected_delivery = saved_state["delivery_date"]
+
+                    if is_pr_done:
+                        urgency_badge = """<span style="background-color: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">📋 PR INITIATED</span>"""
+                    elif is_urgent:
                         badge_text = (
                             "⚠️ ZERO STOCK WARNING"
                             if lead_time_months == 0
-                            else " URGENT PR REQUIRED"
+                            else "🚨 URGENT PR REQUIRED"
                         )
                         urgency_badge = (
-                            '<span style="background-color: #fee2e2; color:'
-                            ' #dc2626; padding: 4px 10px; border-radius: 12px;'
-                            ' font-weight: bold; font-size:'
-                            f' 11px;">{badge_text}</span>'
+                            f'<span style="background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">{badge_text}</span>'
                         )
                     else:
-                        urgency_badge = (
-                            '<span style="background-color: #dcfce7; color:'
-                            ' #16a34a; padding: 4px 10px; border-radius: 12px;'
-                            ' font-weight: bold; font-size: 11px;">✅ Stock'
-                            " Healthy</span>"
-                        )
+                        urgency_badge = """<span style="background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">✅ Stock Healthy</span>"""
+
+                    date_bg = "#f1f5f9" if is_pr_done else ("#fee2e2" if is_urgent else "#eff6ff")
+                    date_color = "#475569" if is_pr_done else ("#991b1b" if is_urgent else "#1e3a8a")
+                    date_border = "#cbd5e1" if is_pr_done else ("#fca5a5" if is_urgent else "#bfdbfe")
 
                     card_html = f"""
-                    <div class="inventory-card">
+                    <div class="inventory-card" style="margin-bottom: 6px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
                             <div>
-                                <span style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase;">📍 {item['Area']}</span>
-                                <h4 style="margin: 2px 0 0 0; color: #0f172a; font-size: 16px; font-weight: 700;">{item['Instrument Name']}</h4>
+                                <span style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase;">📍 {area_name}</span>
+                                <h4 style="margin: 2px 0 0 0; color: #0f172a; font-size: 16px; font-weight: 700;">{inst_name}</h4>
                             </div>
                             <div>{urgency_badge}</div>
                         </div>
-                        <div style="display: flex; flex-wrap: gap: 15px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                            <div style="flex: 2;"><b>Material Code:</b> <span style="color: #0284c7; font-weight: 600;">{item['Material Code']}</span><br><b>Specs:</b> {item['Specs']}</div>
-                            <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                            <div style="flex: 2; min-width: 220px;">
+                                <b>Material Code:</b> <span style="color: #0284c7; font-weight: 700;">{mat_code}</span><br>
+                                <b>Specs:</b> {item['Specs']}
+                            </div>
+                            <div style="flex: 1; min-width: 90px; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
                                 <div style="font-size: 10px; color: #64748b; font-weight: bold;">INSTALLED / STORE</div>
                                 <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Field Count']} / {store_stock}</div>
                             </div>
-                            <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
-                                <div style="font-size: 10px; color: #64748b; font-weight: bold;">AVG. CONSUMPTION RATE</div>
+                            <div style="flex: 1; min-width: 90px; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 10px; color: #64748b; font-weight: bold;">AVG. CONSUMPTION</div>
                                 <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Monthly Consumption']:.2f} / mo</div>
                             </div>
-                            <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
-                                <div style="font-size: 10px; color: #64748b; font-weight: bold;">REPLACEMENT CYCLE</div>
+                            <div style="flex: 1; min-width: 90px; background: #f8fafc; padding: 6px; border-radius: 6px; text-align: center;">
+                                <div style="font-size: 10px; color: #64748b; font-weight: bold;">CYCLE</div>
                                 <div style="font-size: 15px; font-weight: 700; color: #0f172a;">{item['Replacement Cycle']} mos</div>
                             </div>
-                            <div style="flex: 1.2; background: {'#fee2e2' if is_urgent else '#eff6ff'}; padding: 6px; border-radius: 6px; text-align: center; border: 1px solid {'#fca5a5' if is_urgent else '#bfdbfe'};">
-                                <div style="font-size: 10px; color: {'#b91c1c' if is_urgent else '#1e40af'}; font-weight: bold;">{date_box_title}</div>
-                                <div style="font-size: 14px; font-weight: 800; color: {'#991b1b' if is_urgent else '#1e3a8a'};">{pr_date_str}</div>
+                            <div style="flex: 1.3; min-width: 140px; background: {date_bg}; padding: 6px; border-radius: 6px; text-align: center; border: 1px solid {date_border};">
+                                <div style="font-size: 10px; color: {date_color}; font-weight: bold;">{date_box_title}</div>
+                                <div style="font-size: 14px; font-weight: 800; color: {date_color};">{pr_date_str}</div>
                             </div>
                         </div>
                     </div>
                     """
                     st.markdown(card_html, unsafe_allow_html=True)
+
+                    c_act1, c_act2 = st.columns([1.5, 3.5])
+                    with c_act1:
+                        chk_val = st.checkbox(
+                            "✅ PR Placed / Done",
+                            value=is_pr_done,
+                            key=f"chk_{clean_key_part}",
+                        )
+                        if chk_val != is_pr_done:
+                            st.session_state["pr_tracker_data"][clean_key_part] = {
+                                "done": chk_val,
+                                "delivery_date": expected_delivery,
+                            }
+                            st.rerun()
+
+                    with c_act2:
+                        if chk_val:
+                            base_date = (
+                                expected_delivery
+                                if expected_delivery
+                                else (datetime.now() + timedelta(days=90)).date()
+                            )
+                            d_val = st.date_input(
+                                "📅 Expected Delivery Date:",
+                                value=base_date,
+                                key=f"date_{clean_key_part}",
+                            )
+                            if d_val != expected_delivery:
+                                st.session_state["pr_tracker_data"][clean_key_part]["delivery_date"] = d_val
+                                st.caption(f"📦 Expected Delivery: **{d_val.strftime('%d-%b-%Y')}**")
+
+                    st.markdown(
+                        "<div style='margin-bottom: 16px; border-bottom: 1px dashed #cbd5e1;'></div>",
+                        unsafe_allow_html=True,
+                    )
             else:
                 if only_urgent_pr:
                     st.success(
