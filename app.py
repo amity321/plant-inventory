@@ -714,7 +714,7 @@ def show_stock_action_dialog(current_area_name):
 
         st.markdown(
             f"""
-            <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 12px 14px; border-radius: 8px; margin: 10px 0; font-size: 13px;">
+            <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 12px 14px; border-radius: 8px; margin-top: 10px; margin-bottom: 10px; font-size: 13px;">
                 <b>Instrument Name:</b> {selected_item['name']}<br>
                 <b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{selected_item['mat_code']}</span> | 
                 <b>Current Store Stock:</b> <span style="color:#0f172a; font-weight:700;">{selected_item['stock']} Nos</span><br>
@@ -912,7 +912,7 @@ def check_authentication(area_key):
         f'<img src="data:image/png;base64,{__import__("base64").b64encode(open(NALCO_LOGO_PATH, "rb").read()).decode()}"'
         ' width="65"/>'
         if os.path.exists(NALCO_LOGO_PATH)
-        else '<div style="font-size: 32px;">🏛️️</div>'
+        else '<div style="font-size: 32px;">🏛</div>'
     )
 
     col1, col2, col3 = st.columns([1, 1.35, 1])
@@ -1816,15 +1816,6 @@ def inject_custom_css(hide_sidebar=False):
         font-size: 11.5px; 
         color: #334155; 
     }}
-
-    .pr-action-panel {{
-        background: #f8fafc;
-        border: 1.5px solid #e2e8f0;
-        border-left: 4px solid #0284c7;
-        border-radius: 8px;
-        padding: 10px 14px;
-        margin-top: 10px;
-    }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -2539,6 +2530,7 @@ elif st.session_state["smart_intelligence_mode"]:
                     else "RECOMMENDED PR DATE"
                 )
 
+                # --- INTERACTIVE PR CARD LOOP WITH INDEX FOR ABSOLUTE UNIQUE KEYS ---
                 for idx, item in enumerate(filtered_df.to_dict(orient="records")):
                     mat_code = item["Material Code"]
                     area_name = item["Area"]
@@ -2547,9 +2539,15 @@ elif st.session_state["smart_intelligence_mode"]:
                     pr_date_str = item["PR_Date_Str"]
                     store_stock = item["Store Stock"]
 
-                    clean_key_part = re.sub(r"[^a-zA-Z0-9_]", "_", f"{area_name}_{mat_code}")
+                    # 1. Logical key for saving in session state
+                    logical_store_key = re.sub(
+                        r"[^a-zA-Z0-9_]", "_", f"{area_name}_{mat_code}"
+                    )
+                    # 2. Index-bound unique key for Streamlit widgets (prevents DuplicateElementKey)
+                    widget_unique_key = f"{idx}_{logical_store_key}"
+
                     saved_state = st.session_state["pr_tracker_data"].get(
-                        clean_key_part, {"done": False, "delivery_date": None}
+                        logical_store_key, {"done": False, "delivery_date": None}
                     )
 
                     is_pr_done = saved_state["done"]
@@ -2609,39 +2607,39 @@ elif st.session_state["smart_intelligence_mode"]:
                     st.markdown(card_html, unsafe_allow_html=True)
 
                     c_act1, c_act2 = st.columns([1.5, 3.5])
-    with c_act1:
-        chk_val = st.checkbox(
-            "✅ PR Placed / Done",
-            value=is_pr_done,
-            key=f"chk_{widget_unique_key}",  # <-- Unique widget key
-        )
-        if chk_val != is_pr_done:
-            st.session_state["pr_tracker_data"][logical_store_key] = {
-                "done": chk_val,
-                "delivery_date": expected_delivery,
-            }
-            st.rerun()
+                    with c_act1:
+                        chk_val = st.checkbox(
+                            "✅ PR Placed / Done",
+                            value=is_pr_done,
+                            key=f"chk_{widget_unique_key}",
+                        )
+                        if chk_val != is_pr_done:
+                            st.session_state["pr_tracker_data"][logical_store_key] = {
+                                "done": chk_val,
+                                "delivery_date": expected_delivery,
+                            }
+                            st.rerun()
 
-    with c_act2:
-        if chk_val:
-            base_date = (
-                expected_delivery
-                if expected_delivery
-                else (datetime.now() + timedelta(days=90)).date()
-            )
-            d_val = st.date_input(
-                "📅 Expected Delivery Date:",
-                value=base_date,
-                key=f"date_{widget_unique_key}",  # <-- Unique widget key
-            )
-            if d_val != expected_delivery:
-                st.session_state["pr_tracker_data"][logical_store_key]["delivery_date"] = d_val
-                st.caption(f"📦 Expected Delivery: **{d_val.strftime('%d-%b-%Y')}**")
+                    with c_act2:
+                        if chk_val:
+                            base_date = (
+                                expected_delivery
+                                if expected_delivery
+                                else (datetime.now() + timedelta(days=90)).date()
+                            )
+                            d_val = st.date_input(
+                                "📅 Expected Delivery Date:",
+                                value=base_date,
+                                key=f"date_{widget_unique_key}",
+                            )
+                            if d_val != expected_delivery:
+                                st.session_state["pr_tracker_data"][logical_store_key]["delivery_date"] = d_val
+                                st.caption(f"📦 Expected Delivery: **{d_val.strftime('%d-%b-%Y')}**")
 
-    st.markdown(
-        "<div style='margin-bottom: 16px; border-bottom: 1px dashed #cbd5e1;'></div>",
-        unsafe_allow_html=True,
-    )
+                    st.markdown(
+                        "<div style='margin-bottom: 16px; border-bottom: 1px dashed #cbd5e1;'></div>",
+                        unsafe_allow_html=True,
+                    )
             else:
                 if only_urgent_pr:
                     st.success(
