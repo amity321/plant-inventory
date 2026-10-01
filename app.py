@@ -338,16 +338,22 @@ if "data_timestamp" not in st.session_state:
 if "urgent_pr_filter_state" not in st.session_state:
     st.session_state["urgent_pr_filter_state"] = False
 
-if "pr_tracker_data" not in st.session_state:
-    st.session_state["pr_tracker_data"] = {}
 
-
+# --- SERVER-LEVEL PERSISTENCE (CACHED RESOURCES) ---
 @st.cache_resource
 def get_global_messages():
     return []
 
 
 GLOBAL_MESSAGES = get_global_messages()
+
+
+@st.cache_resource
+def get_global_pr_tracker():
+    return {}
+
+
+GLOBAL_PR_TRACKER = get_global_pr_tracker()
 
 
 # --- UTILITY & DATA RESOLUTION HELPERS ---
@@ -2530,7 +2536,7 @@ elif st.session_state["smart_intelligence_mode"]:
                     else "RECOMMENDED PR DATE"
                 )
 
-                # --- INTERACTIVE PR CARD LOOP WITH INDEX FOR ABSOLUTE UNIQUE KEYS ---
+                # --- INTERACTIVE PR CARD LOOP WITH SERVER-CACHE MEMORY ---
                 for idx, item in enumerate(filtered_df.to_dict(orient="records")):
                     mat_code = item["Material Code"]
                     area_name = item["Area"]
@@ -2539,22 +2545,24 @@ elif st.session_state["smart_intelligence_mode"]:
                     pr_date_str = item["PR_Date_Str"]
                     store_stock = item["Store Stock"]
 
-                    # 1. Logical key for saving in session state
+                    # Persistent key for global storage
                     logical_store_key = re.sub(
                         r"[^a-zA-Z0-9_]", "_", f"{area_name}_{mat_code}"
                     )
-                    # 2. Index-bound unique key for Streamlit widgets (prevents DuplicateElementKey)
+                    # Widget-level unique key per row index
                     widget_unique_key = f"{idx}_{logical_store_key}"
 
-                    saved_state = st.session_state["pr_tracker_data"].get(
-                        logical_store_key, {"done": False, "delivery_date": None}
+                    saved_state = GLOBAL_PR_TRACKER.get(
+                        logical_store_key,
+                        {"done": False, "delivery_date": None, "qty": 1},
                     )
 
-                    is_pr_done = saved_state["done"]
-                    expected_delivery = saved_state["delivery_date"]
+                    is_pr_done = saved_state.get("done", False)
+                    expected_delivery = saved_state.get("delivery_date", None)
+                    pr_qty = saved_state.get("qty", 1)
 
                     if is_pr_done:
-                        urgency_badge = """<span style="background-color: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">📋 PR INITIATED</span>"""
+                        urgency_badge = f"""<span style="background-color: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 11px;">📋 PR PLACED ({pr_qty} NOS)</span>"""
                     elif is_urgent:
                         badge_text = (
                             "⚠️ ZERO STOCK WARNING"
@@ -2606,17 +2614,18 @@ elif st.session_state["smart_intelligence_mode"]:
                     """
                     st.markdown(card_html, unsafe_allow_html=True)
 
-                    c_act1, c_act2 = st.columns([1.5, 3.5])
+                    c_act1, c_act2, c_act3 = st.columns([1.5, 2.2, 1.3], vertical_alignment="center")
                     with c_act1:
                         chk_val = st.checkbox(
-                            "✅ PR Placed / Done",
+                            "✅ PR Placed",
                             value=is_pr_done,
                             key=f"chk_{widget_unique_key}",
                         )
                         if chk_val != is_pr_done:
-                            st.session_state["pr_tracker_data"][logical_store_key] = {
+                            GLOBAL_PR_TRACKER[logical_store_key] = {
                                 "done": chk_val,
                                 "delivery_date": expected_delivery,
+                                "qty": pr_qty,
                             }
                             st.rerun()
 
@@ -2628,13 +2637,27 @@ elif st.session_state["smart_intelligence_mode"]:
                                 else (datetime.now() + timedelta(days=90)).date()
                             )
                             d_val = st.date_input(
-                                "📅 Expected Delivery Date:",
+                                "📅 Expected Delivery:",
                                 value=base_date,
                                 key=f"date_{widget_unique_key}",
                             )
                             if d_val != expected_delivery:
-                                st.session_state["pr_tracker_data"][logical_store_key]["delivery_date"] = d_val
-                                st.caption(f"📦 Expected Delivery: **{d_val.strftime('%d-%b-%Y')}**")
+                                GLOBAL_PR_TRACKER[logical_store_key]["delivery_date"] = d_val
+                                st.caption(f"📦 Arrival: **{d_val.strftime('%d-%b-%Y')}**")
+
+                    with c_act3:
+                        if chk_val:
+                            q_val = st.number_input(
+                                "PR Qty (Nos):",
+                                min_value=1,
+                                max_value=500,
+                                value=int(pr_qty) if pr_qty else 1,
+                                step=1,
+                                key=f"qty_{widget_unique_key}",
+                            )
+                            if q_val != pr_qty:
+                                GLOBAL_PR_TRACKER[logical_store_key]["qty"] = int(q_val)
+                                st.rerun()
 
                     st.markdown(
                         "<div style='margin-bottom: 16px; border-bottom: 1px dashed #cbd5e1;'></div>",
