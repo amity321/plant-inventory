@@ -2539,7 +2539,7 @@ elif st.session_state["smart_intelligence_mode"]:
                     else "RECOMMENDED PR DATE"
                 )
 
-                for _, item in filtered_df.iterrows():
+                for idx, item in enumerate(filtered_df.to_dict(orient="records")):
                     mat_code = item["Material Code"]
                     area_name = item["Area"]
                     inst_name = item["Instrument Name"]
@@ -2609,39 +2609,39 @@ elif st.session_state["smart_intelligence_mode"]:
                     st.markdown(card_html, unsafe_allow_html=True)
 
                     c_act1, c_act2 = st.columns([1.5, 3.5])
-                    with c_act1:
-                        chk_val = st.checkbox(
-                            "✅ PR Placed / Done",
-                            value=is_pr_done,
-                            key=f"chk_{clean_key_part}",
-                        )
-                        if chk_val != is_pr_done:
-                            st.session_state["pr_tracker_data"][clean_key_part] = {
-                                "done": chk_val,
-                                "delivery_date": expected_delivery,
-                            }
-                            st.rerun()
+    with c_act1:
+        chk_val = st.checkbox(
+            "✅ PR Placed / Done",
+            value=is_pr_done,
+            key=f"chk_{widget_unique_key}",  # <-- Unique widget key
+        )
+        if chk_val != is_pr_done:
+            st.session_state["pr_tracker_data"][logical_store_key] = {
+                "done": chk_val,
+                "delivery_date": expected_delivery,
+            }
+            st.rerun()
 
-                    with c_act2:
-                        if chk_val:
-                            base_date = (
-                                expected_delivery
-                                if expected_delivery
-                                else (datetime.now() + timedelta(days=90)).date()
-                            )
-                            d_val = st.date_input(
-                                "📅 Expected Delivery Date:",
-                                value=base_date,
-                                key=f"date_{clean_key_part}",
-                            )
-                            if d_val != expected_delivery:
-                                st.session_state["pr_tracker_data"][clean_key_part]["delivery_date"] = d_val
-                                st.caption(f"📦 Expected Delivery: **{d_val.strftime('%d-%b-%Y')}**")
+    with c_act2:
+        if chk_val:
+            base_date = (
+                expected_delivery
+                if expected_delivery
+                else (datetime.now() + timedelta(days=90)).date()
+            )
+            d_val = st.date_input(
+                "📅 Expected Delivery Date:",
+                value=base_date,
+                key=f"date_{widget_unique_key}",  # <-- Unique widget key
+            )
+            if d_val != expected_delivery:
+                st.session_state["pr_tracker_data"][logical_store_key]["delivery_date"] = d_val
+                st.caption(f"📦 Expected Delivery: **{d_val.strftime('%d-%b-%Y')}**")
 
-                    st.markdown(
-                        "<div style='margin-bottom: 16px; border-bottom: 1px dashed #cbd5e1;'></div>",
-                        unsafe_allow_html=True,
-                    )
+    st.markdown(
+        "<div style='margin-bottom: 16px; border-bottom: 1px dashed #cbd5e1;'></div>",
+        unsafe_allow_html=True,
+    )
             else:
                 if only_urgent_pr:
                     st.success(
