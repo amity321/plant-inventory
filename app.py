@@ -57,6 +57,11 @@ def send_plant_whatsapp_alert(
 
     if msg_type == "MATERIAL_REQUEST" and material_payload:
         template_name = "plant_spare_request_v1"
+        clean_specs = " ".join(
+            str(
+                material_payload.get("specs", "Standard Technical Specs")
+            ).split()
+        )[:80]
         parameters = [
             {"type": "text", "text": str(from_area)},
             {
@@ -67,12 +72,7 @@ def send_plant_whatsapp_alert(
                 "type": "text",
                 "text": str(material_payload.get("material_code", "N/A")),
             },
-            {
-                "type": "text",
-                "text": str(
-                    material_payload.get("specs", "Standard Technical Specs")
-                )[:80],
-            },
+            {"type": "text", "text": clean_specs},
             {
                 "type": "text",
                 "text": str(material_payload.get("requested_qty", 1)),
@@ -81,9 +81,11 @@ def send_plant_whatsapp_alert(
         ]
     else:
         template_name = "plant_inventory_broadcast_v1"
+        # Meta template body parameters reject raw newlines; sanitizing multi-line text:
+        clean_text = " ".join(str(message_text).split())[:1000]
         parameters = [
             {"type": "text", "text": str(from_area)},
-            {"type": "text", "text": str(message_text)},
+            {"type": "text", "text": clean_text if clean_text else "Plant Update"},
         ]
 
     payload = {
@@ -99,10 +101,17 @@ def send_plant_whatsapp_alert(
 
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=8)
-        return response.status_code in [200, 201]
+        res_data = response.json()
+        if response.status_code in [200, 201]:
+            return True, "Delivered"
+        else:
+            err_msg = res_data.get("error", {}).get("message", str(res_data))
+            err_code = res_data.get("error", {}).get("code", "Unknown")
+            print(f"WhatsApp API Error [{err_code}]: {err_msg}")
+            return False, f"Error {err_code}: {err_msg}"
     except Exception as e:
-        print(f"WhatsApp API Error: {e}")
-        return False
+        print(f"WhatsApp API Exception: {e}")
+        return False, str(e)
 
 
 # --- GOOGLE APPS SCRIPT AUTH & WEBHOOK URL ---
@@ -1312,30 +1321,38 @@ def show_broadcast_message_dialog(current_area_name):
             if target_area == "ALL"
             else [target_area]
         )
-        wa_sent = False
         is_mat_req = msg_category == "📦 Material Spare Request"
 
-        for a_name in target_areas:
-            num = AREA_PHONE_BOOK.get(a_name)
-            if not num:
-                continue
+        success_count = 0
+        error_logs = []
 
-            if is_mat_req and selected_material_payload:
-                raw_r = selected_material_payload.get("_raw_row", {})
-                current_stock = extract_area_stock_from_row(raw_r, a_name)
-                stock_text = f"{current_stock} Nos available in your store"
-            else:
-                stock_text = "N/A"
+        with st.spinner("Dispatching WhatsApp Alerts..."):
+            for a_name in target_areas:
+                num = AREA_PHONE_BOOK.get(a_name)
+                if not num:
+                    continue
 
-            if send_plant_whatsapp_alert(
-                recipient_number=num,
-                from_area=current_area_name,
-                msg_type="MATERIAL_REQUEST" if is_mat_req else "ANNOUNCEMENT",
-                message_text=msg_body,
-                material_payload=selected_material_payload,
-                receiver_stock_text=stock_text,
-            ):
-                wa_sent = True
+                if is_mat_req and selected_material_payload:
+                    raw_r = selected_material_payload.get("_raw_row", {})
+                    current_stock = extract_area_stock_from_row(raw_r, a_name)
+                    stock_text = f"{current_stock} Nos available in your store"
+                else:
+                    stock_text = "N/A"
+
+                ok, resp_detail = send_plant_whatsapp_alert(
+                    recipient_number=num,
+                    from_area=current_area_name,
+                    msg_type="MATERIAL_REQUEST" if is_mat_req else "ANNOUNCEMENT",
+                    message_text=msg_body,
+                    material_payload=selected_material_payload,
+                    receiver_stock_text=stock_text,
+                )
+                if ok:
+                    success_count += 1
+                else:
+                    error_logs.append(f"{a_name} ({num}): {resp_detail}")
+                
+                time.sleep(0.2)  # Avoid rate limit bursts
 
         try:
             requests.post(
@@ -1349,15 +1366,18 @@ def show_broadcast_message_dialog(current_area_name):
         except Exception:
             pass
 
-        if wa_sent:
+        if success_count > 0:
             st.success(
-                f"✅ Dispatched to `{target_area}` & WhatsApp Alert sent to"
-                " Incharge!"
+                f"✅ Dispatched to `{target_area}`! WhatsApp Alert sent to {success_count} contact(s)."
             )
-        else:
-            st.success(f"✅ Dispatched successfully to `{target_area}`!")
+        if error_logs:
+            st.warning(
+                f"⚠️ WhatsApp failed for {len(error_logs)} contact(s). Check API error log:"
+            )
+            for err in error_logs[:3]:
+                st.code(err)
 
-        time.sleep(1.0)
+        time.sleep(1.8)
         st.rerun()
 
 
@@ -2545,11 +2565,9 @@ elif st.session_state["smart_intelligence_mode"]:
                     pr_date_str = item["PR_Date_Str"]
                     store_stock = item["Store Stock"]
 
-                    # Persistent key for global storage
                     logical_store_key = re.sub(
                         r"[^a-zA-Z0-9_]", "_", f"{area_name}_{mat_code}"
                     )
-                    # Widget-level unique key per row index
                     widget_unique_key = f"{idx}_{logical_store_key}"
 
                     saved_state = GLOBAL_PR_TRACKER.get(
