@@ -81,7 +81,6 @@ def send_plant_whatsapp_alert(
         ]
     else:
         template_name = "plant_inventory_broadcast_v1"
-        # Meta template body parameters reject raw newlines; sanitizing multi-line text:
         clean_text = " ".join(str(message_text).split())[:1000]
         parameters = [
             {"type": "text", "text": str(from_area)},
@@ -728,14 +727,7 @@ def show_stock_action_dialog(current_area_name):
         selected_item = matched_suggestions[selected_idx]
 
         st.markdown(
-            f"""
-            <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 12px 14px; border-radius: 8px; margin-top: 10px; margin-bottom: 10px; font-size: 13px;">
-                <b>Instrument Name:</b> {selected_item['name']}<br>
-                <b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{selected_item['mat_code']}</span> | 
-                <b>Current Store Stock:</b> <span style="color:#0f172a; font-weight:700;">{selected_item['stock']} Nos</span><br>
-                <b>Specifications:</b> <span style="color:#475569;">{selected_item['specs']}</span>
-            </div>
-            """,
+            f"""<div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 12px 14px; border-radius: 8px; margin-top: 10px; margin-bottom: 10px; font-size: 13px;"><b>Instrument Name:</b> {selected_item['name']}<br><b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{selected_item['mat_code']}</span> | <b>Current Store Stock:</b> <span style="color:#0f172a; font-weight:700;">{selected_item['stock']} Nos</span><br><b>Specifications:</b> <span style="color:#475569;">{selected_item['specs']}</span></div>""",
             unsafe_allow_html=True,
         )
 
@@ -774,12 +766,7 @@ def show_stock_action_dialog(current_area_name):
             f"⚠️ No instrument matching '{search_kw}' found in {current_area_name}."
         )
         st.markdown(
-            """
-            <div style="background: #fef2f2; border: 1.5px solid #fecaca; border-left: 4px solid #ef4444; padding: 12px 14px; border-radius: 8px; margin: 12px 0; font-size: 13px; color: #991b1b;">
-                <b>New Instrument / First-time Store Entry?</b><br>
-                If this item is new to your plant store, click below to open the official Google Form and register its complete technical specifications and initial stock.
-            </div>
-            """,
+            """<div style="background: #fef2f2; border: 1.5px solid #fecaca; border-left: 4px solid #ef4444; padding: 12px 14px; border-radius: 8px; margin: 12px 0; font-size: 13px; color: #991b1b;"><b>New Instrument / First-time Store Entry?</b><br>If this item is new to your plant store, click below to open the official Google Form and register its complete technical specifications and initial stock.</div>""",
             unsafe_allow_html=True,
         )
         st.link_button(
@@ -1031,7 +1018,7 @@ def check_hod_authentication():
             unsafe_allow_html=True,
         )
 
-        with st.form(key="hod_login_form", clear_on_submit=False):
+        with st.form(key=hod_login_form, clear_on_submit=False):
             user_input_id = st.text_input(
                 "Personal No. (P.No.)",
                 placeholder="e.g. 06505",
@@ -1137,7 +1124,7 @@ def show_substore_items_dialog(current_area_name):
 
     if df_display.empty:
         st.info(
-            "ℹ️ Currently no available spares (stock > 0) in Sub Store for"
+            "ℹ️️ Currently no available spares (stock > 0) in Sub Store for"
             f" {current_area_name}."
         )
         return
@@ -1226,12 +1213,7 @@ def show_broadcast_message_dialog(current_area_name):
                 selected_item = matching_items[chosen_idx]
 
                 st.markdown(
-                    f"""
-                    <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-left: 4px solid #0284c7; padding: 9px 13px; border-radius: 6px; font-size: 12.5px; margin-bottom: 10px;">
-                        <b>Selected Instrument:</b> {selected_item['description']}<br>
-                        <b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{selected_item['mat_code']}</span>
-                    </div>
-                    """,
+                    f"""<div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-left: 4px solid #0284c7; padding: 9px 13px; border-radius: 6px; font-size: 12.5px; margin-bottom: 10px;"><b>Selected Instrument:</b> {selected_item['description']}<br><b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{selected_item['mat_code']}</span></div>""",
                     unsafe_allow_html=True,
                 )
 
@@ -1352,7 +1334,7 @@ def show_broadcast_message_dialog(current_area_name):
                 else:
                     error_logs.append(f"{a_name} ({num}): {resp_detail}")
                 
-                time.sleep(0.2)  # Avoid rate limit bursts
+                time.sleep(0.2)
 
         try:
             requests.post(
@@ -1442,48 +1424,40 @@ def show_notifications_dialog(current_area_name):
                 else ""
             )
 
-            mat_block_html = f"""
-            <div style="background: #ffffff; border: 1.5px solid #86efac; border-radius: 8px; padding: 12px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 6px; margin-bottom: 6px;">
-                    <span style="font-size: 13.5px; font-weight: 800; color: #0f172a;">🛠️ {mat_info.get('instrument_name', 'Instrument')}</span>
-                    <div>
-                        <span style="font-size: 12px; font-weight: 800; color: #dc2626; background: #fee2e2; padding: 2px 8px; border-radius: 6px;">Requested: {mat_info.get('requested_qty', 1)} Nos</span>
-                        <span style="font-size: 12px; font-weight: 800; color: {stock_badge_col}; background: #f0fdf4; padding: 2px 8px; border-radius: 6px; border: 1px solid #bbf7d0; margin-left: 4px;">Your Stock: {area_stock} Nos</span>
-                    </div>
-                </div>
-                <div style="font-size: 12px; color: #475569; line-height: 1.6;">
-                    <b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{mat_info.get('material_code', 'N/A')}</span>{purpose_line}
-                </div>
-            </div>
-            """
+            mat_block_html = (
+                f'<div style="background: #ffffff; border: 1.5px solid #86efac; border-radius: 8px; padding: 12px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">'
+                f'<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 6px; margin-bottom: 6px;">'
+                f'<span style="font-size: 13.5px; font-weight: 800; color: #0f172a;">🛠️ {mat_info.get("instrument_name", "Instrument")}</span>'
+                f'<div>'
+                f'<span style="font-size: 12px; font-weight: 800; color: #dc2626; background: #fee2e2; padding: 2px 8px; border-radius: 6px;">Requested: {mat_info.get("requested_qty", 1)} Nos</span>'
+                f'<span style="font-size: 12px; font-weight: 800; color: {stock_badge_col}; background: #f0fdf4; padding: 2px 8px; border-radius: 6px; border: 1px solid #bbf7d0; margin-left: 4px;">Your Stock: {area_stock} Nos</span>'
+                f'</div></div>'
+                f'<div style="font-size: 12px; color: #475569; line-height: 1.6;">'
+                f'<b>Material Code:</b> <span style="color:#0284c7; font-weight:700;">{mat_info.get("material_code", "N/A")}</span>{purpose_line}'
+                f'</div></div>'
+            )
 
         msg_body_html = ""
         if m.get("message"):
-            msg_body_html = f"""
-            <div style="font-size: 12.5px; color: #334155; margin-top: 6px; background: #f8fafc; padding: 8px 10px; border-radius: 6px; border-left: 3px solid #94a3b8;">
-                <b>Note:</b> {m['message']}
-            </div>
-            """
+            clean_note = str(m["message"]).replace("\n", "<br>")
+            msg_body_html = (
+                f'<div style="font-size: 12.5px; color: #334155; margin-top: 6px; '
+                f'background: #f8fafc; padding: 8px 10px; border-radius: 6px; '
+                f'border-left: 3px solid #94a3b8;">'
+                f'<b>Note:</b> {clean_note}</div>'
+            )
 
-        st.markdown(
-            f"""
-            <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid {border_col}; padding: 14px 16px; border-radius: 10px; margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <span style="font-size: 14px; font-weight: 800; color: #0f172a;">📍 From: {from_a}</span>
-                        <span style="margin-left: 8px;">{badge_html}</span>
-                    </div>
-                    <span style="font-size: 11px; color: #64748b; font-weight: 600;">🕒 {m_time}</span>
-                </div>
-                <div style="font-size: 11.5px; color: #64748b; margin-top: 3px;">
-                    <b>Initiated by:</b> {m.get('sender_officer', 'Area Officer')}
-                </div>
-                {mat_block_html}
-                {msg_body_html}
-            </div>
-            """,
-            unsafe_allow_html=True,
+        card_render = (
+            f'<div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-left: 5px solid {border_col}; padding: 14px 16px; border-radius: 10px; margin-bottom: 12px;">'
+            f'<div style="display: flex; justify-content: space-between; align-items: center;">'
+            f'<div><span style="font-size: 14px; font-weight: 800; color: #0f172a;">📍 From: {from_a}</span><span style="margin-left: 8px;">{badge_html}</span></div>'
+            f'<span style="font-size: 11px; color: #64748b; font-weight: 600;">🕒 {m_time}</span></div>'
+            f'<div style="font-size: 11.5px; color: #64748b; margin-top: 3px;"><b>Initiated by:</b> {m.get("sender_officer", "Area Officer")}</div>'
+            f'{mat_block_html}'
+            f'{msg_body_html}'
+            f'</div>'
         )
+        st.markdown(card_render, unsafe_allow_html=True)
 
         c_reply, c_seen = st.columns([3.6, 1.4], vertical_alignment="center")
 
