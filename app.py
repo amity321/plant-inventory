@@ -1,4 +1,5 @@
 import hashlib
+import io
 import json
 import os
 import re
@@ -347,7 +348,7 @@ if "urgent_pr_filter_state" not in st.session_state:
     st.session_state["urgent_pr_filter_state"] = False
 
 
-# --- SERVER-LEVEL PERSISTENCE (GLOBAL MESSAGES & DISK-BACKED PR TRACKER) ---
+# --- SERVER-LEVEL PERSISTENCE (MESSAGES & DISK-BACKED PR TRACKER) ---
 @st.cache_resource
 def get_global_messages():
     return []
@@ -481,6 +482,69 @@ def fetch_data(url, timestamp):
     live_url = f"{url}&t={timestamp}"
     df = pd.read_csv(live_url, dtype=str)
     return df
+
+
+# --- EXCEL GENERATOR HELPER FUNCTION ---
+def generate_pr_placed_excel(target_configs, timestamp):
+    """Sirf unhi items ki Excel sheet banata hai jinka PR Placed check kiya hua hai."""
+    pr_db = load_pr_tracker()
+    placed_records = []
+
+    for area_key, area_cfg in target_configs.items():
+        try:
+            df_area = fetch_data(area_cfg["sheet_url"], timestamp)
+            df_area.columns = df_area.columns.str.strip()
+            mapping = resolve_columns(df_area)
+
+            for _, r in df_area.iterrows():
+                raw_mat = r.get(mapping["material"], "N/A")
+                mat_code = clean_material_code(raw_mat)
+                if mat_code == "N/A":
+                    continue
+
+                logical_key = re.sub(r"[^a-zA-Z0-9_]", "_", f"{area_key}_{mat_code}")
+                tracker_item = pr_db.get(logical_key)
+
+                if not tracker_item:
+                    for k, v in pr_db.items():
+                        if k.endswith(f"_{mat_code}") and v.get("done"):
+                            tracker_item = v
+                            break
+
+                if tracker_item and tracker_item.get("done"):
+                    d_date = tracker_item.get("delivery_date")
+                    d_str = (
+                        d_date.strftime("%d-%b-%Y")
+                        if hasattr(d_date, "strftime")
+                        else str(d_date or "Pending / TBD")
+                    )
+
+                    placed_records.append({
+                        "Area / Department": area_key,
+                        "Material Code": mat_code,
+                        "Instrument Description": str(
+                            r.get(mapping["name"], "N/A")
+                        ).strip(),
+                        "Specifications": str(r.get(mapping["specs"], "N/A")).strip(),
+                        "PR Quantity (Nos)": tracker_item.get("qty", 1),
+                        "Expected Delivery Date": d_str,
+                        "Current Store Stock": safe_int(r.get(mapping["store"], 0)),
+                        "Field Installed": safe_int(r.get(mapping["field"], 0)),
+                    })
+        except Exception:
+            continue
+
+    if not placed_records:
+        return None
+
+    df_export = pd.DataFrame(placed_records)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df_export.to_excel(writer, index=False, sheet_name="PR_Placed_Summary")
+
+    output.seek(0)
+    return output.getvalue(), len(df_export)
 
 
 # --- PRIVACY-FIRST STOCK MATRIX SEARCH & BACKGROUND EXTRACTOR ---
@@ -1532,7 +1596,7 @@ def show_notifications_dialog(current_area_name):
                 st.rerun()
 
         with c_reply:
-            with st.expander(f"↩️ Reply / Confirm Availability to {from_a}"):
+            with st.expander(f"↩️️ Reply / Confirm Availability to {from_a}"):
                 reply_placeholder = (
                     "e.g. Approved. You can collect 1 unit from our area store..."
                     if is_mat_req
@@ -1769,13 +1833,15 @@ def inject_custom_css(hide_sidebar=False):
     .st-key-broadcast_btn_master button,
     .st-key-notify_btn button,
     .st-key-notify_btn_pr button,
-    .st-key-notify_btn_master button {{
+    .st-key-notify_btn_master button,
+    .st-key-pr_export_excel_btn button,
+    .st-key-pr_export_excel_btn_disabled button {{
         height: 42px !important;
         min-height: 42px !important;
         line-height: 42px !important;
         border-radius: 24px !important;
         font-weight: 800 !important;
-        font-size: 12.5px !important;
+        font-size: 12px !important;
     }}
 
     .st-key-stock_action_btn button {{
@@ -1788,6 +1854,12 @@ def inject_custom_css(hide_sidebar=False):
         background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
         color: #ffffff !important;
         border: 2px solid #f87171 !important;
+    }}
+
+    .st-key-pr_export_excel_btn button {{
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+        color: #ffffff !important;
+        border: 1.5px solid #38bdf8 !important;
     }}
 
     section[data-testid="stSidebar"] {{
@@ -1895,8 +1967,8 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
     )
 
     if is_pr_active:
-        c_left, c_mid, c_bc, c_not, c_team = st.columns(
-            [3.2, 2.5, 1.5, 1.5, 1.3], vertical_alignment="center"
+        c_left, c_mid, c_exp, c_bc, c_not, c_team = st.columns(
+            [2.6, 2.1, 1.8, 1.3, 1.4, 1.1], vertical_alignment="center"
         )
         with c_left:
             st.markdown(
@@ -1916,6 +1988,30 @@ def render_top_bar(status_text="⚡ Live Spares Telemetry Active"):
             ):
                 st.session_state["urgent_pr_filter_state"] = not is_active
                 st.rerun()
+
+        with c_exp:
+            export_data = generate_pr_placed_excel(
+                AREA_CONFIGS, st.session_state["data_timestamp"]
+            )
+            if export_data:
+                excel_bytes, total_items = export_data
+                st.download_button(
+                    label=f"📥 Export PR ({total_items})",
+                    data=excel_bytes,
+                    file_name=f"NALCO_PR_Placed_{datetime.now().strftime('%d_%b_%Y')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="pr_export_excel_btn",
+                    use_container_width=True,
+                )
+            else:
+                st.button(
+                    "📥 Export PR (0)",
+                    disabled=True,
+                    key="pr_export_excel_btn_disabled",
+                    use_container_width=True,
+                    help="No items marked as 'PR Placed' yet.",
+                )
+
         with c_bc:
             if st.button(
                 "📢 Message",
