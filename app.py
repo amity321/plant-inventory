@@ -347,7 +347,7 @@ if "urgent_pr_filter_state" not in st.session_state:
     st.session_state["urgent_pr_filter_state"] = False
 
 
-# --- SERVER-LEVEL PERSISTENCE (CACHED RESOURCES) ---
+# --- SERVER-LEVEL PERSISTENCE (GLOBAL MESSAGES & DISK-BACKED PR TRACKER) ---
 @st.cache_resource
 def get_global_messages():
     return []
@@ -355,13 +355,51 @@ def get_global_messages():
 
 GLOBAL_MESSAGES = get_global_messages()
 
+PR_TRACKER_FILE = "pr_tracker_db.json"
 
-@st.cache_resource
-def get_global_pr_tracker():
+
+def load_pr_tracker():
+    """File se PR data load karega agar file exist karti hai."""
+    if os.path.exists(PR_TRACKER_FILE):
+        try:
+            with open(PR_TRACKER_FILE, "r") as f:
+                data = json.load(f)
+                for k, v in data.items():
+                    if v.get("delivery_date"):
+                        try:
+                            v["delivery_date"] = datetime.strptime(
+                                v["delivery_date"], "%Y-%m-%d"
+                            ).date()
+                        except Exception:
+                            v["delivery_date"] = None
+                return data
+        except Exception as e:
+            print(f"Error loading PR tracker: {e}")
     return {}
 
 
-GLOBAL_PR_TRACKER = get_global_pr_tracker()
+def save_pr_tracker(tracker_data):
+    """PR tracker ko JSON file me instantly write karega."""
+    try:
+        serializable = {}
+        for k, v in tracker_data.items():
+            serializable[k] = {
+                "done": bool(v.get("done", False)),
+                "delivery_date": (
+                    v.get("delivery_date").strftime("%Y-%m-%d")
+                    if v.get("delivery_date")
+                    else None
+                ),
+                "qty": int(v.get("qty", 1)),
+            }
+        with open(PR_TRACKER_FILE, "w") as f:
+            json.dump(serializable, f, indent=2)
+    except Exception as e:
+        print(f"Error saving PR tracker: {e}")
+
+
+# Initialize persistent PR tracker
+GLOBAL_PR_TRACKER = load_pr_tracker()
 
 
 # --- UTILITY & DATA RESOLUTION HELPERS ---
@@ -1018,7 +1056,7 @@ def check_hod_authentication():
             unsafe_allow_html=True,
         )
 
-        with st.form(key=hod_login_form, clear_on_submit=False):
+        with st.form(key="hod_login_form", clear_on_submit=False):
             user_input_id = st.text_input(
                 "Personal No. (P.No.)",
                 placeholder="e.g. 06505",
@@ -1124,7 +1162,7 @@ def show_substore_items_dialog(current_area_name):
 
     if df_display.empty:
         st.info(
-            "ℹ️️ Currently no available spares (stock > 0) in Sub Store for"
+            "ℹ Currently no available spares (stock > 0) in Sub Store for"
             f" {current_area_name}."
         )
         return
@@ -2530,7 +2568,7 @@ elif st.session_state["smart_intelligence_mode"]:
                     else "RECOMMENDED PR DATE"
                 )
 
-                # --- INTERACTIVE PR CARD LOOP WITH SERVER-CACHE MEMORY ---
+                # --- INTERACTIVE PR CARD LOOP WITH DISK-BACKED PERSISTENCE ---
                 for idx, item in enumerate(filtered_df.to_dict(orient="records")):
                     mat_code = item["Material Code"]
                     area_name = item["Area"]
@@ -2619,6 +2657,7 @@ elif st.session_state["smart_intelligence_mode"]:
                                 "delivery_date": expected_delivery,
                                 "qty": pr_qty,
                             }
+                            save_pr_tracker(GLOBAL_PR_TRACKER)
                             st.rerun()
 
                     with c_act2:
@@ -2635,6 +2674,7 @@ elif st.session_state["smart_intelligence_mode"]:
                             )
                             if d_val != expected_delivery:
                                 GLOBAL_PR_TRACKER[logical_store_key]["delivery_date"] = d_val
+                                save_pr_tracker(GLOBAL_PR_TRACKER)
                                 st.caption(f"📦 Arrival: **{d_val.strftime('%d-%b-%Y')}**")
 
                     with c_act3:
@@ -2649,6 +2689,7 @@ elif st.session_state["smart_intelligence_mode"]:
                             )
                             if q_val != pr_qty:
                                 GLOBAL_PR_TRACKER[logical_store_key]["qty"] = int(q_val)
+                                save_pr_tracker(GLOBAL_PR_TRACKER)
                                 st.rerun()
 
                     st.markdown(
