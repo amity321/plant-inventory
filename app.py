@@ -137,6 +137,11 @@ MASTER_AUTHORIZED_USERS = {
         "pin": "9437006963",
         "role": "Planning Cell Head",
     },
+     "10567": {
+        "name": "Er. Astha Singh",
+        "pin": "8989190471",
+        "role": "Procurement Coordinator",
+    },
 }
 
 
